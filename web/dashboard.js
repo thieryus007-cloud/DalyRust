@@ -10,7 +10,6 @@ import { resolveTimestampFields, resolveTimestamp } from '/src/js/utils/timestam
 import { normalizeSample, parseHistoryResponse } from '/src/js/utils/history.js';
 import { ConfigRegistersManager } from '/src/components/configuration/config-registers.js';
 import tinyBMSConfig from '/src/components/tiny/tinybms-config.js';
-import esp32Config from '/src/components/configuration/esp32-config.js';
 import { MqttTimelineChart, MqttQosChart, MqttBandwidthChart } from '/src/js/charts/mqttDashboardCharts.js';
 import { initCanTooltips } from '/src/js/utils/canTooltips.js';
 
@@ -1794,14 +1793,6 @@ async function setupConfigTab() {
         console.log('[Setup] TinyBMS Battery Insider configuration loaded');
     } catch (error) {
         console.warn('[Setup] TinyBMS Battery Insider configuration not available:', error);
-    }
-
-    // Initialize ESP32-CAN-X2 configuration module
-    try {
-        await esp32Config.init();
-        console.log('[Setup] ESP32-CAN-X2 configuration loaded');
-    } catch (error) {
-        console.warn('[Setup] ESP32-CAN-X2 configuration not available:', error);
     }
 }
 
