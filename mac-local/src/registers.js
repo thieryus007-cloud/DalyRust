@@ -277,10 +277,16 @@ export function userToRawValue(descriptor, userValue) {
   if (!descriptor) {
     throw new Error('Descripteur de registre introuvable.');
   }
+
+  // Validation stricte du type : rejeter NaN, Infinity, et types non numériques
+  if (typeof userValue !== 'number' || !Number.isFinite(userValue)) {
+    throw new Error(`Valeur numérique invalide pour ${descriptor.key}: ${userValue}`);
+  }
+
   if (descriptor.valueClass === 'enum') {
-    const candidate = Number.parseInt(userValue, 10);
+    const candidate = Math.round(userValue);
     if (!descriptor.enum.some((entry) => entry.value === candidate)) {
-      throw new Error(`Valeur ${userValue} non valide pour ${descriptor.key}`);
+      throw new Error(`Valeur enum ${candidate} non valide pour ${descriptor.key}`);
     }
     return candidate;
   }

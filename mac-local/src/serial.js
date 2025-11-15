@@ -227,45 +227,83 @@ export class TinyBmsSerial {
     });
   }
 
-  async _readRegisterLocked(address, timeoutMs) {
-    await this._prepareTransaction();
-    const request = buildReadFrame(address);
-    const responsePromise = this._waitForFrame((frame) => frame[1] === 0x07, timeoutMs);
-    try {
-      await this._writeFrame(request);
-    } catch (error) {
-      if (typeof responsePromise.cancel === 'function') {
-        responsePromise.cancel();
+  async _readRegisterLocked(address, timeoutMs, retries = 2) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        await this._prepareTransaction();
+        const request = buildReadFrame(address);
+        const responsePromise = this._waitForFrame((frame) => frame[1] === 0x07, timeoutMs);
+        try {
+          await this._writeFrame(request);
+        } catch (error) {
+          if (typeof responsePromise.cancel === 'function') {
+            responsePromise.cancel();
+          }
+          throw error;
+        }
+        const frame = await responsePromise;
+        if (frame.length < 5 || frame[2] < 2) {
+          throw new Error('Réponse TinyBMS invalide');
+        }
+        const raw = frame[3] | (frame[4] << 8);
+        return raw;
+      } catch (error) {
+        lastError = error;
+        if (attempt < retries) {
+          // Attendre 100ms avant retry
+          await new Promise((resolve) => {
+            setTimeout(resolve, 100);
+          });
+        }
       }
-      throw error;
     }
-    const frame = await responsePromise;
-    if (frame.length < 5 || frame[2] < 2) {
-      throw new Error('Réponse TinyBMS invalide');
-    }
-    const raw = frame[3] | (frame[4] << 8);
-    return raw;
+
+    throw lastError;
   }
 
-  async _writeRegisterLocked(address, rawValue, timeoutMs) {
-    await this._prepareTransaction();
-    const frame = buildWriteFrame(address, rawValue);
-    const ackPromise = this._waitForFrame((received) => received[1] === 0x01 || received[1] === 0x81, timeoutMs);
-    try {
-      await this._writeFrame(frame);
-    } catch (error) {
-      if (typeof ackPromise.cancel === 'function') {
-        ackPromise.cancel();
+  async _writeRegisterLocked(address, rawValue, timeoutMs, retries = 2) {
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        await this._prepareTransaction();
+        const frame = buildWriteFrame(address, rawValue);
+        const ackPromise = this._waitForFrame((received) => received[1] === 0x01 || received[1] === 0x81, timeoutMs);
+        try {
+          await this._writeFrame(frame);
+        } catch (error) {
+          if (typeof ackPromise.cancel === 'function') {
+            ackPromise.cancel();
+          }
+          throw error;
+        }
+        const ack = await ackPromise;
+        if (ack[1] === 0x81) {
+          const errorCode = ack.length > 3 ? ack[3] : 0;
+          // NACK est une erreur applicative, ne pas retry
+          throw new Error(`TinyBMS NACK (code 0x${errorCode.toString(16).padStart(2, '0')})`);
+        }
+        // Passer retries=0 au readback car on est déjà dans une boucle de retry
+        const readback = await this._readRegisterLocked(address, timeoutMs, 0);
+        return readback;
+      } catch (error) {
+        lastError = error;
+        // Ne pas retry sur les erreurs NACK (applicatives)
+        if (error.message.includes('TinyBMS NACK')) {
+          throw error;
+        }
+        if (attempt < retries) {
+          // Attendre 100ms avant retry
+          await new Promise((resolve) => {
+            setTimeout(resolve, 100);
+          });
+        }
       }
-      throw error;
     }
-    const ack = await ackPromise;
-    if (ack[1] === 0x81) {
-      const errorCode = ack.length > 3 ? ack[3] : 0;
-      throw new Error(`TinyBMS NACK (code 0x${errorCode.toString(16).padStart(2, '0')})`);
-    }
-    const readback = await this._readRegisterLocked(address, timeoutMs);
-    return readback;
+
+    throw lastError;
   }
 
   async _prepareTransaction() {
@@ -346,6 +384,14 @@ export class TinyBmsSerial {
 
   _handleData(data) {
     this._readBuffer = Buffer.concat([this._readBuffer, data]);
+
+    // Limite de sécurité : 4KB max pour éviter débordement mémoire
+    // en cas de données corrompues continues
+    const MAX_BUFFER_SIZE = 4096;
+    if (this._readBuffer.length > MAX_BUFFER_SIZE) {
+      this._readBuffer = this._readBuffer.slice(-MAX_BUFFER_SIZE);
+    }
+
     let parsing = true;
     while (parsing) {
       const { frame, buffer } = extractFrame(this._readBuffer);
@@ -359,7 +405,20 @@ export class TinyBmsSerial {
   }
 
   _handleError(error) {
+    // Rejeter toutes les promesses en attente
     this._rejectAll(error);
+
+    // Cleanup complet en cas de déconnexion intempestive
+    if (this.port) {
+      // Retirer les listeners pour éviter les callbacks sur port fermé
+      this.port.removeListener('data', this._onData);
+      this.port.removeListener('error', this._onError);
+
+      // Marquer le port comme fermé (ne pas appeler close(), déjà fermé par l'OS)
+      this.port = null;
+      this._portInfo = null;
+      this._readBuffer = Buffer.alloc(0);
+    }
   }
 
   _dispatchFrame(frame) {
@@ -372,11 +431,21 @@ export class TinyBmsSerial {
       try {
         matches = Boolean(entry.matcher(frame));
       } catch (error) {
-        entry.reject(error);
+        // Cleanup explicite du timeout avant rejet
+        if (entry.timeoutHandle) {
+          clearTimeout(entry.timeoutHandle);
+          entry.timeoutHandle = null;
+        }
         this._pending.splice(i, 1);
+        entry.reject(error);
         return;
       }
       if (matches) {
+        // Cleanup explicite du timeout avant résolution
+        if (entry.timeoutHandle) {
+          clearTimeout(entry.timeoutHandle);
+          entry.timeoutHandle = null;
+        }
         this._pending.splice(i, 1);
         entry.resolve(frame);
         return;
