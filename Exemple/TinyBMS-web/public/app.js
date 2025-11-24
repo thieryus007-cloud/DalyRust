@@ -491,9 +491,9 @@ function initCharts() {
                 center: ['20%', '60%'],
                 startAngle: 280,
                 endAngle: 60,
-                min: 40,
+                min: 45,
                 max: 60,
-                splitNumber: 4,
+                splitNumber: 3,
                 itemStyle: { color: '#06b6d4' },
                 progress: { show: true, width: 4 },
                 pointer: { show: true, width: 2 },
@@ -520,7 +520,7 @@ function initCharts() {
                 pointer: {
                     show: true,
                     length: '65%',
-                    width: 5,
+                    width: 2,
                     itemStyle: { color: '#6366f1' }
                 },
                 axisLine: { lineStyle: { width: 5, color: [[1, '#333']] } },
@@ -546,7 +546,7 @@ function initCharts() {
                 pointer: {
                     show: true,
                     length: '65%',
-                    width: 4,
+                    width: 2,
                     itemStyle: { color: '#10b981' }
                 },
                 axisLine: { lineStyle: { width: 4, color: [[1, '#333']] } },
