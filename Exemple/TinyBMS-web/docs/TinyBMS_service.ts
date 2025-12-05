@@ -47,14 +47,15 @@ function calculateCRC(data: Uint8Array | number[]): number {
 
 // -- Commands --
 
-// Protocol: AA 03 ADDR_H ADDR_L 00 COUNT CRC_L CRC_H (Read Block Modbus)
+// Protocol: AA 03 ADDR_MSB ADDR_LSB 00 COUNT CRC_L CRC_H (Read Block Modbus)
+// Note: Address uses Big Endian (MSB first, LSB second) per TinyBMS documentation Rev D
 export function buildReadRegisterCommand(startAddr: number, count: number): Uint8Array {
     const buf = [
-        0xAA, 
-        0x03, 
-        (startAddr >> 8) & 0xFF, 
-        startAddr & 0xFF, 
-        0x00, 
+        0xAA,
+        0x03,
+        (startAddr >> 8) & 0xFF, // Address MSB (Big Endian)
+        startAddr & 0xFF,        // Address LSB
+        0x00,
         count & 0xFF
     ];
     const crc = calculateCRC(buf);
@@ -63,17 +64,19 @@ export function buildReadRegisterCommand(startAddr: number, count: number): Uint
     return new Uint8Array(buf);
 }
 
-// Protocol: AA 10 ADDR_H ADDR_L 00 01 02 DATA_H DATA_L CRC_L CRC_H (Write 1 Register Modbus)
+// Protocol: AA 10 ADDR_MSB ADDR_LSB 00 01 02 DATA_MSB DATA_LSB CRC_L CRC_H (Write 1 Register Modbus)
+// Note: Address uses Big Endian (MSB, LSB) per TinyBMS documentation Rev D
+// Note: Data uses Big Endian (MSB, LSB) per MODBUS standard
 export function buildWriteRegisterCommand(addr: number, value: number): Uint8Array {
     const buf = [
         0xAA,
         0x10,
-        (addr >> 8) & 0xFF,
-        addr & 0xFF,
+        (addr >> 8) & 0xFF,  // Address MSB (Big Endian)
+        addr & 0xFF,         // Address LSB
         0x00,
-        0x01, // Quantity of registers (1)
-        0x02, // Byte count (2)
-        (value >> 8) & 0xFF, // Data MSB
+        0x01,                // Quantity of registers (1)
+        0x02,                // Byte count (2)
+        (value >> 8) & 0xFF, // Data MSB (Big Endian for MODBUS)
         value & 0xFF         // Data LSB
     ];
     const crc = calculateCRC(buf);
