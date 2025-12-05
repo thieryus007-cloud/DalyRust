@@ -23,7 +23,15 @@
             </ul>
 
             <div class="port-selector">
+                <label for="portSelect" style="font-size: 0.8em; color: #aaa; margin-bottom: 4px; display: block;">Port</label>
                 <select id="portSelect"><option>Loading...</option></select>
+
+                <label for="protocolSelect" style="font-size: 0.8em; color: #aaa; margin-bottom: 4px; margin-top: 8px; display: block;">Protocol</label>
+                <select id="protocolSelect">
+                    <option value="1" selected>ASCII (recommended)</option>
+                    <option value="0">MODBUS</option>
+                </select>
+
                 <button onclick="connectBMS()">Connect</button>
             </div>
         </nav>
@@ -98,6 +106,13 @@
                             <span>Max: <strong id="cell-max-txt" style="color:var(--danger)">--</strong></span>
                             <span>Delta: <strong id="cell-diff-txt" style="color:var(--warning)">--</strong></span>
                         </div>
+                    </div>
+                    <div class="card logs-panel">
+                        <div class="logs-header">
+                            <h3>📋 System Logs</h3>
+                            <button class="logs-clear-btn" onclick="clearLogs()">Clear</button>
+                        </div>
+                        <div id="logs-container" class="logs-container"></div>
                     </div>
                 </div>
             </div>

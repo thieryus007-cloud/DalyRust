@@ -39,7 +39,7 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 #bmsState { font-weight: bold; padding: 5px 10px; background: #333; border-radius: 4px; font-size: 0.9em; }
 
 .top-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; height: 270px; }
-.middle-row { flex: 1; min-height: 350px; }
+.middle-row { flex: 1; min-height: 350px; display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
 .bottom-row { display: grid; grid-template-columns: 1fr; gap: 20px; height: 120px; }
 .card { background: var(--bg-panel); padding: 15px; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; }
 .gauge-card { padding: 6px 4px; }
@@ -134,3 +134,96 @@ h3 { text-align: center; font-size: 0.6em; color: var(--text-muted); margin-bott
 .input-wrapper input { flex: 1; padding: 6px 0; background: transparent; border: none; color: white; font-family: monospace; }
 .input-wrapper span { font-size: 0.8em; color: #666; margin-left: 5px; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+
+/* Logs Window */
+.logs-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 10px;
+}
+.logs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.logs-header h3 {
+    margin: 0;
+    text-align: left;
+}
+.logs-clear-btn {
+    background: rgba(236, 72, 153, 0.2);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.7em;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.logs-clear-btn:hover {
+    background: rgba(236, 72, 153, 0.3);
+}
+.logs-container {
+    flex: 1;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75em;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.log-entry {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border-left: 3px solid;
+    background: rgba(255, 255, 255, 0.02);
+    word-wrap: break-word;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.log-entry .log-time {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    margin-right: 6px;
+}
+.log-entry .log-message {
+    color: var(--text-main);
+}
+.log-entry.log-info {
+    border-left-color: var(--info);
+}
+.log-entry.log-success {
+    border-left-color: var(--success);
+}
+.log-entry.log-warning {
+    border-left-color: var(--warning);
+}
+.log-entry.log-error {
+    border-left-color: var(--danger);
+}
+.log-entry.log-system {
+    border-left-color: var(--primary);
+}
+.logs-container::-webkit-scrollbar {
+    width: 6px;
+}
+.logs-container::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+    border-radius: 3px;
+}
+.logs-container::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+.logs-container::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+}
