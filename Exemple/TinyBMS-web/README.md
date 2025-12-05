@@ -67,7 +67,24 @@ Lancer le serveur :
 cd tinybms-web
 node server.js
 
-4. Accéder à l'interface : Ouvrez votre navigateur sur http://localhost:3000. Sélectionnez le port USB dans la liste déroulante et cliquez sur "Connect".
+4. Accéder à l'interface : Ouvrez votre navigateur sur http://localhost:3000. Sélectionnez le port USB dans la liste déroulante, choisissez le protocole (ASCII recommandé) et cliquez sur "Connect".
+
+### ⚠️ Configuration du Protocole (IMPORTANT)
+
+Le TinyBMS supporte deux protocoles de communication via le registre 343 :
+- **MODBUS** (valeur 0) : Protocole par défaut du TinyBMS
+- **ASCII** (valeur 1) : Protocole implémenté dans cette interface
+
+**Problème :** Si le TinyBMS utilise le protocole MODBUS par défaut et que notre interface utilise le protocole ASCII, la communication échouera.
+
+**Solution :** L'interface configure **automatiquement** le protocole lors de la connexion. Vous pouvez choisir le protocole dans le sélecteur :
+- **ASCII (recommandé)** : Protocole utilisé par cette interface
+- **MODBUS** : Pour tester ou déboguer
+
+**Fonctionnement :**
+1. Lors de la connexion, l'interface écrit automatiquement la valeur du protocole sélectionné dans le registre 343
+2. Le TinyBMS applique le changement et communique ensuite avec le protocole choisi
+3. Si la configuration échoue (ex: timeout), l'interface continue en supposant que le BMS est déjà sur le bon protocole
 
 Fonctionnalités clés incluses :
 
