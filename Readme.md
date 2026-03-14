@@ -10,6 +10,7 @@ Remplacement total de la stack Python/FastAPI par **Rust** (workspace multi-crat
 ---
 
 Raspberry Pi Compute Module 5 Wireless, 4GB RAM, 32GB eMMC
+Raspberry pi os lite (64-bit)
 
 ## Architecture globale
 
