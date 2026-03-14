@@ -24,7 +24,7 @@ repository  = "https://github.com/thieryus007-cloud/Daly-BMS-Rust"
 
 # ── Async runtime ─────────────────────────────────────────────────────────────
 tokio         = { version = "1",    features = ["full"] }
-tokio-serial  = "5.5"
+tokio-serial  = "5.4.5"
 
 # ── Serialisation ─────────────────────────────────────────────────────────────
 serde         = { version = "1",    features = ["derive"] }
@@ -45,7 +45,7 @@ tower         = { version = "0.4",  features = ["limit", "timeout"] }
 tower-http    = { version = "0.5",  features = ["cors", "trace", "compression-gzip"] }
 
 # ── MQTT ───────────────────────────────────────────────────────────────────────
-rumqttc       = "0.24"
+rumqttc       = "0.25"
 
 # ── InfluxDB 2.x ───────────────────────────────────────────────────────────────
 influxdb2             = "0.5"
@@ -64,7 +64,7 @@ lettre        = { version = "0.11", features = ["tokio1-native-tls"] }
 chrono        = { version = "0.4",  features = ["serde"] }
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
-clap          = { version = "4",    features = ["derive", "color"] }
+clap          = { version = "4",    features = ["derive", "color", "env"] }
 
 # ── UUID ───────────────────────────────────────────────────────────────────────
 uuid          = { version = "1",    features = ["v4"] }

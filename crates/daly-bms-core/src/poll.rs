@@ -271,23 +271,21 @@ where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = crate::error::Result<T>>,
 {
-    let mut last_err = None;
+    let mut last_err = DalyError::Other(anyhow::anyhow!("Aucune tentative effectuée"));
     for attempt in 0..=retries {
         match f().await {
             Ok(v) => return Ok(v),
-            Err(DalyError::Serial(_)) => {
-                // Erreur fatale — ne pas réessayer
-                return Err(last_err.unwrap_or_else(|| DalyError::Other(
-                    anyhow::anyhow!("Erreur série fatale")
-                )));
+            Err(e @ DalyError::Serial(_)) | Err(e @ DalyError::Io(_)) => {
+                // Erreur fatale (port série) — ne pas réessayer
+                return Err(e);
             }
             Err(e) => {
                 if attempt < retries {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 }
-                last_err = Some(e);
+                last_err = e;
             }
         }
     }
-    Err(last_err.unwrap())
+    Err(last_err)
 }

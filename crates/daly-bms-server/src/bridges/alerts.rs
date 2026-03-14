@@ -90,36 +90,53 @@ impl AlertEngine {
     }
 
     /// Évalue toutes les règles sur un snapshot et envoie les notifications.
+    ///
+    /// Le Mutex est relâché avant chaque appel async (pas de MutexGuard across await).
     pub async fn evaluate(&self, snap: &BmsSnapshot) {
         let ctx = AlertContext { snap, cfg: &self.cfg };
 
-        for rule in &self.rules {
-            let key = (snap.address, rule.id);
+        // Collecter les actions à effectuer (sans tenir le lock pendant les await)
+        let mut notifications: Vec<(u8, &'static str, &'static str, f32, bool)> = Vec::new();
+
+        {
             let mut states = self.states.lock().unwrap();
-            let state = states.entry(key).or_default();
+            for rule in &self.rules {
+                let key = (snap.address, rule.id);
+                let state = states.entry(key).or_default();
 
-            if !state.active {
-                // Vérifier déclenchement
-                if let Some(value) = (rule.trigger)(&ctx) {
-                    state.active = true;
-                    let should_notify = state.last_notified
-                        .map(|t| t.elapsed() >= rule.cooldown)
-                        .unwrap_or(true);
-
-                    if should_notify {
-                        state.last_notified = Some(Instant::now());
-                        drop(states);
-                        self.log_event(snap.address, rule.id, "triggered", value);
-                        self.send_notification(snap.address, rule, value, true).await;
+                if !state.active {
+                    if let Some(value) = (rule.trigger)(&ctx) {
+                        state.active = true;
+                        let should_notify = state.last_notified
+                            .map(|t| t.elapsed() >= rule.cooldown)
+                            .unwrap_or(true);
+                        if should_notify {
+                            state.last_notified = Some(Instant::now());
+                            notifications.push((snap.address, rule.id, rule.description, value, true));
+                        }
                     }
-                }
-            } else {
-                // Vérifier effacement
-                if (rule.clear)(&ctx) {
+                } else if (rule.clear)(&ctx) {
                     state.active = false;
-                    drop(states);
-                    self.log_event(snap.address, rule.id, "cleared", 0.0);
-                    self.send_notification(snap.address, rule, 0.0, false).await;
+                    notifications.push((snap.address, rule.id, rule.description, 0.0, false));
+                }
+            }
+        } // Mutex relâché ici
+
+        // Envoyer les notifications hors du lock
+        for (addr, rule_id, description, value, triggered) in notifications {
+            let event = if triggered { "triggered" } else { "cleared" };
+            self.log_event(addr, rule_id, event, value);
+
+            let icon = if triggered { "🔴" } else { "✅" };
+            let action = if triggered { "DÉCLENCHÉE" } else { "EFFACÉE" };
+            let msg = format!(
+                "{} Alerte {} — BMS {:#04x}\nRègle : {}\nValeur : {:.2}\nÉtat : {}",
+                icon, action, addr, description, value, action
+            );
+            info!("{}", msg);
+            if !self.cfg.telegram_token.is_empty() && !self.cfg.telegram_chat_id.is_empty() {
+                if let Err(e) = send_telegram(&self.cfg.telegram_token, &self.cfg.telegram_chat_id, &msg).await {
+                    error!("Telegram erreur : {:?}", e);
                 }
             }
         }
@@ -128,31 +145,10 @@ impl AlertEngine {
     fn log_event(&self, addr: u8, rule_id: &str, event: &str, value: f32) {
         if let Ok(db) = self.db.lock() {
             let _ = db.execute(
-                "INSERT INTO alert_events (bms_address, rule_id, event, value, timestamp) VALUES (?1, ?2, ?3, ?4, datetime('now'))",
+                "INSERT INTO alert_events (bms_address, rule_id, event, value, timestamp) \
+                 VALUES (?1, ?2, ?3, ?4, datetime('now'))",
                 params![addr, rule_id, event, value],
             );
-        }
-    }
-
-    async fn send_notification(&self, addr: u8, rule: &AlertRule, value: f32, triggered: bool) {
-        let action = if triggered { "DÉCLENCHÉE" } else { "EFFACÉE" };
-        let msg = format!(
-            "{} Alerte {} — BMS {:#04x}\nRègle : {}\nValeur : {:.2}\nÉtat : {}",
-            rule.severity.icon(),
-            action,
-            addr,
-            rule.description,
-            value,
-            action,
-        );
-
-        info!("{}", msg);
-
-        // Telegram
-        if !self.cfg.telegram_token.is_empty() && !self.cfg.telegram_chat_id.is_empty() {
-            if let Err(e) = send_telegram(&self.cfg.telegram_token, &self.cfg.telegram_chat_id, &msg).await {
-                error!("Telegram erreur : {:?}", e);
-            }
         }
     }
 }

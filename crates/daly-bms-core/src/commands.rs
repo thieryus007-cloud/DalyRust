@@ -208,33 +208,25 @@ use crate::types::Alarms;
 ///
 /// Mapping basé sur la documentation Daly UART V1.21, page 6.
 pub fn parse_alarm_flags(bytes: &[u8; 7]) -> Alarms {
+    // Mapping basé sur documentation Daly UART V1.21, page 6.
+    // Byte 0 : [bit0]=cell_OVP, [bit1]=cell_UVP, [bit2]=pack_OVP, [bit3]=pack_UVP
+    // Byte 1 : [bit0]=charge_OTP, [bit1]=charge_UTP, [bit2]=disch_OTP, [bit3]=disch_UTP
+    // Byte 2 : [bit0]=charge_OCP, [bit1]=disch_OCP
+    // Byte 3 : [bit0]=cell_imbalance
+    // Byte 5 : [bit5]=fuse_blown
     Alarms {
-        // Byte 0
-        cell_ovp:              (bytes[0] >> 0) & 1, // bit 0
-        cell_uvp:              (bytes[0] >> 1) & 1, // bit 1
-        pack_ovp:              (bytes[0] >> 2) & 1, // bit 2
-        pack_uvp:              (bytes[0] >> 3) & 1, // bit 3
-        // mapped to generic fields
-        high_voltage:          (bytes[0] >> 2) & 1,
-        low_voltage:           (bytes[0] >> 3) & 1,
-        low_cell_voltage:      (bytes[0] >> 1) & 1,
-        // Byte 1
-        high_charge_temperature:   (bytes[1] >> 0) & 1,
-        low_charge_temperature:    (bytes[1] >> 1) & 1,
-        high_temperature:          (bytes[1] >> 2) & 1,
-        low_temperature:           (bytes[1] >> 3) & 1,
-        // Byte 2
-        high_charge_current:       (bytes[2] >> 0) & 1,
-        high_discharge_current:    (bytes[2] >> 1) & 1,
-        high_current:              (bytes[2] >> 0) & 1,
-        // Byte 3
-        cell_imbalance:            (bytes[3] >> 0) & 1,
-        // Byte 5/6
-        fuse_blown:                (bytes[5] >> 5) & 1,
-        low_soc:                   0, // calculé par l'AlertEngine
+        high_voltage:             ((bytes[0] >> 0) | (bytes[0] >> 2)) & 1,
+        low_voltage:              ((bytes[0] >> 1) | (bytes[0] >> 3)) & 1,
+        low_cell_voltage:         (bytes[0] >> 1) & 1,
+        high_charge_temperature:  (bytes[1] >> 0) & 1,
+        low_charge_temperature:   (bytes[1] >> 1) & 1,
+        high_temperature:         (bytes[1] >> 2) & 1,
+        low_temperature:          (bytes[1] >> 3) & 1,
+        high_charge_current:      (bytes[2] >> 0) & 1,
+        high_discharge_current:   (bytes[2] >> 1) & 1,
+        high_current:             ((bytes[2] >> 0) | (bytes[2] >> 1)) & 1,
+        cell_imbalance:           (bytes[3] >> 0) & 1,
+        fuse_blown:               (bytes[5] >> 5) & 1,
+        low_soc:                  0, // calculé par l'AlertEngine logiciel
     }
 }
-
-// Champs supplémentaires non dans la struct Alarms publique mais parsés
-// (cell_ovp, cell_uvp, pack_ovp, pack_uvp) — à ajouter à Alarms si besoin
-// Pour l'instant on les mappe aux champs existants ci-dessus.

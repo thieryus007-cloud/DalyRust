@@ -181,10 +181,12 @@ pub async fn export_csv(
         ));
     }
 
+    let content_disposition = format!("attachment; filename=\"bms_{:#04x}.csv\"", addr);
     Ok((
-        [(axum::http::header::CONTENT_TYPE, "text/csv"),
-         (axum::http::header::CONTENT_DISPOSITION,
-          &format!("attachment; filename=\"bms_{:#04x}.csv\"", addr) as &str)],
+        [
+            (axum::http::header::CONTENT_TYPE,       "text/csv".to_string()),
+            (axum::http::header::CONTENT_DISPOSITION, content_disposition),
+        ],
         csv,
     ))
 }
