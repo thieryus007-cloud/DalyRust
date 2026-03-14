@@ -123,11 +123,4 @@ Roadmap Future
 	•	CLI avancée + PyO3 binding (migration progressive)
 	•	Support Venus OS via dbus-mqtt-battery (recommandé)
 
-Ce fichier regroupe TOUTES les informations utiles des anciens README.md et DalyBMS_Documentation.md (architecture, Docker, installation, configuration, alertes, dashboard, dépannage, etc.) en les adaptant à la version Rust + Axum.
-Tu peux copier-coller directement ce contenu dans un nouveau fichier README.md (ou README_RUST.md) à la racine de ton dépôt Rust.
-Tu veux que je te fournisse aussi :
-	•	le config.example.toml complet ?
-	•	le fichier daly-bms.service systemd ?
-	•	ou le Dockerfile pour la Phase 2 ?
-Dis-moi et je te le sors immédiatement ! 🚀
 
