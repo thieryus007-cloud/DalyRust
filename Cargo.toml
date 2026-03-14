@@ -1,0 +1,88 @@
+# =============================================================================
+# DalyBMS — Rust Edition — Workspace Cargo.toml
+# =============================================================================
+[workspace]
+resolver = "2"
+members = [
+    "crates/daly-bms-core",
+    "crates/daly-bms-server",
+    "crates/daly-bms-cli",
+]
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["DalyBMS Rust Team"]
+license     = "MIT"
+rust-version = "1.80"
+repository  = "https://github.com/thieryus007-cloud/Daly-BMS-Rust"
+
+# =============================================================================
+# Shared dependencies (referenced as { workspace = true } in each crate)
+# =============================================================================
+[workspace.dependencies]
+
+# ── Async runtime ─────────────────────────────────────────────────────────────
+tokio         = { version = "1",    features = ["full"] }
+tokio-serial  = "5.5"
+
+# ── Serialisation ─────────────────────────────────────────────────────────────
+serde         = { version = "1",    features = ["derive"] }
+serde_json    = "1"
+toml          = "0.8"
+
+# ── Error handling ─────────────────────────────────────────────────────────────
+anyhow        = "1"
+thiserror     = "1"
+
+# ── Logging / tracing ──────────────────────────────────────────────────────────
+tracing               = "0.1"
+tracing-subscriber    = { version = "0.3", features = ["env-filter", "json"] }
+
+# ── HTTP server (API + WebSocket) ──────────────────────────────────────────────
+axum          = { version = "0.7",  features = ["ws", "macros"] }
+tower         = { version = "0.4",  features = ["limit", "timeout"] }
+tower-http    = { version = "0.5",  features = ["cors", "trace", "compression-gzip"] }
+
+# ── MQTT ───────────────────────────────────────────────────────────────────────
+rumqttc       = "0.24"
+
+# ── InfluxDB 2.x ───────────────────────────────────────────────────────────────
+influxdb2             = "0.5"
+influxdb2-structmap   = "0.2"
+
+# ── SQLite (alertes) ───────────────────────────────────────────────────────────
+rusqlite      = { version = "0.31", features = ["bundled"] }
+
+# ── HTTP client (Telegram) ─────────────────────────────────────────────────────
+reqwest       = { version = "0.12", features = ["json"] }
+
+# ── Email ──────────────────────────────────────────────────────────────────────
+lettre        = { version = "0.11", features = ["tokio1-native-tls"] }
+
+# ── Date/time ──────────────────────────────────────────────────────────────────
+chrono        = { version = "0.4",  features = ["serde"] }
+
+# ── CLI ────────────────────────────────────────────────────────────────────────
+clap          = { version = "4",    features = ["derive", "color"] }
+
+# ── UUID ───────────────────────────────────────────────────────────────────────
+uuid          = { version = "1",    features = ["v4"] }
+
+# ── Misc ───────────────────────────────────────────────────────────────────────
+bytes         = "1"
+futures       = "0.3"
+tokio-util    = { version = "0.7",  features = ["codec"] }
+
+# =============================================================================
+# Release profile — optimisé taille + vitesse pour le Pi
+# =============================================================================
+[profile.release]
+opt-level     = 3
+lto           = true
+codegen-units = 1
+strip         = true
+panic         = "abort"
+
+[profile.dev]
+opt-level = 1
