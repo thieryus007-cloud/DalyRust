@@ -1,1 +1,153 @@
+# =============================================================================
+# DalyBMS — Rust Edition — Fichier de configuration exemple
+# =============================================================================
+# Copiez ce fichier en config.toml et adaptez les valeurs.
+# Les sections commentées ou vides désactivent la fonctionnalité correspondante.
+# Tous les chemins sont absolus en production (recommandé).
+# Date de référence : mars 2026
 
+[serial]
+# Port série RS485 (USB → /dev/ttyUSB* ou /dev/ttyACM*)
+port = "/dev/ttyUSB1"
+
+# Vitesse de communication (Daly standard = 9600)
+baud = 9600
+
+# Intervalle de polling global (en millisecondes)
+# 1000 ms = 1 requête par seconde → bon équilibre réactivité / charge CPU
+poll_interval_ms = 1000
+
+# Nombre maximum de cellules attendues (utilisé pour parsing multi-trames)
+default_cell_count = 16
+
+# Nombre de sondes NTC attendues
+default_temp_sensors = 4
+
+# Taille du ring buffer en mémoire (nombre de snapshots conservés)
+# 3600 = 1 heure à 1 Hz → bon pour historique court terme + export CSV
+ring_buffer_size = 3600
+
+# Activer la découverte automatique au démarrage (sonde 0x01 → 0xFF)
+# Recommandé : activer une fois pour détecter, puis passer en manuel
+auto_discover = false
+
+# Plage de découverte auto (si activée)
+auto_discover_start = 1
+auto_discover_end   = 16
+
+# Liste explicite des BMS (recommandé en production)
+# Format : "0x01,0x02,0x03" ou tableau TOML ["0x01", "0x02"]
+addresses = ["0x01", "0x02"]
+
+
+[api]
+# Interface et port d'écoute (0.0.0.0 = accessible depuis le réseau local)
+bind = "0.0.0.0:8000"
+
+# Clé API pour protéger les endpoints d'écriture (MOS, SOC, config, reset)
+# Vide ou absent = pas d'authentification (développement uniquement !)
+# En production : générez une clé forte (ex: openssl rand -hex 32)
+api_key = ""
+
+# Activer CORS (utile si dashboard sur un autre domaine/port en dev)
+cors_allow_all = true
+# cors_origins = ["http://localhost:3000", "https://dalybms.local"]
+
+
+[logging]
+# Niveau de logs (trace, debug, info, warn, error)
+level = "info"
+
+# Format des logs (pretty = coloré et lisible, json = pour parsing)
+format = "pretty"
+
+
+[mqtt]
+enabled = false
+
+host = "localhost"
+port = 1883
+
+# Préfixe des topics (ex: santuario/bms/1/venus)
+topic_prefix = "santuario/bms"
+
+# Intervalle de publication (secondes)
+publish_interval_sec = 5
+
+# Authentification MQTT (optionnelle)
+# username = ""
+# password = ""
+
+# Format de publication
+# "json" = un message JSON complet par BMS
+# "simple" = un topic par valeur (ex: santuario/bms/1/soc → 75.2)
+format = "json"
+
+
+[influxdb]
+enabled = false
+
+url = "http://localhost:8086"
+
+# Token avec droits write sur les buckets
+token = ""
+
+org = "santuario"
+
+# Bucket principal (rétention courte ~30 jours)
+bucket = "daly_bms"
+
+# Bucket downsamplé 1 min (rétention longue ~1 an)
+bucket_downsampled = "daly_bms_1m"
+
+# Taille max d'un batch d'écriture (points)
+batch_size = 50
+
+# Délai max avant flush forcé (secondes)
+batch_flush_interval_sec = 5.0
+
+
+[alerts]
+# Chemin de la base SQLite pour journal des alertes
+db_path = "/var/lib/daly-bms/alerts.db"
+
+# Intervalle d'évaluation des règles (secondes)
+check_interval_sec = 1.0
+
+# Telegram (optionnel)
+telegram_token = ""
+telegram_chat_id = ""
+
+# Email SMTP (optionnel)
+smtp_host = ""
+smtp_port = 587
+smtp_username = ""
+smtp_password = ""
+smtp_from = "dalybms@santuario.local"
+smtp_to = "admin@santuario.local"
+
+# Seuils d'alertes logicielles (indépendants des seuils hardware BMS)
+[alerts.thresholds]
+cell_ovp_v          = 3.60
+cell_uvp_v          = 2.90
+cell_delta_mv       = 100
+soc_low_percent     = 20.0
+soc_critical_percent= 10.0
+temp_high_c         = 45.0
+current_high_a      = 80.0
+
+
+[read_only]
+# Mode lecture seule globale (désactive TOUTES les commandes d'écriture)
+# Très recommandé en production si pas de besoin de contrôle distant
+enabled = false
+
+
+# =============================================================================
+# Notes supplémentaires
+# =============================================================================
+# - Les chemins absolus sont fortement recommandés en systemd/Docker
+# - Pour la Phase 2 (tout en Docker) : montez /etc/daly-bms/config.toml comme volume
+# - Les variables d'environnement ont priorité sur le fichier TOML
+#   (ex: DALY_API_KEY=xxx cargo run)
+# - Logs : journalctl -u daly-bms -f  ou  RUST_LOG=debug daly-bms-server
