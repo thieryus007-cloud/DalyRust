@@ -28,6 +28,24 @@ Pack A (BMS 0x01) ──┐ Pack B (BMS 0x02) ──┤ Pack C (BMS 0x03) ──
 BMS UART ──► daly_bms_core::poll_loop() │ ▼ on_snapshot(snaps) ┌──────┴───────┐ │ │ ▼ ▼ state.snapshots Bridges (tokio tasks parallèles) ring buffer ├── AlertEngine → rusqlite + Telegram/Email ├── MqttPublisher → rumqttc ├── InfluxWriter → influxdb2-client └── WebSocket broadcast (Axum)
 ## Plan de Mise en Œuvre (étapes recommandées)
 
+Tree
+
+DalyRust/                  ← racine du dépôt
+├── Cargo.toml
+├── crates/
+│   ├── daly-bms-core/
+│   ├── daly-bms-server/
+│   └── daly-bms-cli/
+├── dashboard/
+├── contrib/               
+│   ├── daly-bms.service
+│   ├── nginx.conf.example
+│   └── install-systemd.sh   (optionnel, script d’installation du service)
+├── docker-compose.infra.yml
+├── Makefile
+├── config.toml
+└── README.md
+
 ### Phase 0 — Préparation (1–2 jours)
 1. Cloner le dépôt Rust (futur repo ou branche `rust-edition`)
 2. Installer Rust : `rustup default stable`
