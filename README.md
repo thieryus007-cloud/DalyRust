@@ -1,3 +1,0 @@
-# DalyBMS Rust
-## Installation Santuario 
-#
