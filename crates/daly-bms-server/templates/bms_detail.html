@@ -124,6 +124,18 @@
   </div>
 </div>
 
+{# ─── Boxplot distribution historique par cellule ────────────────────────── #}
+<div class="chart-section">
+  <h3>Boxplot cellules — distribution historique
+    <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
+      ┤min · Q1 · médiane · Q3 · max├ sur la session
+    </span>
+  </h3>
+  <div class="chart-box">
+    <div id="chart-boxplot" style="height:240px"></div>
+  </div>
+</div>
+
 {# ─── Historique SOC + Courant (2 colonnes) ──────────────────────────────── #}
 <div class="chart-row">
   <div class="chart-section" style="margin-bottom:0">
@@ -178,6 +190,7 @@
 {# JSON ECharts (cachés) #}
 <script type="application/json" id="opt-gauge">{{ detail.soc_gauge_json|safe }}</script>
 <script type="application/json" id="opt-cells">{{ detail.cells_bar_json|safe }}</script>
+<script type="application/json" id="opt-boxplot">{{ detail.cells_boxplot_json|safe }}</script>
 <script type="application/json" id="opt-spread">{{ detail.cells_spread_json|safe }}</script>
 <script type="application/json" id="opt-soc">{{ detail.soc_history_json|safe }}</script>
 <script type="application/json" id="opt-cur">{{ detail.current_history_json|safe }}</script>
@@ -201,15 +214,16 @@
   }
 
   const cGauge  = initChart('soc-gauge',   'opt-gauge');
-  const cCells  = initChart('chart-cells', 'opt-cells');
-  const cSpread = initChart('chart-spread','opt-spread');
+  const cCells   = initChart('chart-cells',   'opt-cells');
+  const cBoxplot = initChart('chart-boxplot', 'opt-boxplot');
+  const cSpread  = initChart('chart-spread',  'opt-spread');
   const cSoc    = initChart('chart-soc',   'opt-soc');
   const cCur    = initChart('chart-cur',   'opt-cur');
   const cVT     = initChart('chart-vt',    'opt-vt');
 
   // ─── Resize automatique ────────────────────────────────────────────────────
   window.addEventListener('resize', function() {
-    [cGauge, cCells, cSpread, cSoc, cCur, cVT].forEach(function(c) { if (c) c.resize(); });
+    [cGauge, cCells, cBoxplot, cSpread, cSoc, cCur, cVT].forEach(function(c) { if (c) c.resize(); });
   });
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -302,10 +316,38 @@
 
         if (cSoc) cSoc.setOption({ xAxis: { data: ts }, series: [{ data: soc }] });
         if (cCur) cCur.setOption({ xAxis: { data: ts }, series: [{ data: cur }] });
-        if (cVT)  cVT.setOption({
-          xAxis: { data: ts },
-          series: [{ data: volt }, { data: temp }]
-        });
+        if (cVT)  cVT.setOption({ xAxis: { data: ts }, series: [{ data: volt }, { data: temp }] });
+
+        // Spread min/max par snapshot
+        const minCv = data.map(function(s) { return s.System.MinCellVoltage; });
+        const maxCv = data.map(function(s) { return s.System.MaxCellVoltage; });
+        if (cSpread) cSpread.setOption({ xAxis: { data: ts }, series: [{ data: maxCv }, { data: minCv }] });
+
+        // Boxplot : regrouper les tensions par cellule et recalculer les statistiques
+        if (cBoxplot && data.length >= 4) {
+          var cellMap = {};
+          data.forEach(function(s) {
+            if (!s.Voltages) return;
+            Object.entries(s.Voltages).forEach(function(e) {
+              if (!cellMap[e[0]]) cellMap[e[0]] = [];
+              cellMap[e[0]].push(+e[1]);
+            });
+          });
+          var cellKeys = Object.keys(cellMap).sort(function(a, b) {
+            return parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,''));
+          });
+          var bpLabels = cellKeys.map(function(k) { return 'C' + k.replace(/\D/g,''); });
+          var bpData   = cellKeys.map(function(k) {
+            var v = cellMap[k].slice().sort(function(a,b){return a-b;});
+            var n = v.length;
+            return [v[0], v[Math.floor(n/4)], v[Math.floor(n/2)], v[Math.floor(3*n/4)], v[n-1]];
+          });
+          cBoxplot.setOption({
+            title: { text: 'Distribution par cellule (' + data.length + ' snapshots)' },
+            xAxis: { data: bpLabels },
+            series: [{ data: bpData }]
+          });
+        }
       })
       .catch(function() {});
   }

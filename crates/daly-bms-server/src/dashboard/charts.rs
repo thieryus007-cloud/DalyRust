@@ -135,14 +135,18 @@ pub fn cell_voltages_bar(
                       else if delta_mv > 50.0 { C_YELLOW }
                       else { C_GREEN };
 
-    let labels: Vec<String> = voltages.keys()
-        .map(|k| format!("\"C{}\"", k.trim_start_matches("Cell")))
+    // Tri numérique (Cell1 < Cell2 < … < Cell16), pas alphabétique
+    let mut sorted: Vec<(&String, &f32)> = voltages.iter().collect();
+    sorted.sort_by_key(|(k, _)| k.trim_start_matches("Cell").parse::<u16>().unwrap_or(0));
+
+    let labels: Vec<String> = sorted.iter()
+        .map(|(k, _)| format!("\"C{}\"", k.trim_start_matches("Cell")))
         .collect();
 
-    let values: Vec<String> = voltages.iter()
+    let values: Vec<String> = sorted.iter()
         .map(|(k, &v)| {
-            let is_min    = k == min_cell_id;
-            let is_max    = k == max_cell_id;
+            let is_min    = *k == min_cell_id;
+            let is_max    = *k == max_cell_id;
             let color     = if is_min { C_RED } else if is_max { C_GREEN } else { C_BLUE };
             let label     = if is_min { "MIN" } else if is_max { "MAX" } else { "" };
             let show_lbl  = !label.is_empty();
@@ -308,6 +312,110 @@ pub fn cell_spread_history(data: &HistoryData) -> String {
         grid  = C_GRID,
         green = C_GREEN,
         red   = C_RED,
+    )
+}
+
+// =============================================================================
+// Boxplot — distribution historique par cellule
+// =============================================================================
+
+/// Génère l'option ECharts boxplot montrant la distribution [min, Q1, médiane, Q3, max]
+/// de la tension de chaque cellule sur l'ensemble des snapshots historiques.
+///
+/// Nécessite au moins 4 snapshots. Les cellules sont triées numériquement.
+pub fn cell_boxplot(history: &[BmsSnapshot]) -> String {
+    if history.len() < 4 {
+        return "{}".to_string();
+    }
+
+    // Regrouper les tensions par cellule à travers tous les snapshots
+    let mut per_cell: BTreeMap<String, Vec<f32>> = BTreeMap::new();
+    for snap in history {
+        for (k, &v) in &snap.voltages {
+            per_cell.entry(k.clone()).or_default().push(v);
+        }
+    }
+    if per_cell.is_empty() {
+        return "{}".to_string();
+    }
+
+    // Tri numérique
+    let mut cells: Vec<(String, Vec<f32>)> = per_cell.into_iter().collect();
+    cells.sort_by_key(|(k, _)| k.trim_start_matches("Cell").parse::<u16>().unwrap_or(0));
+
+    let mut labels   = Vec::new();
+    let mut box_data = Vec::new();
+
+    for (k, mut vals) in cells {
+        if vals.is_empty() { continue; }
+        vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let n  = vals.len();
+        let mn = vals[0];
+        let mx = vals[n - 1];
+        let q1 = vals[n / 4];
+        let md = vals[n / 2];
+        let q3 = vals[(3 * n) / 4];
+
+        labels.push(format!("\"C{}\"", k.trim_start_matches("Cell")));
+        box_data.push(format!("[{mn:.4},{q1:.4},{md:.4},{q3:.4},{mx:.4}]",
+            mn = mn, q1 = q1, md = md, q3 = q3, mx = mx));
+    }
+
+    format!(r#"{{
+  "backgroundColor": "{bg}",
+  "animation": false,
+  "title": {{
+    "text": "Distribution par cellule ({n} snapshots)",
+    "textStyle": {{ "color": "{muted}", "fontSize": 11, "fontWeight": "normal" }},
+    "top": "2%"
+  }},
+  "tooltip": {{
+    "trigger": "item",
+    "backgroundColor": "{surface}",
+    "borderColor": "{axis}",
+    "textStyle": {{ "color": "{text}", "fontSize": 11 }}
+  }},
+  "grid": {{ "left": "1%", "right": "2%", "top": "14%", "bottom": "12%", "containLabel": true }},
+  "xAxis": {{
+    "type":      "category",
+    "data":      [{labels}],
+    "axisLabel": {{ "color": "{muted}", "fontSize": 9 }},
+    "axisLine":  {{ "lineStyle": {{ "color": "{axis}" }} }}
+  }},
+  "yAxis": {{
+    "type":      "value",
+    "scale":     true,
+    "axisLabel": {{ "color": "{muted}", "formatter": "{{value}} V", "fontSize": 9 }},
+    "splitLine": {{ "lineStyle": {{ "color": "{grid}", "type": "dashed" }} }}
+  }},
+  "series": [{{
+    "type":     "boxplot",
+    "data":     [{data}],
+    "boxWidth": ["20%", "45%"],
+    "itemStyle": {{
+      "color":       "rgba(88,166,255,0.15)",
+      "borderColor": "{blue}",
+      "borderWidth": 1.5
+    }},
+    "emphasis": {{
+      "itemStyle": {{
+        "color":       "rgba(88,166,255,0.30)",
+        "borderColor": "{blue}",
+        "borderWidth": 2
+      }}
+    }}
+  }}]
+}}"#,
+        bg      = C_BG,
+        surface = "#161b22",
+        text    = "#e6edf3",
+        n       = history.len(),
+        labels  = labels.join(", "),
+        data    = box_data.join(", "),
+        muted   = C_MUTED,
+        axis    = C_AXIS,
+        grid    = C_GRID,
+        blue    = C_BLUE,
     )
 }
 

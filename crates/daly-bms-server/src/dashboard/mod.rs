@@ -171,6 +171,7 @@ pub struct BmsDetail {
     // Options ECharts (JSON brut, injectés dans <script>)
     pub soc_gauge_json:       String,
     pub cells_bar_json:       String,
+    pub cells_boxplot_json:   String,
     pub cells_spread_json:    String,
     pub soc_history_json:     String,
     pub current_history_json: String,
@@ -253,6 +254,7 @@ pub async fn dashboard_bms(
                                   &snap.system.min_voltage_cell_id,
                                   &snap.system.max_voltage_cell_id,
                               ),
+        cells_boxplot_json:   charts::cell_boxplot(&history),
         cells_spread_json:    charts::cell_spread_history(&hist_data),
         soc_history_json:     charts::soc_history_line(&hist_data),
         current_history_json: charts::current_history_line(&hist_data),
