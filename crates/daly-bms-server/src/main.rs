@@ -187,23 +187,29 @@ async fn main() -> anyhow::Result<()> {
         // Mode hardware réel
 
         // ── 1. Résoudre le port (auto-détection ou config) ───────────────────
-        let resolved_port = if auto_detect_port {
+        // find_daly_port() retourne le port déjà ouvert pour éviter la double
+        // ouverture Windows ("Accès refusé" si on ouvre, ferme, puis rouvre).
+        let (resolved_port, pre_opened_port) = if auto_detect_port {
             info!("Port non spécifié — détection automatique en cours...");
             match autodetect::find_daly_port(config.serial.baud).await {
-                Some(p) => p,
+                Some((name, port)) => (name, Some(port)),
                 None => {
                     error!("Aucun Daly BMS détecté sur les ports série disponibles.");
                     warn!("Relancez avec --port COMx pour forcer un port.");
                     warn!("Démarrage en mode API-seule (pas de données BMS).");
-                    String::new()
+                    (String::new(), None)
                 }
             }
         } else {
-            config.serial.port.clone()
+            (config.serial.port.clone(), None)
         };
 
         if !resolved_port.is_empty() {
-            let dal_port = DalyPort::open(&resolved_port, config.serial.baud, 500);
+            // Réutiliser le port pré-ouvert (auto-détect) ou en ouvrir un nouveau
+            let dal_port = match pre_opened_port {
+                Some(p) => Ok(p),
+                None    => DalyPort::open(&resolved_port, config.serial.baud, 500),
+            };
             match dal_port {
                 Ok(port) => {
                     info!("Port série {} ouvert à {} baud", resolved_port, config.serial.baud);
