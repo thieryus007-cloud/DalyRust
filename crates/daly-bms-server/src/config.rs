@@ -90,10 +90,22 @@ impl AppConfig {
     }
 
     /// Charge depuis le chemin par défaut ou `DALY_CONFIG`.
+    ///
+    /// Ordre de recherche :
+    /// 1. Variable d'environnement `DALY_CONFIG`
+    /// 2. `./Config.toml` (répertoire courant — développement Windows)
+    /// 3. `/etc/daly-bms/config.toml` (déploiement Linux)
     pub fn load_default() -> Result<Self> {
-        let path = std::env::var("DALY_CONFIG")
-            .unwrap_or_else(|_| "/etc/daly-bms/config.toml".to_string());
-        Self::load(Path::new(&path))
+        if let Ok(path) = std::env::var("DALY_CONFIG") {
+            return Self::load(Path::new(&path));
+        }
+        for candidate in &["Config.toml", "/etc/daly-bms/config.toml"] {
+            let p = Path::new(candidate);
+            if p.exists() {
+                return Self::load(p);
+            }
+        }
+        anyhow::bail!("Config non trouvée — ni Config.toml ni /etc/daly-bms/config.toml");
     }
 
     /// Retourne la liste des adresses BMS configurées.
