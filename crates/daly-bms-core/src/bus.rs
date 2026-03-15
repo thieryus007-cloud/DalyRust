@@ -73,10 +73,17 @@ impl DalyPort {
         let _ = Self::flush_input(&mut *port).await;
 
         // Envoi
-        port.write_all(request.as_bytes()).await?;
+        let req_bytes = request.as_bytes();
+        trace!(
+            bms = format!("{:#04x}", bms_address),
+            cmd = format!("{:#04x}", cmd as u8),
+            raw = format!("{:02X?}", req_bytes),
+            "→ envoi trame"
+        );
+        port.write_all(req_bytes).await?;
         port.flush().await?;
 
-        // Délai inter-trame
+        // Délai inter-trame (laisser le temps à l'adaptateur RS485 de basculer en RX)
         tokio::time::sleep(Duration::from_millis(INTER_FRAME_DELAY_MS)).await;
 
         // Réception avec timeout
@@ -89,15 +96,41 @@ impl DalyPort {
 
         match read_result {
             Err(_elapsed) => {
-                warn!(
-                    bms = format!("{:#04x}", bms_address),
-                    cmd = format!("{:#04x}", cmd as u8),
-                    "Timeout"
-                );
+                // Tenter de lire des octets partiels pour le diagnostic
+                let mut partial = [0u8; 32];
+                let n = timeout(
+                    Duration::from_millis(50),
+                    port.read(&mut partial),
+                )
+                .await
+                .ok()
+                .and_then(|r| r.ok())
+                .unwrap_or(0);
+
+                if n > 0 {
+                    warn!(
+                        bms = format!("{:#04x}", bms_address),
+                        cmd = format!("{:#04x}", cmd as u8),
+                        partial = format!("{:02X?}", &partial[..n]),
+                        "Timeout — réponse partielle reçue (câblage A/B ?, baud rate ?)"
+                    );
+                } else {
+                    warn!(
+                        bms = format!("{:#04x}", bms_address),
+                        cmd = format!("{:#04x}", cmd as u8),
+                        "Timeout — aucun octet reçu (BMS hors tension ? câble débranché ? mauvais port COM ?)"
+                    );
+                }
                 Err(DalyError::Timeout { bms_id: bms_address, cmd: cmd as u8 })
             }
             Ok(Err(e)) => Err(e.into()),
             Ok(Ok(_)) => {
+                trace!(
+                    bms = format!("{:#04x}", bms_address),
+                    cmd = format!("{:#04x}", cmd as u8),
+                    raw = format!("{:02X?}", &buf),
+                    "← réponse reçue"
+                );
                 let frame = ResponseFrame::parse(&buf)?;
                 frame.validate_for(bms_address, cmd)?;
                 debug!(
