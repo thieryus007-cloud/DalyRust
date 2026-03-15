@@ -97,7 +97,7 @@ pub struct SerialConfig {
 impl Default for SerialConfig {
     fn default() -> Self {
         Self {
-            port:               "/dev/ttyUSB0".into(),
+            port:               if cfg!(windows) { "COM1".into() } else { "/dev/ttyUSB0".into() },
             baud:               9600,
             poll_interval_ms:   1000,
             default_cell_count: 16,

@@ -38,6 +38,10 @@ use tracing::{error, info, warn};
 struct ServerArgs {
     simulate:  bool,
     sim_addrs: Vec<u8>,
+    /// Port série explicite (ex: COM3, /dev/ttyUSB0)
+    port:      Option<String>,
+    /// Adresses BMS pour le mode hardware (ex: 0x01,0x02)
+    bms_addrs: Vec<u8>,
 }
 
 impl ServerArgs {
@@ -47,21 +51,32 @@ impl ServerArgs {
 
         let sim_addrs = args.windows(2)
             .find(|w| w[0] == "--sim-bms")
-            .map(|w| {
-                w[1].split(',')
-                    .filter_map(|s| {
-                        let s = s.trim();
-                        if s.starts_with("0x") || s.starts_with("0X") {
-                            u8::from_str_radix(&s[2..], 16).ok()
-                        } else {
-                            s.parse::<u8>().ok()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
+            .map(|w| Self::parse_addresses(&w[1]))
             .unwrap_or_default();
 
-        Self { simulate, sim_addrs }
+        let port = args.windows(2)
+            .find(|w| w[0] == "--port" || w[0] == "-p")
+            .map(|w| w[1].clone());
+
+        let bms_addrs = args.windows(2)
+            .find(|w| w[0] == "--bms")
+            .map(|w| Self::parse_addresses(&w[1]))
+            .unwrap_or_default();
+
+        Self { simulate, sim_addrs, port, bms_addrs }
+    }
+
+    fn parse_addresses(s: &str) -> Vec<u8> {
+        s.split(',')
+            .filter_map(|s| {
+                let s = s.trim();
+                if s.starts_with("0x") || s.starts_with("0X") {
+                    u8::from_str_radix(&s[2..], 16).ok()
+                } else {
+                    s.parse::<u8>().ok()
+                }
+            })
+            .collect()
     }
 }
 
@@ -74,7 +89,7 @@ async fn main() -> anyhow::Result<()> {
     let args = ServerArgs::parse();
 
     // ── Configuration ──────────────────────────────────────────────────────────
-    let config = AppConfig::load_default()
+    let mut config = AppConfig::load_default()
         .unwrap_or_else(|e| {
             // Fallback : configuration par défaut (dev / simulation)
             eprintln!("Config non trouvée ({}) — utilisation des valeurs par défaut", e);
@@ -88,6 +103,17 @@ async fn main() -> anyhow::Result<()> {
                 read_only: config::ReadOnlyConfig::default(),
             }
         });
+
+    // ── Override port série depuis CLI ─────────────────────────────────────────
+    if let Some(ref port) = args.port {
+        config.serial.port = port.clone();
+    }
+    // Override adresses BMS hardware depuis CLI
+    if !args.bms_addrs.is_empty() {
+        config.serial.addresses = args.bms_addrs.iter()
+            .map(|a| format!("{:#04x}", a))
+            .collect();
+    }
 
     // ── Logging ────────────────────────────────────────────────────────────────
     let log_level = config.logging.level.clone();
