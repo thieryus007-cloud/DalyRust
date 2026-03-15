@@ -132,6 +132,22 @@ impl DalyPort {
                     "← réponse reçue"
                 );
                 let frame = ResponseFrame::parse(&buf)?;
+                // Diagnostic proxy : si l'adresse ne correspond pas et que c'est
+                // une réponse PackStatus (0x90), loguer voltage+SOC pour savoir
+                // si BMS 0x01 proxy les données du slave ou répond avec les siennes.
+                if frame.address() != bms_address && cmd == DataId::PackStatus {
+                    let d = frame.data();
+                    let voltage_raw = u16::from_be_bytes([d[0], d[1]]);
+                    let soc_raw     = u16::from_be_bytes([d[6], d[7]]);
+                    warn!(
+                        bms     = format!("{:#04x}", bms_address),
+                        actual  = format!("{:#04x}", frame.address()),
+                        raw     = format!("{:02X?}", &buf),
+                        voltage = format!("{:.1}V", voltage_raw as f32 * 0.1),
+                        soc     = format!("{:.1}%", soc_raw as f32 * 0.1),
+                        "Adresse inattendue — données décodées (proxy ?)"
+                    );
+                }
                 frame.validate_for(bms_address, cmd)?;
                 debug!(
                     bms = format!("{:#04x}", bms_address),
