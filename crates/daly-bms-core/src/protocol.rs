@@ -100,14 +100,20 @@ pub struct RequestFrame {
 
 impl RequestFrame {
     /// Construit une trame de requête avec les 8 octets de données spécifiés.
+    ///
+    /// Protocole Daly UART V1.21 :
+    /// - Byte[1] = 0x40 (adresse PC/hôte fixe, identique pour toutes les requêtes)
+    /// - La trame de réponse contient l'adresse BMS en byte[1] (ex: 0x01)
+    /// - `bms_address` est conservé uniquement pour valider la réponse
     pub fn new(bms_address: u8, cmd: DataId, data: [u8; 8]) -> Self {
         let mut bytes = [0u8; FRAME_LEN];
         bytes[0] = START_FLAG;
-        bytes[1] = bms_address;
+        bytes[1] = PC_ADDRESS;   // 0x40 — adresse hôte fixe (PC → BMS)
         bytes[2] = cmd as u8;
         bytes[3] = DATA_LEN;
         bytes[4..12].copy_from_slice(&data);
         bytes[12] = checksum(&bytes[..12]);
+        let _ = bms_address; // utilisé uniquement pour valider la réponse
         Self { bytes }
     }
 
@@ -322,10 +328,11 @@ mod tests {
     fn test_request_frame_checksum() {
         let frame = RequestFrame::read(0x01, DataId::PackStatus);
         assert_eq!(frame.bytes[0], START_FLAG);
-        assert_eq!(frame.bytes[1], 0x01);
+        // Byte[1] = PC_ADDRESS (0x40), pas l'adresse BMS
+        assert_eq!(frame.bytes[1], PC_ADDRESS);
         assert_eq!(frame.bytes[2], 0x90);
         assert_eq!(frame.bytes[3], DATA_LEN);
-        // checksum = 0xA5 + 0x01 + 0x90 + 0x08 = 0x13E → 0x3E
-        assert_eq!(frame.bytes[12], 0x3E);
+        // checksum = 0xA5 + 0x40 + 0x90 + 0x08 = 0x17D → 0x7D
+        assert_eq!(frame.bytes[12], 0x7D);
     }
 }
