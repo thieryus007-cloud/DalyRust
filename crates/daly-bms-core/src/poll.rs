@@ -190,7 +190,7 @@ async fn poll_device(
     };
 
     let history = HistoryData {
-        charge_cycles:   mos.charge_cycles,
+        charge_cycles:   status.cycle_count as u32, // 0x94 bytes[5-6] : u16, correct
         minimum_voltage: 0.0, // non disponible en temps réel
         maximum_voltage: 0.0,
         total_ah_drawn:  0.0,
