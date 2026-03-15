@@ -16,15 +16,8 @@
   </span>
 </div>
 
-{# ─── Ligne 1 : jauge SOC + KPIs ─────────────────────────────────────────── #}
-<div class="detail-grid" style="margin-bottom:1rem">
-
-  {# Jauge #}
-  <div class="card" style="display:flex;align-items:center;justify-content:center;">
-    <div class="detail-gauge" id="soc-gauge" style="width:200px;height:200px"></div>
-  </div>
-
-  {# KPIs #}
+{# ─── KPIs ────────────────────────────────────────────────────────────────── #}
+<div class="card" style="margin-bottom:1rem;padding:1rem">
   <div style="display:flex;flex-direction:column;gap:0.75rem">
     <div class="kpi-row">
       <div class="kpi">
@@ -102,25 +95,17 @@
   </div>
 </div>
 
-{# ─── Tensions des cellules + Spread (2 colonnes) ────────────────────────── #}
-<div class="chart-row">
-  <div class="chart-section" style="margin-bottom:0">
-    <h3>Tensions cellules
-      <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
-        MIN <span style="color:var(--red)">&#9632;</span>
-        &nbsp;MAX <span style="color:var(--green)">&#9632;</span>
-        &nbsp;autres <span style="color:var(--accent)">&#9632;</span>
-      </span>
-    </h3>
-    <div class="chart-box">
-      <div id="chart-cells" style="height:240px"></div>
-    </div>
-  </div>
-  <div class="chart-section" style="margin-bottom:0">
-    <h3>Spread cellules (historique)</h3>
-    <div class="chart-box">
-      <div id="chart-spread" style="height:240px"></div>
-    </div>
+{# ─── Tensions des cellules (pleine largeur) ──────────────────────────────── #}
+<div class="chart-section">
+  <h3>Tensions cellules
+    <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
+      MIN <span style="color:var(--red)">&#9632;</span>
+      &nbsp;MAX <span style="color:var(--green)">&#9632;</span>
+      &nbsp;autres <span style="color:var(--accent)">&#9632;</span>
+    </span>
+  </h3>
+  <div class="chart-box">
+    <div id="chart-cells" style="height:240px"></div>
   </div>
 </div>
 
@@ -137,30 +122,6 @@
   </h3>
   <div class="chart-box">
     <div id="chart-boxplot" style="height:240px"></div>
-  </div>
-</div>
-
-{# ─── Historique SOC + Courant (2 colonnes) ──────────────────────────────── #}
-<div class="chart-row">
-  <div class="chart-section" style="margin-bottom:0">
-    <h3>Historique SOC</h3>
-    <div class="chart-box">
-      <div id="chart-soc" style="height:200px"></div>
-    </div>
-  </div>
-  <div class="chart-section" style="margin-bottom:0">
-    <h3>Historique Courant</h3>
-    <div class="chart-box">
-      <div id="chart-cur" style="height:200px"></div>
-    </div>
-  </div>
-</div>
-
-{# ─── Tension + Température ───────────────────────────────────────────────── #}
-<div class="chart-section">
-  <h3>Tension &amp; Température (historique)</h3>
-  <div class="chart-box">
-    <div id="chart-vt" style="height:220px"></div>
   </div>
 </div>
 
@@ -192,13 +153,8 @@
 </div>
 
 {# JSON ECharts (cachés) #}
-<script type="application/json" id="opt-gauge">{{ detail.soc_gauge_json|safe }}</script>
 <script type="application/json" id="opt-cells">{{ detail.cells_bar_json|safe }}</script>
 <script type="application/json" id="opt-boxplot">{{ detail.cells_boxplot_json|safe }}</script>
-<script type="application/json" id="opt-spread">{{ detail.cells_spread_json|safe }}</script>
-<script type="application/json" id="opt-soc">{{ detail.soc_history_json|safe }}</script>
-<script type="application/json" id="opt-cur">{{ detail.current_history_json|safe }}</script>
-<script type="application/json" id="opt-vt">{{ detail.volt_temp_json|safe }}</script>
 
 {% endblock %}
 
@@ -207,7 +163,7 @@
 (function() {
   const BMS_ADDR = {{ detail.summary.address }};
 
-  // ─── Initialisation des 5 graphiques ──────────────────────────────────────
+  // ─── Initialisation des graphiques ────────────────────────────────────────
   function initChart(domId, optId) {
     const dom = document.getElementById(domId);
     const opt = document.getElementById(optId);
@@ -217,17 +173,12 @@
     return c;
   }
 
-  const cGauge  = initChart('soc-gauge',   'opt-gauge');
   const cCells   = initChart('chart-cells',   'opt-cells');
   const cBoxplot = initChart('chart-boxplot', 'opt-boxplot');
-  const cSpread  = initChart('chart-spread',  'opt-spread');
-  const cSoc    = initChart('chart-soc',   'opt-soc');
-  const cCur    = initChart('chart-cur',   'opt-cur');
-  const cVT     = initChart('chart-vt',    'opt-vt');
 
   // ─── Resize automatique ────────────────────────────────────────────────────
   window.addEventListener('resize', function() {
-    [cGauge, cCells, cBoxplot, cSpread, cSoc, cCur, cVT].forEach(function(c) { if (c) c.resize(); });
+    [cCells, cBoxplot].forEach(function(c) { if (c) c.resize(); });
   });
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -253,9 +204,6 @@
     currentMinCell  = (s.System && s.System.MinVoltageCellId) || '';
     currentMaxCell  = (s.System && s.System.MaxVoltageCellId) || '';
     currentBalances = s.Balances || {};
-
-    // Jauge SOC
-    if (cGauge) cGauge.setOption({ series: [{ data: [{ value: s.Soc, name: 'SOC' }] }] });
 
     // KPIs texte
     set('kpi-v',   fmt1(s.Dc.Voltage)  + ' V');
@@ -313,32 +261,15 @@
     }
   };
 
-  // ─── Rafraîchissement de l'historique (toutes les 30 s) ───────────────────
+  // ─── Rafraîchissement du boxplot (toutes les 30 s) ────────────────────────
   function refreshHistory() {
     fetch('/api/v1/bms/' + BMS_ADDR + '/history')
       .then(function(r) { return r.json(); })
       .then(function(data) {
-        if (!Array.isArray(data) || data.length === 0) return;
-
-        // data est un tableau de BmsSnapshot en ordre (plus récent en premier si history_for reverse)
-        // On suppose ici ordre chronologique (ancien → récent) après reverse côté serveur
-        const ts   = data.map(function(s) { return new Date(s.timestamp).toLocaleTimeString(); });
-        const soc  = data.map(function(s) { return s.Soc; });
-        const cur  = data.map(function(s) { return s.Dc.Current; });
-        const volt = data.map(function(s) { return s.Dc.Voltage; });
-        const temp = data.map(function(s) { return s.System.MaxCellTemperature; });
-
-        if (cSoc) cSoc.setOption({ xAxis: { data: ts }, series: [{ data: soc }] });
-        if (cCur) cCur.setOption({ xAxis: { data: ts }, series: [{ data: cur }] });
-        if (cVT)  cVT.setOption({ xAxis: { data: ts }, series: [{ data: volt }, { data: temp }] });
-
-        // Spread min/max par snapshot
-        const minCv = data.map(function(s) { return s.System.MinCellVoltage; });
-        const maxCv = data.map(function(s) { return s.System.MaxCellVoltage; });
-        if (cSpread) cSpread.setOption({ xAxis: { data: ts }, series: [{ data: maxCv }, { data: minCv }] });
+        if (!Array.isArray(data) || data.length < 4) return;
 
         // Boxplot : regrouper les tensions par cellule et recalculer les statistiques
-        if (cBoxplot && data.length >= 4) {
+        if (cBoxplot) {
           var cellMap = {};
           data.forEach(function(s) {
             if (!s.Voltages) return;
@@ -352,7 +283,6 @@
           });
           var bpLabels = cellKeys.map(function(k) { return 'C' + k.replace(/\D/g,''); });
 
-          // Per-item coloring based on current MIN/MAX state
           var bpData = cellKeys.map(function(k) {
             var v = cellMap[k].slice().sort(function(a,b){return a-b;});
             var n = v.length;
@@ -365,7 +295,6 @@
             return { value: boxVals, itemStyle: { color: color, borderColor: border, borderWidth: 2 } };
           });
 
-          // Scatter overlay for cells actively balancing
           var balData = [];
           cellKeys.forEach(function(k) {
             if (currentBalances[k]) {
@@ -387,7 +316,6 @@
       .catch(function() {});
   }
 
-  // Premier rafraîchissement après 5 s, puis toutes les 30 s
   setTimeout(refreshHistory, 5000);
   setInterval(refreshHistory, 30000);
 })();

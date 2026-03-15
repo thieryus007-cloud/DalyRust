@@ -226,27 +226,22 @@ fn build_alarms(snap: &BmsSnapshot) -> Vec<AlarmRow> {
 
 /// Détails complets pour la page d'un BMS.
 pub struct BmsDetail {
-    pub summary:              BmsSummary,
+    pub summary:            BmsSummary,
     // Infos cellules
-    pub cell_count:           u8,
-    pub min_cell_v:           f32,
-    pub max_cell_v:           f32,
-    pub min_cell_id:          String,
-    pub max_cell_id:          String,
+    pub cell_count:         u8,
+    pub min_cell_v:         f32,
+    pub max_cell_v:         f32,
+    pub min_cell_id:        String,
+    pub max_cell_id:        String,
     // Infos état batterie
-    pub soh:                  f32,
-    pub cycles:               u32,
-    pub time_to_go_h:         f32,
+    pub soh:                f32,
+    pub cycles:             u32,
+    pub time_to_go_h:       f32,
     // Alarmes
-    pub alarms:               Vec<AlarmRow>,
+    pub alarms:             Vec<AlarmRow>,
     // Options ECharts (JSON brut, injectés dans <script>)
-    pub soc_gauge_json:       String,
-    pub cells_bar_json:       String,
-    pub cells_boxplot_json:   String,
-    pub cells_spread_json:    String,
-    pub soc_history_json:     String,
-    pub current_history_json: String,
-    pub volt_temp_json:       String,
+    pub cells_bar_json:     String,
+    pub cells_boxplot_json: String,
 }
 
 // =============================================================================
@@ -303,38 +298,32 @@ pub async fn dashboard_bms(
     let mut history = state.history_for(addr, 300).await;
     history.reverse();
 
-    let hist_data    = charts::HistoryData::from_snapshots(&history);
     let time_to_go_h = if snap.dc.current < -0.5 {
         snap.time_to_go as f32 / 3600.0
     } else { 0.0 };
 
     let detail = BmsDetail {
-        summary:              BmsSummary::from_snapshot(&snap),
-        cell_count:           snap.system.nr_of_cells_per_battery,
-        min_cell_v:           snap.system.min_cell_voltage,
-        max_cell_v:           snap.system.max_cell_voltage,
-        min_cell_id:          snap.system.min_voltage_cell_id.clone(),
-        max_cell_id:          snap.system.max_voltage_cell_id.clone(),
-        soh:                  snap.soh,
-        cycles:               snap.history.charge_cycles,
+        summary:            BmsSummary::from_snapshot(&snap),
+        cell_count:         snap.system.nr_of_cells_per_battery,
+        min_cell_v:         snap.system.min_cell_voltage,
+        max_cell_v:         snap.system.max_cell_voltage,
+        min_cell_id:        snap.system.min_voltage_cell_id.clone(),
+        max_cell_id:        snap.system.max_voltage_cell_id.clone(),
+        soh:                snap.soh,
+        cycles:             snap.history.charge_cycles,
         time_to_go_h,
-        alarms:               build_alarms(&snap),
-        soc_gauge_json:       charts::soc_gauge(snap.soc, "full"),
-        cells_bar_json:       charts::cell_voltages_bar(
-                                  &snap.voltages,
-                                  &snap.system.min_voltage_cell_id,
-                                  &snap.system.max_voltage_cell_id,
-                              ),
-        cells_boxplot_json:   charts::cell_boxplot(
-                                  &history,
-                                  &snap.system.min_voltage_cell_id,
-                                  &snap.system.max_voltage_cell_id,
-                                  &snap.balances,
-                              ),
-        cells_spread_json:    charts::cell_spread_history(&hist_data),
-        soc_history_json:     charts::soc_history_line(&hist_data),
-        current_history_json: charts::current_history_line(&hist_data),
-        volt_temp_json:       charts::voltage_temp_line(&hist_data),
+        alarms:             build_alarms(&snap),
+        cells_bar_json:     charts::cell_voltages_bar(
+                                &snap.voltages,
+                                &snap.system.min_voltage_cell_id,
+                                &snap.system.max_voltage_cell_id,
+                            ),
+        cells_boxplot_json: charts::cell_boxplot(
+                                &history,
+                                &snap.system.min_voltage_cell_id,
+                                &snap.system.max_voltage_cell_id,
+                                &snap.balances,
+                            ),
     };
 
     render(DetailTemplate { detail })
