@@ -8,7 +8,9 @@
 
 [serial]
 # Port série RS485 (USB → /dev/ttyUSB* ou /dev/ttyACM*)
-port = "COM5"
+# Sur Linux : /dev/ttyUSB0 ou /dev/ttyUSB1
+# Sur Windows : laisser vide pour auto-détection, ou spécifier COM5, COM6...
+port = ""
 
 # Vitesse de communication (Daly standard = 9600)
 baud = 9600
@@ -109,7 +111,8 @@ batch_flush_interval_sec = 5.0
 
 [alerts]
 # Chemin de la base SQLite pour journal des alertes
-db_path = "/var/lib/daly-bms/alerts.db"
+# Laisser vide pour désactiver les alertes (pas de base SQLite requise)
+db_path = ""
 
 # Intervalle d'évaluation des règles (secondes)
 check_interval_sec = 1.0

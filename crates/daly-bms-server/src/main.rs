@@ -125,7 +125,7 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Flags d'auto-détection ────────────────────────────────────────────────
     // Actifs uniquement si aucun fichier config ET aucun argument CLI fourni.
-    let auto_detect_port    = !args.simulate && args.port.is_none()      && !config_from_file;
+    let auto_detect_port    = !args.simulate && args.port.is_none()      && (!config_from_file || config.serial.port.is_empty());
     let auto_discover_addrs = !args.simulate && args.bms_addrs.is_empty() && !config_from_file;
 
     // ── Logging ────────────────────────────────────────────────────────────────
