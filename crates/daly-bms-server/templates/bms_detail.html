@@ -102,11 +102,25 @@
   </div>
 </div>
 
-{# ─── Tensions des cellules ───────────────────────────────────────────────── #}
-<div class="chart-section">
-  <h3>Tensions cellules</h3>
-  <div class="chart-box">
-    <div id="chart-cells" style="height:220px"></div>
+{# ─── Tensions des cellules + Spread (2 colonnes) ────────────────────────── #}
+<div class="chart-row">
+  <div class="chart-section" style="margin-bottom:0">
+    <h3>Tensions cellules
+      <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
+        MIN <span style="color:var(--red)">&#9632;</span>
+        &nbsp;MAX <span style="color:var(--green)">&#9632;</span>
+        &nbsp;autres <span style="color:var(--accent)">&#9632;</span>
+      </span>
+    </h3>
+    <div class="chart-box">
+      <div id="chart-cells" style="height:240px"></div>
+    </div>
+  </div>
+  <div class="chart-section" style="margin-bottom:0">
+    <h3>Spread cellules (historique)</h3>
+    <div class="chart-box">
+      <div id="chart-spread" style="height:240px"></div>
+    </div>
   </div>
 </div>
 
@@ -164,6 +178,7 @@
 {# JSON ECharts (cachés) #}
 <script type="application/json" id="opt-gauge">{{ detail.soc_gauge_json|safe }}</script>
 <script type="application/json" id="opt-cells">{{ detail.cells_bar_json|safe }}</script>
+<script type="application/json" id="opt-spread">{{ detail.cells_spread_json|safe }}</script>
 <script type="application/json" id="opt-soc">{{ detail.soc_history_json|safe }}</script>
 <script type="application/json" id="opt-cur">{{ detail.current_history_json|safe }}</script>
 <script type="application/json" id="opt-vt">{{ detail.volt_temp_json|safe }}</script>
@@ -185,15 +200,16 @@
     return c;
   }
 
-  const cGauge = initChart('soc-gauge', 'opt-gauge');
-  const cCells = initChart('chart-cells','opt-cells');
-  const cSoc   = initChart('chart-soc',  'opt-soc');
-  const cCur   = initChart('chart-cur',  'opt-cur');
-  const cVT    = initChart('chart-vt',   'opt-vt');
+  const cGauge  = initChart('soc-gauge',   'opt-gauge');
+  const cCells  = initChart('chart-cells', 'opt-cells');
+  const cSpread = initChart('chart-spread','opt-spread');
+  const cSoc    = initChart('chart-soc',   'opt-soc');
+  const cCur    = initChart('chart-cur',   'opt-cur');
+  const cVT     = initChart('chart-vt',    'opt-vt');
 
   // ─── Resize automatique ────────────────────────────────────────────────────
   window.addEventListener('resize', function() {
-    [cGauge, cCells, cSoc, cCur, cVT].forEach(function(c) { if (c) c.resize(); });
+    [cGauge, cCells, cSpread, cSoc, cCur, cVT].forEach(function(c) { if (c) c.resize(); });
   });
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -230,16 +246,41 @@
     const d = new Date(s.timestamp);
     set('last-ts', isNaN(d) ? '—' : d.toLocaleTimeString());
 
-    // Bar chart cellules (mise à jour directe des valeurs)
+    // Bar chart cellules avec coloration MIN/MAX temps réel
     if (cCells && s.Voltages) {
       const entries = Object.entries(s.Voltages).sort(function(a, b) {
         return parseInt(a[0].replace(/\D/g,'')) - parseInt(b[0].replace(/\D/g,''));
       });
-      const labels = entries.map(function(e) { return '"C' + e[0].replace(/\D/g,'') + '"'; });
-      const values = entries.map(function(e) { return +e[1]; });
+      var minV = Infinity, maxV = -Infinity;
+      entries.forEach(function(e) {
+        var v = +e[1];
+        if (v < minV) minV = v;
+        if (v > maxV) maxV = v;
+      });
+      var avg = entries.reduce(function(s,e){return s+(+e[1]);},0) / entries.length;
+      var yMin = +(minV - 0.030).toFixed(3);
+      var yMax = +(maxV + 0.030).toFixed(3);
+
+      const data = entries.map(function(e) {
+        var v = +e[1];
+        var isMin = Math.abs(v - minV) < 0.0001;
+        var isMax = Math.abs(v - maxV) < 0.0001;
+        var color = isMin ? '#f85149' : (isMax ? '#3fb950' : '#58a6ff');
+        var lbl   = isMin ? 'MIN' : (isMax ? 'MAX' : '');
+        return {
+          value: v,
+          itemStyle: { color: color, borderRadius: [3,3,0,0] },
+          label: { show: !!lbl, formatter: lbl, position: 'top', fontSize: 8, fontWeight: 'bold', color: color }
+        };
+      });
+      var deltaColor = ((maxV-minV)*1000 > 100) ? '#f85149' : (((maxV-minV)*1000 > 50) ? '#d29922' : '#3fb950');
       cCells.setOption({
-        xAxis: { data: labels.map(function(l) { return l.replace(/"/g,''); }) },
-        series: [{ data: values }]
+        title: { text: '\u0394 = ' + ((maxV-minV)*1000).toFixed(0) + ' mV', textStyle: { color: deltaColor } },
+        yAxis: { min: yMin, max: yMax },
+        series: [{
+          data: data,
+          markLine: { data: [{ yAxis: avg, label: { formatter: 'moy '+avg.toFixed(3)+'V' } }] }
+        }]
       });
     }
   };

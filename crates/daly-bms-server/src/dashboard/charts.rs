@@ -32,7 +32,6 @@ pub fn soc_gauge(soc: f32, size: &str) -> String {
     let radius     = if size == "full" { "88%" } else { "85%" };
     let line_width = if size == "full" { 16 } else { 10 };
 
-    // Couleur de la valeur selon seuils SOC
     let color = match soc as u32 {
         0..=14  => C_RED,
         15..=24 => C_ORANGE,
@@ -103,34 +102,76 @@ pub fn soc_gauge(soc: f32, size: &str) -> String {
 }
 
 // =============================================================================
-// Barres — tensions des cellules
+// Barres — tensions des cellules (amélioré)
 // =============================================================================
 
-/// Génère l'option ECharts pour le graphe de tensions des cellules (bar chart).
-pub fn cell_voltages_bar(voltages: &BTreeMap<String, f32>) -> String {
+/// Génère l'option ECharts pour le graphe de tensions des cellules.
+///
+/// - Cellule MIN : barre rouge + label "MIN"
+/// - Cellule MAX : barre verte + label "MAX"
+/// - Autres      : barre bleue
+/// - Axe Y dynamique zoomé sur la plage réelle (±30 mV de marge)
+/// - Ligne de moyenne (tirets jaunes)
+/// - Titre "Δ = X mV" coloré selon sévérité
+pub fn cell_voltages_bar(
+    voltages: &BTreeMap<String, f32>,
+    min_cell_id: &str,
+    max_cell_id: &str,
+) -> String {
+    if voltages.is_empty() {
+        return "{}".to_string();
+    }
+
+    let avg     = voltages.values().sum::<f32>() / voltages.len() as f32;
+    let min_v   = voltages.values().cloned().fold(f32::INFINITY,     f32::min);
+    let max_v   = voltages.values().cloned().fold(f32::NEG_INFINITY, f32::max);
+    let delta_mv = (max_v - min_v) * 1000.0;
+
+    // Zoom sur la plage réelle ±30 mV, clampé à [2.5 V, 4.3 V]
+    let y_min = (min_v - 0.030).max(2.5);
+    let y_max = (max_v + 0.030).min(4.3);
+
+    let delta_color = if delta_mv > 100.0 { C_RED }
+                      else if delta_mv > 50.0 { C_YELLOW }
+                      else { C_GREEN };
+
     let labels: Vec<String> = voltages.keys()
-        .map(|k| {
-            // "Cell1" → "C1"
-            let n = k.trim_start_matches("Cell");
-            format!("\"C{}\"", n)
-        })
+        .map(|k| format!("\"C{}\"", k.trim_start_matches("Cell")))
         .collect();
 
-    let values: Vec<String> = voltages.values()
-        .map(|&v| {
-            // Colorier en rouge si hors plage normale (< 2.95V ou > 3.62V)
-            let color = if v < 2.95 || v > 3.62 { C_RED }
-                        else if (v - voltages.values().cloned()
-                            .fold(f32::INFINITY, f32::min)).abs() < 0.001 { C_YELLOW }
-                        else { C_BLUE };
-            format!(r#"{{"value": {:.3}, "itemStyle": {{"color": "{}"}}}}"#, v, color)
+    let values: Vec<String> = voltages.iter()
+        .map(|(k, &v)| {
+            let is_min    = k == min_cell_id;
+            let is_max    = k == max_cell_id;
+            let color     = if is_min { C_RED } else if is_max { C_GREEN } else { C_BLUE };
+            let label     = if is_min { "MIN" } else if is_max { "MAX" } else { "" };
+            let show_lbl  = !label.is_empty();
+            format!(
+                r#"{{"value":{v:.4},"itemStyle":{{"color":"{c}","borderRadius":[3,3,0,0]}},"label":{{"show":{sl},"formatter":"{lbl}","position":"top","fontSize":8,"fontWeight":"bold","color":"{c}"}}}}"#,
+                v   = v,
+                c   = color,
+                sl  = show_lbl,
+                lbl = label,
+            )
         })
         .collect();
 
     format!(r#"{{
   "backgroundColor": "{bg}",
   "animation": false,
-  "grid": {{ "left": "2%", "right": "2%", "top": "8%", "bottom": "12%", "containLabel": true }},
+  "title": {{
+    "text": "\u0394 = {delta:.0} mV",
+    "right": "1%",
+    "top": "2%",
+    "textStyle": {{ "color": "{dcol}", "fontSize": 11, "fontWeight": "bold" }}
+  }},
+  "tooltip": {{
+    "trigger": "axis",
+    "formatter": "{{b}}: {{c}} V",
+    "borderColor": "{axis}",
+    "textStyle": {{ "color": "{muted}", "fontSize": 11 }}
+  }},
+  "grid": {{ "left": "1%", "right": "5%", "top": "14%", "bottom": "12%", "containLabel": true }},
   "xAxis": {{
     "type":      "category",
     "data":      [{labels}],
@@ -139,36 +180,134 @@ pub fn cell_voltages_bar(voltages: &BTreeMap<String, f32>) -> String {
   }},
   "yAxis": {{
     "type":      "value",
-    "min":       2.9,
-    "max":       3.7,
+    "min":       {y_min:.3},
+    "max":       {y_max:.3},
     "splitNumber": 4,
-    "axisLabel": {{ "color": "{muted}", "formatter": "{{value}}V", "fontSize": 9 }},
+    "axisLabel": {{ "color": "{muted}", "formatter": "{{value}} V", "fontSize": 9 }},
     "splitLine": {{ "lineStyle": {{ "color": "{grid}", "type": "dashed" }} }}
   }},
   "series": [{{
     "type": "bar",
     "data": [{values}],
-    "barMaxWidth": 20,
-    "itemStyle": {{ "borderRadius": [3, 3, 0, 0] }},
+    "barMaxWidth": 24,
     "markLine": {{
       "silent": true,
       "symbol": "none",
-      "data": [
-        {{ "yAxis": 2.95, "lineStyle": {{ "color": "{red}",    "type": "dashed" }}, "label": {{ "show": false }} }},
-        {{ "yAxis": 3.62, "lineStyle": {{ "color": "{red}",    "type": "dashed" }}, "label": {{ "show": false }} }},
-        {{ "yAxis": 3.40, "lineStyle": {{ "color": "{yellow}", "type": "dotted" }}, "label": {{ "show": false }} }}
-      ]
+      "data": [{{
+        "yAxis": {avg:.4},
+        "lineStyle": {{ "color": "{yellow}", "type": "dashed", "width": 1.5 }},
+        "label": {{
+          "show": true,
+          "formatter": "moy {avg:.3} V",
+          "color": "{yellow}",
+          "fontSize": 9,
+          "position": "insideEndTop"
+        }}
+      }}]
     }}
   }}]
 }}"#,
         bg     = C_BG,
+        delta  = delta_mv,
+        dcol   = delta_color,
         labels = labels.join(", "),
         values = values.join(", "),
+        y_min  = y_min,
+        y_max  = y_max,
+        avg    = avg,
         muted  = C_MUTED,
         axis   = C_AXIS,
         grid   = C_GRID,
-        red    = C_RED,
         yellow = C_YELLOW,
+    )
+}
+
+// =============================================================================
+// Aire — historique spread min/max des cellules
+// =============================================================================
+
+/// Génère l'option ECharts pour l'évolution du spread cellules dans le temps.
+///
+/// Deux courbes (min et max) avec aires superposées, permettant de voir
+/// comment l'équilibrage évolue sur la session.
+pub fn cell_spread_history(data: &HistoryData) -> String {
+    if data.timestamps.is_empty() {
+        return "{}".to_string();
+    }
+
+    let ts_json  = json_str_array(&data.timestamps);
+    let min_json = json_f32_array_prec(&data.min_cell_v, 4);
+    let max_json = json_f32_array_prec(&data.max_cell_v, 4);
+
+    format!(r#"{{
+  "backgroundColor": "{bg}",
+  "animation": false,
+  "legend": {{
+    "data": ["Max cellule", "Min cellule"],
+    "textStyle": {{ "color": "{muted}", "fontSize": 10 }},
+    "top": 0,
+    "right": 0
+  }},
+  "grid": {{ "left": "3%", "right": "2%", "top": "18%", "bottom": "18%", "containLabel": true }},
+  "xAxis": {{
+    "type":      "category",
+    "data":      {ts},
+    "axisLabel": {{ "color": "{muted}", "fontSize": 8, "rotate": 30, "interval": "auto" }},
+    "axisLine":  {{ "lineStyle": {{ "color": "{axis}" }} }}
+  }},
+  "yAxis": {{
+    "type":      "value",
+    "scale":     true,
+    "axisLabel": {{ "color": "{muted}", "formatter": "{{value}}V", "fontSize": 9 }},
+    "splitLine": {{ "lineStyle": {{ "color": "{grid}", "type": "dashed" }} }}
+  }},
+  "series": [
+    {{
+      "name":   "Max cellule",
+      "type":   "line",
+      "data":   {max_v},
+      "smooth": true,
+      "symbol": "none",
+      "lineStyle": {{ "color": "{green}", "width": 2 }},
+      "areaStyle": {{
+        "color": {{
+          "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+          "colorStops": [
+            {{ "offset": 0, "color": "rgba(63,185,80,0.28)" }},
+            {{ "offset": 1, "color": "rgba(63,185,80,0.05)" }}
+          ]
+        }}
+      }}
+    }},
+    {{
+      "name":   "Min cellule",
+      "type":   "line",
+      "data":   {min_v},
+      "smooth": true,
+      "symbol": "none",
+      "lineStyle": {{ "color": "{red}", "width": 2 }},
+      "areaStyle": {{
+        "color": {{
+          "type": "linear", "x": 0, "y": 0, "x2": 0, "y2": 1,
+          "colorStops": [
+            {{ "offset": 0, "color": "rgba(248,81,73,0.05)" }},
+            {{ "offset": 1, "color": "rgba(248,81,73,0.28)" }}
+          ]
+        }}
+      }}
+    }}
+  ],
+  "dataZoom": [{{ "type": "inside" }}, {{ "type": "slider", "height": 16, "bottom": 0 }}]
+}}"#,
+        bg    = C_BG,
+        ts    = ts_json,
+        max_v = max_json,
+        min_v = min_json,
+        muted = C_MUTED,
+        axis  = C_AXIS,
+        grid  = C_GRID,
+        green = C_GREEN,
+        red   = C_RED,
     )
 }
 
@@ -183,16 +322,23 @@ pub struct HistoryData {
     pub current:    Vec<f32>,
     pub voltage:    Vec<f32>,
     pub temp_max:   Vec<f32>,
+    /// Tension de la cellule la plus faible à chaque instant
+    pub min_cell_v: Vec<f32>,
+    /// Tension de la cellule la plus élevée à chaque instant
+    pub max_cell_v: Vec<f32>,
 }
 
 impl HistoryData {
     /// Construit depuis une liste de snapshots (ordre chronologique, du plus ancien au plus récent).
     pub fn from_snapshots(snaps: &[BmsSnapshot]) -> Self {
-        let mut timestamps = Vec::with_capacity(snaps.len());
-        let mut soc        = Vec::with_capacity(snaps.len());
-        let mut current    = Vec::with_capacity(snaps.len());
-        let mut voltage    = Vec::with_capacity(snaps.len());
-        let mut temp_max   = Vec::with_capacity(snaps.len());
+        let cap = snaps.len();
+        let mut timestamps = Vec::with_capacity(cap);
+        let mut soc        = Vec::with_capacity(cap);
+        let mut current    = Vec::with_capacity(cap);
+        let mut voltage    = Vec::with_capacity(cap);
+        let mut temp_max   = Vec::with_capacity(cap);
+        let mut min_cell_v = Vec::with_capacity(cap);
+        let mut max_cell_v = Vec::with_capacity(cap);
 
         for s in snaps {
             timestamps.push(s.timestamp.format("%H:%M:%S").to_string());
@@ -200,8 +346,10 @@ impl HistoryData {
             current.push(s.dc.current);
             voltage.push(s.dc.voltage);
             temp_max.push(s.system.max_cell_temperature);
+            min_cell_v.push(s.system.min_cell_voltage);
+            max_cell_v.push(s.system.max_cell_voltage);
         }
-        Self { timestamps, soc, current, voltage, temp_max }
+        Self { timestamps, soc, current, voltage, temp_max, min_cell_v, max_cell_v }
     }
 }
 
@@ -382,8 +530,12 @@ fn json_str_array(v: &[String]) -> String {
 }
 
 fn json_f32_array(v: &[f32]) -> String {
+    json_f32_array_prec(v, 3)
+}
+
+fn json_f32_array_prec(v: &[f32], prec: usize) -> String {
     let inner: Vec<String> = v.iter()
-        .map(|f| format!("{:.3}", f))
+        .map(|f| format!("{:.prec$}", f, prec = prec))
         .collect();
     format!("[{}]", inner.join(","))
 }
