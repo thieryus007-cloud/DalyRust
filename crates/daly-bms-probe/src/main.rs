@@ -40,8 +40,13 @@ fn decode_response(f: &[u8]) {
     let chk_ok   = if checksum(&f[..12]) == f[12] { "chk=OK" } else { "chk=ERREUR" };
 
     if cmd == DataId::PackStatus as u8 {
+        // frame[4..11] = data[0..7]
+        // D0-D1 : tension totale (0.1 V)
+        // D2-D3 : tension acquisition (ignoré)
+        // D4-D5 : courant (offset 30000, 0.1 A)  → f[8], f[9]
+        // D6-D7 : SOC (0.1 %)                    → f[10], f[11]
         let voltage     = u16::from_be_bytes([f[4], f[5]]);
-        let current_raw = u16::from_be_bytes([f[6], f[7]]) as i32;
+        let current_raw = u16::from_be_bytes([f[8], f[9]]) as i32;
         let soc         = u16::from_be_bytes([f[10], f[11]]);
         println!("      → BMS={:#04x}  V={:.1}V  I={:+.1}A  SOC={:.1}%  {}",
             bms_addr,
@@ -50,6 +55,25 @@ fn decode_response(f: &[u8]) {
             soc as f32 / 10.0,
             chk_ok,
         );
+    } else if cmd == DataId::MosStatus as u8 {
+        // D0=state(0=repos,1=chg,2=dch), D1=CHG_MOS, D2=DCH_MOS, D3=cycles, D4..7=mAh
+        let state    = f[4];
+        let chg_mos  = f[5];
+        let dch_mos  = f[6];
+        let cycles   = f[7];
+        let capacity = u32::from_be_bytes([f[8], f[9], f[10], f[11]]);
+        let state_str = match state { 0 => "repos", 1 => "charge", 2 => "décharge", _ => "?" };
+        println!("      → BMS={:#04x}  state={}  CHG_MOS={}  DCH_MOS={}  cycles={}  cap={}mAh  {}",
+            bms_addr, state_str, chg_mos, dch_mos, cycles, capacity, chk_ok);
+    } else if cmd == DataId::StatusInfo1 as u8 {
+        // D0=nb_cells, D1=nb_temp, D2=charger, D3=load, D4=DIO, D5-D6=cycle_count
+        let cells    = f[4];
+        let temps    = f[5];
+        let charger  = f[6];
+        let load     = f[7];
+        let cycles   = u16::from_be_bytes([f[9], f[10]]);
+        println!("      → BMS={:#04x}  cells={}  temp_sensors={}  charger={}  load={}  cycles={}  {}",
+            bms_addr, cells, temps, charger, load, cycles, chk_ok);
     } else {
         println!("      → BMS={:#04x}  cmd={:#04x}  {}", bms_addr, cmd, chk_ok);
     }

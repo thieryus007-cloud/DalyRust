@@ -69,15 +69,22 @@ pub async fn get_temperature_minmax(
 }
 
 /// Lit l'état des MOSFET, les cycles et la capacité résiduelle (0x93).
+///
+/// Layout selon Daly UART V1.21 :
+/// - D0 : State (0=repos, 1=charge, 2=décharge)
+/// - D1 : Charge MOS state  (0=off, 1=on)
+/// - D2 : Discharge MOS status (0=off, 1=on)
+/// - D3 : BMS life (0–255 cycles)
+/// - D4-D7 : Remain capacity (mAh, uint32 BE)
 pub async fn get_mos_status(port: &Arc<DalyPort>, addr: u8) -> Result<MosStatus> {
     let frame = port.send_command(addr, DataId::MosStatus, [0u8; 8]).await?;
     let d = frame.data();
     Ok(MosStatus {
-        charge_mos:           d[0] & 0x02 != 0,
-        discharge_mos:        d[0] & 0x01 != 0,
-        bms_life:             d[1],
+        charge_mos:            d[1] != 0,
+        discharge_mos:         d[2] != 0,
+        bms_life:              d[3],
         residual_capacity_mah: u32::from_be_bytes([d[4], d[5], d[6], d[7]]),
-        charge_cycles:        read_u16_be(d, 2) as u32,
+        charge_cycles:         d[3] as u32,
     })
 }
 
