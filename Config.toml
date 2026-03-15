@@ -74,7 +74,7 @@ port = 1883
 topic_prefix = "santuario/bms"
 
 # Intervalle de publication (secondes)
-publish_interval_sec = 5
+publish_interval_sec = 1
 
 # Authentification MQTT (optionnelle)
 # username = ""
