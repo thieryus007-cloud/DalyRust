@@ -60,7 +60,13 @@ impl DalyPort {
         cmd: DataId,
         data: [u8; 8],
     ) -> Result<ResponseFrame> {
-        let request = RequestFrame::new(bms_address, cmd, data);
+        // Adressage Daly parallèle : data[0] = board number pour les lectures.
+        // Les commandes d'écriture gardent leur payload dans data[0].
+        let mut frame_data = data;
+        if !cmd.is_write() {
+            frame_data[0] = bms_address;
+        }
+        let request = RequestFrame::new(bms_address, cmd, frame_data);
         trace!(
             bms = format!("{:#04x}", bms_address),
             cmd = format!("{:#04x}", cmd as u8),
