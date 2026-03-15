@@ -13,6 +13,7 @@
 //! cargo run --bin daly-bms-server -- --simulate --sim-bms 0x01,0x02
 //! ```
 
+mod autodetect;
 mod config;
 mod state;
 mod api;
@@ -89,10 +90,15 @@ async fn main() -> anyhow::Result<()> {
     let args = ServerArgs::parse();
 
     // ── Configuration ──────────────────────────────────────────────────────────
-    let mut config = AppConfig::load_default()
-        .unwrap_or_else(|e| {
-            // Fallback : configuration par défaut (dev / simulation)
+    let config_from_file;
+    let mut config = match AppConfig::load_default() {
+        Ok(c) => {
+            config_from_file = true;
+            c
+        }
+        Err(e) => {
             eprintln!("Config non trouvée ({}) — utilisation des valeurs par défaut", e);
+            config_from_file = false;
             AppConfig {
                 serial:    config::SerialConfig::default(),
                 api:       config::ApiConfig::default(),
@@ -102,7 +108,8 @@ async fn main() -> anyhow::Result<()> {
                 alerts:    config::AlertsConfig::default(),
                 read_only: config::ReadOnlyConfig::default(),
             }
-        });
+        }
+    };
 
     // ── Override port série depuis CLI ─────────────────────────────────────────
     if let Some(ref port) = args.port {
@@ -114,6 +121,11 @@ async fn main() -> anyhow::Result<()> {
             .map(|a| format!("{:#04x}", a))
             .collect();
     }
+
+    // ── Flags d'auto-détection ────────────────────────────────────────────────
+    // Actifs uniquement si aucun fichier config ET aucun argument CLI fourni.
+    let auto_detect_port    = !args.simulate && args.port.is_none()      && !config_from_file;
+    let auto_discover_addrs = !args.simulate && args.bms_addrs.is_empty() && !config_from_file;
 
     // ── Logging ────────────────────────────────────────────────────────────────
     let log_level = config.logging.level.clone();
@@ -173,47 +185,78 @@ async fn main() -> anyhow::Result<()> {
         });
     } else {
         // Mode hardware réel
-        let dal_port = DalyPort::open(&config.serial.port, config.serial.baud, 500);
-        match dal_port {
-            Ok(port) => {
-                info!("Port série {} ouvert à {} baud", config.serial.port, config.serial.baud);
-                state.polling_active.store(true, Ordering::Relaxed);
 
-                let addresses = config.bms_addresses();
-                let devices: Vec<BmsConfig> = addresses
-                    .iter()
-                    .map(|&addr| {
-                        let mut bms = BmsConfig::new(addr);
-                        bms.cell_count        = config.serial.default_cell_count;
-                        bms.temp_sensor_count = config.serial.default_temp_sensors;
-                        bms
-                    })
-                    .collect();
-
-                info!("Polling de {} BMS : {:?}", devices.len(),
-                      devices.iter().map(|d| format!("{:#04x}", d.address)).collect::<Vec<_>>());
-
-                let manager  = Arc::new(DalyBusManager::new(port, devices));
-                let poll_cfg = PollConfig {
-                    interval_ms: config.serial.poll_interval_ms,
-                    ..Default::default()
-                };
-                let state_poll = state.clone();
-                tokio::spawn(async move {
-                    poll_loop(manager, poll_cfg, move |snap| {
-                        let s = state_poll.clone();
-                        tokio::spawn(async move { s.on_snapshot(snap).await });
-                    })
-                    .await;
-                });
+        // ── 1. Résoudre le port (auto-détection ou config) ───────────────────
+        let resolved_port = if auto_detect_port {
+            info!("Port non spécifié — détection automatique en cours...");
+            match autodetect::find_daly_port(config.serial.baud).await {
+                Some(p) => p,
+                None => {
+                    error!("Aucun Daly BMS détecté sur les ports série disponibles.");
+                    warn!("Relancez avec --port COMx pour forcer un port.");
+                    warn!("Démarrage en mode API-seule (pas de données BMS).");
+                    String::new()
+                }
             }
-            Err(e) => {
-                error!(
-                    "Impossible d'ouvrir {} : {:?}",
-                    config.serial.port, e
-                );
-                warn!("Démarrage en mode API-seule (pas de données BMS).");
-                warn!("Astuce : relancez avec --simulate pour tester sans matériel.");
+        } else {
+            config.serial.port.clone()
+        };
+
+        if !resolved_port.is_empty() {
+            let dal_port = DalyPort::open(&resolved_port, config.serial.baud, 500);
+            match dal_port {
+                Ok(port) => {
+                    info!("Port série {} ouvert à {} baud", resolved_port, config.serial.baud);
+                    state.polling_active.store(true, Ordering::Relaxed);
+
+                    // ── 2. Résoudre les adresses BMS (auto-découverte ou config) ──
+                    let addresses = if auto_discover_addrs {
+                        info!("Découverte automatique des BMS sur le bus RS485 (0x01..0x04)...");
+                        let mgr_tmp = DalyBusManager::new(port.clone(), vec![]);
+                        let found = mgr_tmp.discover(1, 4).await;
+                        if found.is_empty() {
+                            warn!("Aucun BMS découvert — polling désactivé.");
+                            state.polling_active.store(false, Ordering::Relaxed);
+                        }
+                        found
+                    } else {
+                        config.bms_addresses()
+                    };
+
+                    if !addresses.is_empty() {
+                        let devices: Vec<BmsConfig> = addresses
+                            .iter()
+                            .map(|&addr| {
+                                let mut bms = BmsConfig::new(addr);
+                                bms.cell_count        = config.serial.default_cell_count;
+                                bms.temp_sensor_count = config.serial.default_temp_sensors;
+                                bms
+                            })
+                            .collect();
+
+                        info!("Polling de {} BMS : {:?}", devices.len(),
+                              devices.iter().map(|d| format!("{:#04x}", d.address)).collect::<Vec<_>>());
+
+                        let manager  = Arc::new(DalyBusManager::new(port, devices));
+                        let poll_cfg = PollConfig {
+                            interval_ms: config.serial.poll_interval_ms,
+                            ..Default::default()
+                        };
+                        let state_poll = state.clone();
+                        tokio::spawn(async move {
+                            poll_loop(manager, poll_cfg, move |snap| {
+                                let s = state_poll.clone();
+                                tokio::spawn(async move { s.on_snapshot(snap).await });
+                            })
+                            .await;
+                        });
+                    }
+                }
+                Err(e) => {
+                    error!("Impossible d'ouvrir {} : {:?}", resolved_port, e);
+                    warn!("Démarrage en mode API-seule (pas de données BMS).");
+                    warn!("Astuce : relancez avec --simulate pour tester sans matériel.");
+                }
             }
         }
     }
