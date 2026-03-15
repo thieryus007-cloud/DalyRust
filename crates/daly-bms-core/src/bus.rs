@@ -138,22 +138,45 @@ impl DalyPort {
                     "← réponse reçue"
                 );
                 let frame = ResponseFrame::parse(&buf)?;
-                // Diagnostic proxy : si l'adresse ne correspond pas et que c'est
-                // une réponse PackStatus (0x90), loguer voltage+SOC pour savoir
-                // si BMS 0x01 proxy les données du slave ou répond avec les siennes.
-                if frame.address() != bms_address && cmd == DataId::PackStatus {
-                    let d = frame.data();
-                    let voltage_raw = u16::from_be_bytes([d[0], d[1]]);
-                    let soc_raw     = u16::from_be_bytes([d[6], d[7]]);
+
+                // Sur un bus RS485 partagé, BMS 0x01 (master) peut répondre en
+                // premier même si la requête cible BMS 0x02. On tente alors de
+                // lire une deuxième trame : BMS 0x02 peut répondre juste après.
+                if frame.address() != bms_address {
                     warn!(
-                        bms     = format!("{:#04x}", bms_address),
-                        actual  = format!("{:#04x}", frame.address()),
-                        raw     = format!("{:02X?}", &buf),
-                        voltage = format!("{:.1}V", voltage_raw as f32 * 0.1),
-                        soc     = format!("{:.1}%", soc_raw as f32 * 0.1),
-                        "Adresse inattendue — données décodées (proxy ?)"
+                        bms    = format!("{:#04x}", bms_address),
+                        actual = format!("{:#04x}", frame.address()),
+                        "Adresse inattendue — tentative lecture 2ème trame (bus partagé)"
                     );
+                    let mut buf2 = [0u8; FRAME_LEN];
+                    if let Ok(Ok(_)) = timeout(
+                        Duration::from_millis(self.timeout_ms),
+                        port.read_exact(&mut buf2),
+                    )
+                    .await
+                    {
+                        trace!(
+                            bms = format!("{:#04x}", bms_address),
+                            raw = format!("{:02X?}", &buf2),
+                            "← 2ème trame reçue"
+                        );
+                        if let Ok(frame2) = ResponseFrame::parse(&buf2) {
+                            if frame2.validate_for(bms_address, cmd).is_ok() {
+                                debug!(
+                                    bms = format!("{:#04x}", bms_address),
+                                    "← 2ème trame OK (BMS répond après le master)"
+                                );
+                                return Ok(frame2);
+                            }
+                        }
+                    }
+                    // Aucune 2ème trame valide — retourner l'erreur d'adresse
+                    return Err(DalyError::UnexpectedAddress {
+                        expected: bms_address,
+                        actual:   frame.address(),
+                    });
                 }
+
                 frame.validate_for(bms_address, cmd)?;
                 debug!(
                     bms = format!("{:#04x}", bms_address),
@@ -179,7 +202,9 @@ impl DalyPort {
             return Ok(Vec::new());
         }
 
-        let request = RequestFrame::new(bms_address, cmd, [0u8; 8]);
+        let mut multi_data = [0u8; 8];
+        multi_data[0] = bms_address;  // Adressage Daly parallèle
+        let request = RequestFrame::new(bms_address, cmd, multi_data);
         let mut port = self.inner.lock().await;
 
         // Vider le buffer avant l'envoi
