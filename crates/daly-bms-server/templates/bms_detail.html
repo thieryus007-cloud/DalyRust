@@ -128,7 +128,11 @@
 <div class="chart-section">
   <h3>Boxplot cellules — distribution historique
     <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
-      ┤min · Q1 · médiane · Q3 · max├ sur la session
+      ┤min · Q1 · médiane · Q3 · max├ &nbsp;
+      MIN <span style="color:var(--red)">&#9632;</span>
+      &nbsp;MAX <span style="color:var(--green)">&#9632;</span>
+      &nbsp;autres <span style="color:var(--accent)">&#9632;</span>
+      &nbsp;&#9670; balancing
     </span>
   </h3>
   <div class="chart-box">
@@ -235,10 +239,20 @@
   function fmt0(n) { return (+n).toFixed(0); }
   function fmt3(n) { return (+n).toFixed(3); }
 
+  // ─── État courant MIN/MAX/balance (mis à jour par WS, utilisé par boxplot) ─
+  var currentMinCell  = '';
+  var currentMaxCell  = '';
+  var currentBalances = {};
+
   // ─── Mise à jour en temps-réel (WebSocket) ─────────────────────────────────
   window.onBmsUpdate = function(snaps) {
     const s = snaps.find(function(x) { return x.address === BMS_ADDR; });
     if (!s) return;
+
+    // Mémoriser pour le boxplot dynamique
+    currentMinCell  = (s.System && s.System.MinVoltageCellId) || '';
+    currentMaxCell  = (s.System && s.System.MaxVoltageCellId) || '';
+    currentBalances = s.Balances || {};
 
     // Jauge SOC
     if (cGauge) cGauge.setOption({ series: [{ data: [{ value: s.Soc, name: 'SOC' }] }] });
@@ -337,15 +351,36 @@
             return parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,''));
           });
           var bpLabels = cellKeys.map(function(k) { return 'C' + k.replace(/\D/g,''); });
-          var bpData   = cellKeys.map(function(k) {
+
+          // Per-item coloring based on current MIN/MAX state
+          var bpData = cellKeys.map(function(k) {
             var v = cellMap[k].slice().sort(function(a,b){return a-b;});
             var n = v.length;
-            return [v[0], v[Math.floor(n/4)], v[Math.floor(n/2)], v[Math.floor(3*n/4)], v[n-1]];
+            var boxVals = [v[0], v[Math.floor(n/4)], v[Math.floor(n/2)], v[Math.floor(3*n/4)], v[n-1]];
+            var cShort  = 'C' + k.replace(/\D/g,'');
+            var isMin   = cShort === currentMinCell;
+            var isMax   = cShort === currentMaxCell;
+            var color   = isMin ? 'rgba(248,81,73,0.25)'  : (isMax ? 'rgba(63,185,80,0.25)'  : 'rgba(88,166,255,0.15)');
+            var border  = isMin ? '#f85149'                : (isMax ? '#3fb950'                : '#58a6ff');
+            return { value: boxVals, itemStyle: { color: color, borderColor: border, borderWidth: 2 } };
           });
+
+          // Scatter overlay for cells actively balancing
+          var balData = [];
+          cellKeys.forEach(function(k) {
+            if (currentBalances[k]) {
+              var v  = cellMap[k].slice().sort(function(a,b){return a-b;});
+              var mx = v[v.length - 1];
+              var mn = v[0];
+              var y  = mx + (mx - mn) * 0.08 + 0.001;
+              balData.push(['C' + k.replace(/\D/g,''), y]);
+            }
+          });
+
           cBoxplot.setOption({
             title: { text: 'Distribution par cellule (' + data.length + ' snapshots)' },
             xAxis: { data: bpLabels },
-            series: [{ data: bpData }]
+            series: [{ data: bpData }, { data: balData }]
           });
         }
       })

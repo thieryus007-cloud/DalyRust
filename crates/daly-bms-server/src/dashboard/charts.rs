@@ -145,8 +145,10 @@ pub fn cell_voltages_bar(
 
     let values: Vec<String> = sorted.iter()
         .map(|(k, &v)| {
-            let is_min    = *k == min_cell_id;
-            let is_max    = *k == max_cell_id;
+            // voltages keys are "Cell4", min_cell_id is "C4" — normalize before compare
+            let short     = format!("C{}", k.trim_start_matches("Cell"));
+            let is_min    = short == min_cell_id;
+            let is_max    = short == max_cell_id;
             let color     = if is_min { C_RED } else if is_max { C_GREEN } else { C_BLUE };
             let label     = if is_min { "MIN" } else if is_max { "MAX" } else { "" };
             let show_lbl  = !label.is_empty();
@@ -322,8 +324,16 @@ pub fn cell_spread_history(data: &HistoryData) -> String {
 /// Génère l'option ECharts boxplot montrant la distribution [min, Q1, médiane, Q3, max]
 /// de la tension de chaque cellule sur l'ensemble des snapshots historiques.
 ///
+/// - `min_cell_id` / `max_cell_id` : cellules MIN/MAX courantes (format "C4")
+/// - `balances`                    : carte "CellN" → 0/1 indiquant l'équilibrage actif
+///
 /// Nécessite au moins 4 snapshots. Les cellules sont triées numériquement.
-pub fn cell_boxplot(history: &[BmsSnapshot]) -> String {
+pub fn cell_boxplot(
+    history:     &[BmsSnapshot],
+    min_cell_id: &str,
+    max_cell_id: &str,
+    balances:    &BTreeMap<String, u8>,
+) -> String {
     if history.len() < 4 {
         return "{}".to_string();
     }
@@ -343,8 +353,9 @@ pub fn cell_boxplot(history: &[BmsSnapshot]) -> String {
     let mut cells: Vec<(String, Vec<f32>)> = per_cell.into_iter().collect();
     cells.sort_by_key(|(k, _)| k.trim_start_matches("Cell").parse::<u16>().unwrap_or(0));
 
-    let mut labels   = Vec::new();
-    let mut box_data = Vec::new();
+    let mut labels          = Vec::new();
+    let mut box_data        = Vec::new();
+    let mut bal_scatter     = Vec::new();
 
     for (k, mut vals) in cells {
         if vals.is_empty() { continue; }
@@ -356,10 +367,41 @@ pub fn cell_boxplot(history: &[BmsSnapshot]) -> String {
         let md = vals[n / 2];
         let q3 = vals[(3 * n) / 4];
 
-        labels.push(format!("\"C{}\"", k.trim_start_matches("Cell")));
-        box_data.push(format!("[{mn:.4},{q1:.4},{md:.4},{q3:.4},{mx:.4}]",
-            mn = mn, q1 = q1, md = md, q3 = q3, mx = mx));
+        // "Cell4" → "C4" pour comparer avec min_cell_id / max_cell_id
+        let short  = format!("C{}", k.trim_start_matches("Cell"));
+        let is_min = short == min_cell_id;
+        let is_max = short == max_cell_id;
+        let is_bal = balances.get(&k).copied().unwrap_or(0) != 0;
+
+        let (fill, border) = if is_min {
+            ("rgba(248,81,73,0.25)", C_RED)
+        } else if is_max {
+            ("rgba(63,185,80,0.25)", C_GREEN)
+        } else {
+            ("rgba(88,166,255,0.15)", C_BLUE)
+        };
+
+        // box data avec itemStyle individuel (format! regular — pas de raw string ici)
+        box_data.push(format!(
+            "{{\"value\":[{mn:.4},{q1:.4},{md:.4},{q3:.4},{mx:.4}],\"itemStyle\":{{\"color\":\"{fill}\",\"borderColor\":\"{border}\",\"borderWidth\":2}}}}",
+            mn=mn, q1=q1, md=md, q3=q3, mx=mx, fill=fill, border=border
+        ));
+
+        // Point scatter pour les cellules en cours d'équilibrage
+        if is_bal {
+            let y = mx + (mx - mn) * 0.08 + 0.001;
+            bal_scatter.push(format!("[\"{lbl}\",{y:.4}]", lbl=short, y=y));
+        }
+
+        labels.push(format!("\"{}\"", short));
     }
+
+    // Série scatter (balance indicator) — toujours présente pour permettre setOption JS
+    let scatter_json = format!(
+        "{{\"type\":\"scatter\",\"data\":[{data}],\"symbol\":\"diamond\",\"symbolSize\":10,\"itemStyle\":{{\"color\":\"{yellow}\"}},\"z\":10,\"label\":{{\"show\":true,\"formatter\":\"\u{26a1}\",\"position\":\"top\",\"fontSize\":10,\"color\":\"{yellow}\"}}}}",
+        data   = bal_scatter.join(","),
+        yellow = C_YELLOW,
+    );
 
     format!(r#"{{
   "backgroundColor": "{bg}",
@@ -388,23 +430,26 @@ pub fn cell_boxplot(history: &[BmsSnapshot]) -> String {
     "axisLabel": {{ "color": "{muted}", "formatter": "{{value}} V", "fontSize": 9 }},
     "splitLine": {{ "lineStyle": {{ "color": "{grid}", "type": "dashed" }} }}
   }},
-  "series": [{{
-    "type":     "boxplot",
-    "data":     [{data}],
-    "boxWidth": ["20%", "45%"],
-    "itemStyle": {{
-      "color":       "rgba(88,166,255,0.15)",
-      "borderColor": "{blue}",
-      "borderWidth": 1.5
-    }},
-    "emphasis": {{
+  "series": [
+    {{
+      "type":     "boxplot",
+      "data":     [{data}],
+      "boxWidth": ["20%", "45%"],
       "itemStyle": {{
-        "color":       "rgba(88,166,255,0.30)",
+        "color":       "rgba(88,166,255,0.15)",
         "borderColor": "{blue}",
-        "borderWidth": 2
+        "borderWidth": 1.5
+      }},
+      "emphasis": {{
+        "itemStyle": {{
+          "color":       "rgba(88,166,255,0.30)",
+          "borderColor": "{blue}",
+          "borderWidth": 2
+        }}
       }}
-    }}
-  }}]
+    }},
+    {scatter}
+  ]
 }}"#,
         bg      = C_BG,
         surface = "#161b22",
@@ -412,6 +457,7 @@ pub fn cell_boxplot(history: &[BmsSnapshot]) -> String {
         n       = history.len(),
         labels  = labels.join(", "),
         data    = box_data.join(", "),
+        scatter = scatter_json,
         muted   = C_MUTED,
         axis    = C_AXIS,
         grid    = C_GRID,
