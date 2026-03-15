@@ -7,6 +7,7 @@ members = [
     "crates/daly-bms-core",
     "crates/daly-bms-server",
     "crates/daly-bms-cli",
+    "crates/daly-bms-probe",
 ]
 
 [workspace.package]

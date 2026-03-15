@@ -1,0 +1,14 @@
+[package]
+name    = "daly-bms-probe"
+version = { workspace = true }
+edition = { workspace = true }
+
+[[bin]]
+name = "daly-bms-probe"
+path = "src/main.rs"
+
+[dependencies]
+tokio        = { workspace = true }
+tokio-serial = { workspace = true }
+clap         = { workspace = true }
+tokio-util   = { workspace = true }
