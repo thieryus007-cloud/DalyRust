@@ -8,7 +8,7 @@
 
 [serial]
 # Port série RS485 (USB → /dev/ttyUSB* ou /dev/ttyACM*)
-port = "/dev/ttyUSB1"
+port = "COM5"
 
 # Vitesse de communication (Daly standard = 9600)
 baud = 9600
