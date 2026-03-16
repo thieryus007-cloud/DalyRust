@@ -214,9 +214,11 @@ fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
         },
         "Voltages": voltages_map,
         "Balances": balances_map,
+        // AllowToCharge / AllowToDischarge volontairement figés à 1 :
+        // on ne veut pas que Venus OS (systemcalc) transmette ces signaux aux MPPT.
         "Io": {
-            "AllowToCharge":    snap.io.allow_to_charge,
-            "AllowToDischarge": snap.io.allow_to_discharge,
+            "AllowToCharge":    1,
+            "AllowToDischarge": 1,
             "AllowToBalance":   snap.io.allow_to_balance,
             "AllowToHeat":      snap.io.allow_to_heat,
             "ExternalRelay":    snap.io.external_relay,
