@@ -77,7 +77,7 @@ enabled = true
 # Windows avec Docker Desktop local → "localhost"
 # Windows avec NanoPi comme broker → "192.168.1.120"
 # Raspberry Pi 5 production        → "localhost" (Mosquitto local) ou IP NanoPi
-host = "localhost"
+host = "192.168.1.120"
 port = 1883
 
 # Préfixe des topics (ex: santuario/bms/1/venus)
@@ -108,7 +108,7 @@ url = "http://localhost:8086"
 # Token généré par InfluxDB (identique à INFLUX_TOKEN dans .env)
 # Générer : docker exec dalybms-influxdb influx auth create --org santuario --all-access
 # Ou via UI : http://localhost:8086 → Load Data → API Tokens
-token = "REMPLACEZ_PAR_VOTRE_INFLUX_TOKEN"
+token = "UK0sGQBQ8HH1EyB3SSC0W8GAPzlZLNyNdXR56Ld8KNdGt_SKAwdCD-XW_jkZuGzP8Iyg5XaY3VXh-8qY4NjrGw=="
 
 org = "santuario"
 
@@ -170,22 +170,19 @@ enabled = false
 # L'adresse est l'adresse RS485 décimale ou hexadécimale.
 
 [[bms]]
-address         = "0x28"       # RS485-40 (decimal 40)
+address         = "0x01"
 name            = "BMS-360Ah"
 capacity_ah     = 360.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
-# Index topic MQTT Venus OS → santuario/bms/1/venus
-# Doit correspondre à mqtt_index dans config.ini de dbus-mqttbattery sur le NanoPi
 mqtt_index      = 1
 
 [[bms]]
-address         = "0x29"       # RS485-41 (decimal 41)
+address         = "0x02"
 name            = "BMS-320Ah"
 capacity_ah     = 320.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
-# Index topic MQTT Venus OS → santuario/bms/2/venus
 mqtt_index      = 2
 
 
