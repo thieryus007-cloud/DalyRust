@@ -2,8 +2,6 @@
 # Infrastructure de base pour DalyBMS (Mosquitto + InfluxDB + Grafana + Node-RED)
 # Phase 1 — ces services tournent en Docker, le serveur principal (Rust ou Python) est natif
 
-version: "3.9"
-
 services:
 
   mosquitto:
@@ -17,12 +15,6 @@ services:
       - ./docker/mosquitto/config:/mosquitto/config
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
-    healthcheck:
-      test: ["CMD", "mosquitto_pub", "-t", "healthcheck", "-m", "ping", "-q"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
     logging:
       driver: "json-file"
       options:
@@ -89,8 +81,7 @@ services:
     volumes:
       - nodered-data:/data
     depends_on:
-      mosquitto:
-        condition: service_healthy
+      - mosquitto
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:1880"]
       interval: 30s
