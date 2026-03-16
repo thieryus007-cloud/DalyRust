@@ -147,11 +147,10 @@ services:
       - ./Config.docker.toml:/etc/daly-bms/config.toml:ro
       # Journal des alertes SQLite
       - dalybms-alerts:/var/lib/daly-bms
-    # Mode simulation : 2 BMS fictifs (adresses 0x28 et 0x29 comme en production)
-    # Pour hardware réel Linux : remplacer par command: [] et décommenter devices
-    command: ["--simulate", "--sim-bms", "0x28,0x29"]
-    # devices:
-    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    # Mode hardware réel — autodétection du port COM
+    command: []
+    devices:
+      - //./COM6://./COM6
     depends_on:
       mosquitto:
         condition: service_healthy
