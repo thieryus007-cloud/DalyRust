@@ -13,7 +13,7 @@
 # =============================================================================
 # Stage 1 — Builder
 # =============================================================================
-FROM rust:1.85-slim-bookworm AS builder
+FROM rust:latest-slim-bookworm AS builder
 
 # Dépendances système nécessaires pour les crates natives (rusqlite bundled, openssl)
 RUN apt-get update && apt-get install -y --no-install-recommends \

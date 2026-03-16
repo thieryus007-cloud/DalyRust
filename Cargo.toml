@@ -15,7 +15,7 @@ version     = "0.1.0"
 edition     = "2021"
 authors     = ["DalyBMS Rust Team"]
 license     = "MIT"
-rust-version = "1.80"
+rust-version = "1.88"
 repository  = "https://github.com/thieryus007-cloud/Daly-BMS-Rust"
 
 # =============================================================================
