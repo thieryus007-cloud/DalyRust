@@ -14,14 +14,15 @@ services:
       - "1883:1883"       # MQTT standard
       - "9001:9001"       # MQTT over WebSocket (pour Node-RED si besoin)
     volumes:
-      - mosquitto-conf:/mosquitto/config
+      - ./docker/mosquitto/config:/mosquitto/config:ro
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
     healthcheck:
-      test: ["CMD", "mosquitto_sub", "-t", "test", "-C", "1"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "mosquitto_pub", "-t", "healthcheck", "-m", "ping", "-q"]
+      interval: 15s
+      timeout: 5s
       retries: 3
+      start_period: 5s
     logging:
       driver: "json-file"
       options:
@@ -97,7 +98,6 @@ services:
       retries: 3
 
 volumes:
-  mosquitto-conf:
   mosquitto-data:
   mosquitto-log:
   influxdb-data:
