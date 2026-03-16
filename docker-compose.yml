@@ -144,14 +144,16 @@ services:
       DALY_CONFIG:    /etc/daly-bms/config.toml
       DALY_API_KEY:   ${DALY_API_KEY:-}
     volumes:
-      # Config personnalisée (optionnel — le binaire utilise ses défauts sinon)
-      - ./Config.toml:/etc/daly-bms/config.toml:ro
+      # Config Docker (MQTT=mosquitto, InfluxDB=dalybms-influxdb)
+      # Pour hardware réel, monter Config.toml à la place
+      - ./Config.docker.toml:/etc/daly-bms/config.toml:ro
       # Journal des alertes SQLite
       - dalybms-alerts:/var/lib/daly-bms
-    # Mode simulation par défaut (2 BMS fictifs)
-    # Pour hardware réel, remplacer par : command: []
-    # et ajouter : devices: [/dev/ttyUSB0:/dev/ttyUSB0]
-    command: ["--simulate", "--sim-bms", "0x01,0x02"]
+    # Mode simulation : 2 BMS fictifs (adresses 0x28 et 0x29 comme en production)
+    # Pour hardware réel Linux : remplacer par command: [] et décommenter devices
+    command: ["--simulate", "--sim-bms", "0x28,0x29"]
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
     depends_on:
       mosquitto:
         condition: service_healthy

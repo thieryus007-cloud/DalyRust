@@ -1,0 +1,109 @@
+# =============================================================================
+# DalyBMS — Configuration pour Docker Compose (stack complète)
+# =============================================================================
+# Ce fichier est monté dans le conteneur dalybms-server via docker-compose.yml.
+# NE PAS utiliser pour le déploiement natif (utiliser Config.toml à la place).
+#
+# Différences vs Config.toml :
+#   - mqtt.host    = "mosquitto"             (nom réseau Docker interne)
+#   - influxdb.url = "http://dalybms-influxdb:8086"  (nom réseau Docker interne)
+#   - influxdb.enabled = true
+#   - influxdb.token   = même valeur que INFLUX_TOKEN dans .env
+# =============================================================================
+
+[serial]
+# Ignoré en mode --simulate
+port             = ""
+baud             = 9600
+poll_interval_ms = 1000
+default_cell_count   = 16
+default_temp_sensors = 4
+ring_buffer_size     = 3600
+auto_discover        = false
+auto_discover_start  = 1
+auto_discover_end    = 16
+# Adresses des BMS simulés (doit correspondre à --sim-bms dans docker-compose.yml)
+addresses = ["0x28", "0x29"]
+
+
+[api]
+bind          = "0.0.0.0:8000"
+api_key       = ""
+cors_allow_all = true
+
+
+[logging]
+level  = "info"
+format = "pretty"
+
+
+[mqtt]
+enabled              = true
+# "mosquitto" = nom du service dans le réseau Docker interne
+host                 = "mosquitto"
+port                 = 1883
+topic_prefix         = "santuario/bms"
+publish_interval_sec = 1
+format               = "json"
+
+
+[influxdb]
+enabled = true
+# "dalybms-influxdb" = nom du service dans le réseau Docker interne
+url     = "http://dalybms-influxdb:8086"
+
+# !! IMPORTANT : mettre ici le même token que INFLUX_TOKEN dans votre .env !!
+# Exemple : si .env contient  INFLUX_TOKEN=montoken123
+# alors mettre ici :           token = "montoken123"
+token   = "REMPLACEZ_PAR_VOTRE_INFLUX_TOKEN"
+
+org                      = "santuario"
+bucket                   = "daly_bms"
+bucket_downsampled       = "daly_bms_1m"
+batch_size               = 50
+batch_flush_interval_sec = 5.0
+
+
+[alerts]
+# Laisser vide pour désactiver les alertes SQLite
+db_path            = "/var/lib/daly-bms/alerts.db"
+check_interval_sec = 1.0
+telegram_token     = ""
+telegram_chat_id   = ""
+smtp_host          = ""
+smtp_port          = 587
+smtp_username      = ""
+smtp_password      = ""
+smtp_from          = "dalybms@santuario.local"
+smtp_to            = "admin@santuario.local"
+
+[alerts.thresholds]
+cell_ovp_v            = 3.60
+cell_uvp_v            = 2.90
+cell_delta_mv         = 100.0
+soc_low_percent       = 20.0
+soc_critical_percent  = 10.0
+temp_high_c           = 45.0
+current_high_a        = 80.0
+
+
+[read_only]
+enabled = false
+
+
+# =============================================================================
+# BMS simulés (correspond à --sim-bms 0x28,0x29)
+# =============================================================================
+[[bms]]
+address         = "0x28"
+name            = "BMS-360Ah"
+capacity_ah     = 360.0
+max_charge_a    = 200.0
+max_discharge_a = 120.0
+
+[[bms]]
+address         = "0x29"
+name            = "BMS-320Ah"
+capacity_ah     = 320.0
+max_charge_a    = 200.0
+max_discharge_a = 120.0

@@ -1,9 +1,16 @@
 # =============================================================================
-# DalyBMS — Rust Edition — Fichier de configuration exemple
+# DalyBMS — Rust Edition — Configuration principale
 # =============================================================================
-# Copiez ce fichier en config.toml et adaptez les valeurs.
-# Les sections commentées ou vides désactivent la fonctionnalité correspondante.
-# Tous les chemins sont absolus en production (recommandé).
+# Ce fichier est utilisé pour :
+#   - Développement Windows (cargo run, BMS réel ou simulateur)
+#   - Déploiement natif Linux / Raspberry Pi 5
+#
+# Pour la stack Docker complète (docker compose up), utiliser Config.docker.toml.
+#
+# Ordre de chargement :
+#   1. Variable d'environnement DALY_CONFIG
+#   2. ./Config.toml  (répertoire courant — Windows / dev)
+#   3. /etc/daly-bms/config.toml  (Linux production)
 # Date de référence : mars 2026
 
 [serial]
@@ -67,7 +74,10 @@ format = "pretty"
 [mqtt]
 enabled = true
 
-host = "192.168.1.120"
+# Windows avec Docker Desktop local → "localhost"
+# Windows avec NanoPi comme broker → "192.168.1.120"
+# Raspberry Pi 5 production        → "localhost" (Mosquitto local) ou IP NanoPi
+host = "localhost"
 port = 1883
 
 # Préfixe des topics (ex: santuario/bms/1/venus)
@@ -87,12 +97,18 @@ format = "json"
 
 
 [influxdb]
-enabled = false
+# true  = activer l'écriture InfluxDB (Docker infra doit être démarré)
+# false = désactiver (pas de Docker, ou test sans InfluxDB)
+enabled = true
 
+# Windows Docker Desktop ou Linux local → http://localhost:8086
+# Docker Compose interne             → http://dalybms-influxdb:8086 (Config.docker.toml)
 url = "http://localhost:8086"
 
-# Token avec droits write sur les buckets
-token = ""
+# Token généré par InfluxDB (identique à INFLUX_TOKEN dans .env)
+# Générer : docker exec dalybms-influxdb influx auth create --org santuario --all-access
+# Ou via UI : http://localhost:8086 → Load Data → API Tokens
+token = "REMPLACEZ_PAR_VOTRE_INFLUX_TOKEN"
 
 org = "santuario"
 
