@@ -108,7 +108,7 @@ url = "http://localhost:8086"
 # Token généré par InfluxDB (identique à INFLUX_TOKEN dans .env)
 # Générer : docker exec dalybms-influxdb influx auth create --org santuario --all-access
 # Ou via UI : http://localhost:8086 → Load Data → API Tokens
-token = "UK0sGQBQ8HH1EyB3SSC0W8GAPzlZLNyNdXR56Ld8KNdGt_SKAwdCD-XW_jkZuGzP8Iyg5XaY3VXh-8qY4NjrGw=="
+token = "TGEh4wl5TE7SEeJd7GDdyjDebo48xEJaD63MKbgdNhLz54-AWLxWtEBxoAqIEPd9KOucM_kpJGtvFu3oZ98KeQ=="
 
 org = "santuario"
 
