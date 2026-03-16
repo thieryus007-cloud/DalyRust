@@ -1,18 +1,22 @@
 # =============================================================================
 # Grafana — Provisioning datasource InfluxDB 2.x (Flux)
 # =============================================================================
-# Ce fichier est monté en lecture seule dans /etc/grafana/provisioning/datasources/
 
 apiVersion: 1
+
+deleteDatasources:
+  - name: InfluxDB-DalyBMS
+    orgId: 1
 
 datasources:
   - name: InfluxDB-DalyBMS
     type: influxdb
-    uid: influxdb-dalybms
+    uid: influxdb-dalybms-flux
     access: proxy
-    url: http://influxdb:8086
+    url: http://dalybms-influxdb:8086
     isDefault: true
     editable: true
+    orgId: 1
 
     jsonData:
       version: Flux
@@ -21,4 +25,4 @@ datasources:
       timeInterval: "10s"
 
     secureJsonData:
-      token: ${INFLUX_TOKEN}
+      token: "TGEh4wl5TE7SEeJd7GDdyjDebo48xEJaD63MKbgdNhLz54-AWLxWtEBxoAqIEPd9KOucM_kpJGtvFu3oZ98KeQ=="
