@@ -66,6 +66,9 @@ pub struct BmsDeviceConfig {
     pub max_charge_a: Option<f32>,
     /// Courant de décharge maximal autorisé (A)
     pub max_discharge_a: Option<f32>,
+    /// Index MQTT pour le topic Venus OS (ex: 1 → santuario/bms/1/venus).
+    /// Si absent, utilise la position dans le tableau [[bms]] (1-based).
+    pub mqtt_index: Option<u8>,
 }
 
 impl BmsDeviceConfig {

@@ -149,9 +149,22 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState::new(config.clone());
 
     // ── Bridges en arrière-plan ─────────────────────────────────────────────────
+
+    // Map adresse RS485 → index topic MQTT (ex: 0x28 → "1", 0x29 → "2")
+    // Permet d'écrire santuario/bms/1/venus au lieu de santuario/bms/40/venus
+    let mqtt_addr_map: std::collections::HashMap<u8, String> = config.bms
+        .iter()
+        .enumerate()
+        .filter_map(|(i, bms_cfg)| {
+            let addr = bms_cfg.parsed_address()?;
+            let idx  = bms_cfg.mqtt_index.unwrap_or((i + 1) as u8);
+            Some((addr, idx.to_string()))
+        })
+        .collect();
+
     tokio::spawn({
-        let (s, c) = (state.clone(), config.mqtt.clone());
-        async move { mqtt::run_mqtt_bridge(s, c).await }
+        let (s, c, m) = (state.clone(), config.mqtt.clone(), mqtt_addr_map);
+        async move { mqtt::run_mqtt_bridge(s, c, m).await }
     });
     tokio::spawn({
         let (s, c) = (state.clone(), config.influxdb.clone());

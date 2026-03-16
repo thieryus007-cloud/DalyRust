@@ -175,6 +175,9 @@ name            = "BMS-360Ah"
 capacity_ah     = 360.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
+# Index topic MQTT Venus OS → santuario/bms/1/venus
+# Doit correspondre à mqtt_index dans config.ini de dbus-mqttbattery sur le NanoPi
+mqtt_index      = 1
 
 [[bms]]
 address         = "0x29"       # RS485-41 (decimal 41)
@@ -182,6 +185,8 @@ name            = "BMS-320Ah"
 capacity_ah     = 320.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
+# Index topic MQTT Venus OS → santuario/bms/2/venus
+mqtt_index      = 2
 
 
 # =============================================================================

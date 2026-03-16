@@ -18,15 +18,18 @@ use crate::state::AppState;
 use daly_bms_core::types::BmsSnapshot;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use serde_json::json;
+use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::interval;
 use tracing::{error, info, warn};
 
 /// Démarre la tâche de publication MQTT en arrière-plan.
 ///
-/// La tâche lit les derniers snapshots toutes les `publish_interval_sec`
-/// secondes et publie sur les topics configurés.
-pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig) {
+/// `addr_map` : table adresse RS485 → identifiant de topic (ex: 0x28 → "1").
+/// Permet d'aligner les topics sur la configuration `dbus-mqttbattery` du NanoPi
+/// (santuario/bms/1/venus, santuario/bms/2/venus, …).
+/// Si l'adresse n'est pas dans la map, on publie avec l'adresse décimale brute.
+pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig, addr_map: HashMap<u8, String>) {
     if !cfg.enabled {
         info!("MQTT bridge désactivé (enabled = false)");
         return;
@@ -67,7 +70,12 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig) {
 
         let snapshots = state.latest_snapshots().await;
         for snap in &snapshots {
-            if let Err(e) = publish_snapshot(&client, &cfg, snap).await {
+            // Résoudre l'identifiant de topic : "1", "2", … ou adresse décimale brute
+            let topic_id = addr_map
+                .get(&snap.address)
+                .cloned()
+                .unwrap_or_else(|| snap.address.to_string());
+            if let Err(e) = publish_snapshot(&client, &cfg, snap, &topic_id).await {
                 error!("MQTT publish erreur : {:?}", e);
             }
         }
@@ -75,12 +83,15 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig) {
 }
 
 /// Publie un snapshot complet sur tous les topics d'un BMS.
+///
+/// `topic_id` : identifiant résolu (ex: "1" pour 0x28, "2" pour 0x29).
 async fn publish_snapshot(
     client: &AsyncClient,
     cfg: &MqttConfig,
     snap: &BmsSnapshot,
+    topic_id: &str,
 ) -> anyhow::Result<()> {
-    let prefix = format!("{}/{}", cfg.topic_prefix, snap.address);
+    let prefix = format!("{}/{}", cfg.topic_prefix, topic_id);
 
     // Scalaires
     publish_str(client, &format!("{}/soc",     prefix), &format!("{:.1}", snap.soc)).await;
