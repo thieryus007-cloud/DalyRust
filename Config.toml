@@ -17,7 +17,7 @@
 # Port série RS485 (USB → /dev/ttyUSB* ou /dev/ttyACM*)
 # Sur Linux : /dev/ttyUSB0 ou /dev/ttyUSB1
 # Sur Windows : laisser vide pour auto-détection, ou spécifier COM5, COM6...
-port = ""
+port = "/dev/ttyUSB0"
 
 # Vitesse de communication (Daly standard = 9600)
 baud = 9600
@@ -65,7 +65,7 @@ cors_allow_all = true
 
 [logging]
 # Niveau de logs (trace, debug, info, warn, error)
-level = "info"
+level = "trace"
 
 # Format des logs (pretty = coloré et lisible, json = pour parsing)
 format = "pretty"

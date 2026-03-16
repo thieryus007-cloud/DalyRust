@@ -60,13 +60,15 @@ impl DalyPort {
         cmd: DataId,
         data: [u8; 8],
     ) -> Result<ResponseFrame> {
-        // Adressage Daly parallèle : data[0] = board number pour les lectures.
-        // Les commandes d'écriture gardent leur payload dans data[0].
-        let mut frame_data = data;
-        if !cmd.is_write() {
-            frame_data[0] = bms_address;
-        }
-        let request = RequestFrame::new(bms_address, cmd, frame_data);
+        // Protocole Daly V1.21 §2.3.1 : les 8 octets data sont réservés (0x00)
+        // pour les commandes de lecture. L'adressage multi-BMS est assuré
+        // uniquement par byte[1] = 0x3F + bms_address (géré dans RequestFrame::new).
+        // Les commandes d'écriture utilisent data tel quel (payload fourni par l'appelant).
+        let request = if cmd.is_write() {
+            RequestFrame::new(bms_address, cmd, data)
+        } else {
+            RequestFrame::read(bms_address, cmd)
+        };
         trace!(
             bms = format!("{:#04x}", bms_address),
             cmd = format!("{:#04x}", cmd as u8),
@@ -202,9 +204,8 @@ impl DalyPort {
             return Ok(Vec::new());
         }
 
-        let mut multi_data = [0u8; 8];
-        multi_data[0] = bms_address;  // Adressage Daly parallèle
-        let request = RequestFrame::new(bms_address, cmd, multi_data);
+        // Protocole Daly V1.21 : data bytes = 0x00 pour les lectures multi-trames.
+        let request = RequestFrame::read(bms_address, cmd);
         let mut port = self.inner.lock().await;
 
         // Vider le buffer avant l'envoi
