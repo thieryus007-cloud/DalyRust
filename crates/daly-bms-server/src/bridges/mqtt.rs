@@ -200,7 +200,6 @@ fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
             "AllowToCharge":    1,
             "AllowToDischarge": 1,
             "AllowToBalance":   snap.io.allow_to_balance,
-            "AllowToHeat":      snap.io.allow_to_heat,
             "ExternalRelay":    snap.io.external_relay,
         },
     })
