@@ -69,7 +69,7 @@ services:
       DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_ADMIN_PASSWORD:-supersecret123}
       DOCKER_INFLUXDB_INIT_ORG:      ${INFLUX_ORG:-santuario}
       DOCKER_INFLUXDB_INIT_BUCKET:   ${INFLUX_BUCKET:-daly_bms}
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:?Erreur: INFLUX_TOKEN manquant dans .env}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:?INFLUX_TOKEN manquant dans .env}
       # Rétention par défaut du bucket : 30 jours
       DOCKER_INFLUXDB_INIT_RETENTION: 720h
     volumes:
