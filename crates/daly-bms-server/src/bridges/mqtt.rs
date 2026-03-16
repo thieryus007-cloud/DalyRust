@@ -145,27 +145,10 @@ fn cell_id_to_int(id: &str) -> u32 {
 ///
 /// Compatible avec https://github.com/mr-manuel/venus-os_dbus-mqtt-battery
 ///
-/// Points importants du format attendu par Victron :
-/// - `System.MinVoltageCellId` : entier (1-based), pas une chaîne
-/// - `Voltages` : clés "cell_1", "cell_2", … (minuscule + underscore) + clé "sum"
+/// IMPORTANT : seuls les champs reconnus par dbus-mqtt-battery sont inclus.
+/// Les champs inconnus (Voltages/sum, Balances, TimeToSoC, Soh, Heating) provoquent
+/// une exception Python dans le callback MQTT → first_data_received reste False → timeout.
 fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
-    // Voltages : "Cell1" → "cell_1", avec clé "sum" en plus
-    let mut voltages_map = serde_json::Map::new();
-    let mut sum = 0.0_f32;
-    for (k, &v) in &snap.voltages {
-        let n = k.trim_start_matches("Cell").trim_start_matches('C');
-        voltages_map.insert(format!("cell_{}", n), json!(v));
-        sum += v;
-    }
-    voltages_map.insert("sum".into(), json!(sum));
-
-    // Balances : même transformation de clés
-    let mut balances_map = serde_json::Map::new();
-    for (k, &v) in &snap.balances {
-        let n = k.trim_start_matches("Cell").trim_start_matches('C');
-        balances_map.insert(format!("cell_{}", n), json!(v));
-    }
-
     json!({
         "Dc": {
             "Power":       snap.dc.power,
@@ -177,7 +160,6 @@ fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
         "ConsumedAmphours":   snap.consumed_amphours,
         "Capacity":           snap.bms_reported_capacity_ah,
         "Soc":                snap.soc,
-        "Soh":                snap.soh,
         "TimeToGo":           snap.time_to_go,
         "Balancing":          snap.balancing,
         "SystemSwitch":       snap.system_switch,
@@ -212,8 +194,6 @@ fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
             "NrOfModulesBlockingCharge":      snap.system.nr_of_modules_blocking_charge,
             "NrOfModulesBlockingDischarge":   snap.system.nr_of_modules_blocking_discharge,
         },
-        "Voltages": voltages_map,
-        "Balances": balances_map,
         // AllowToCharge / AllowToDischarge volontairement figés à 1 :
         // on ne veut pas que Venus OS (systemcalc) transmette ces signaux aux MPPT.
         "Io": {
@@ -223,7 +203,5 @@ fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
             "AllowToHeat":      snap.io.allow_to_heat,
             "ExternalRelay":    snap.io.external_relay,
         },
-        "Heating":   snap.heating,
-        "TimeToSoC": snap.time_to_soc,
     })
 }
