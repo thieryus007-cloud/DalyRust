@@ -20,9 +20,9 @@ datasources:
 
     jsonData:
       version: Flux
-      organization: santuario
-      defaultBucket: daly_bms
+      organization: "${INFLUX_ORG}"
+      defaultBucket: "${INFLUX_BUCKET}"
       timeInterval: "10s"
 
     secureJsonData:
-      token: "TGEh4wl5TE7SEeJd7GDdyjDebo48xEJaD63MKbgdNhLz54-AWLxWtEBxoAqIEPd9KOucM_kpJGtvFu3oZ98KeQ=="
+      token: "${INFLUX_TOKEN}"
