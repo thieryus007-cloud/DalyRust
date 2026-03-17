@@ -264,6 +264,10 @@ struct DetailTemplate {
     detail: BmsDetail,
 }
 
+#[derive(Template)]
+#[template(path = "logs.html")]
+struct LogsTemplate {}
+
 // =============================================================================
 // Handlers Axum
 // =============================================================================
@@ -335,10 +339,16 @@ pub async fn dashboard_bms(
 // Routeur du dashboard
 // =============================================================================
 
+/// Page des logs serveur.
+pub async fn dashboard_logs() -> Response {
+    render(LogsTemplate {})
+}
+
 /// Construit le routeur du dashboard (à fusionner dans le routeur principal).
 pub fn build_dashboard_router() -> Router<AppState> {
     Router::new()
         .route("/",                  get(redirect_root))
         .route("/dashboard",         get(dashboard_index))
         .route("/dashboard/bms/:id", get(dashboard_bms))
+        .route("/dashboard/logs",    get(dashboard_logs))
 }

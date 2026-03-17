@@ -3,10 +3,11 @@
 use crate::state::AppState;
 use axum::{
     Json,
-    extract::State,
+    extract::{Query, State},
     http::StatusCode,
     response::IntoResponse,
 };
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 
@@ -62,6 +63,24 @@ pub async fn get_config(State(state): State<AppState>) -> Json<Value> {
         "influxdb_enabled": cfg.influxdb.enabled,
         "read_only": cfg.read_only.enabled,
     }))
+}
+
+/// GET /api/v1/system/logs?limit=N
+///
+/// Retourne les dernières entrées de logs capturées en mémoire (max 200).
+#[derive(Deserialize)]
+pub struct LogsQuery {
+    pub limit: Option<usize>,
+}
+
+pub async fn get_logs(
+    State(state): State<AppState>,
+    Query(params): Query<LogsQuery>,
+) -> Json<Value> {
+    let limit = params.limit.unwrap_or(100).min(200);
+    let buf = state.log_buffer.lock().unwrap();
+    let logs: Vec<_> = buf.iter().rev().take(limit).collect();
+    Json(json!({ "logs": logs, "total": buf.len() }))
 }
 
 /// GET /api/v1/discover

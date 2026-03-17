@@ -27,6 +27,7 @@ pub fn build_router(state: AppState) -> Router {
 
         // ── Système ─────────────────────────────────────────────────────────
         .route("/api/v1/system/status",  get(system::get_status))
+        .route("/api/v1/system/logs",    get(system::get_logs))
         .route("/api/v1/config",         get(system::get_config))
         .route("/api/v1/discover",       get(system::discover))
 

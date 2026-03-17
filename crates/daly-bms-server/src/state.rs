@@ -6,9 +6,25 @@
 use crate::config::AppConfig;
 use daly_bms_core::bus::DalyPort;
 use daly_bms_core::types::BmsSnapshot;
+use serde::Serialize;
 use std::collections::{BTreeMap, VecDeque};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, RwLock};
+
+// =============================================================================
+// Buffer de logs en mémoire (pour l'interface web)
+// =============================================================================
+
+/// Une entrée de log capturée depuis tracing.
+#[derive(Clone, Serialize)]
+pub struct LogEntry {
+    pub timestamp: String,
+    pub level: String,
+    pub message: String,
+}
+
+/// Ring buffer de logs partagé (200 entrées max).
+pub type LogBuffer = Arc<Mutex<VecDeque<LogEntry>>>;
 
 /// Capacité du canal broadcast WebSocket.
 const WS_BROADCAST_CAPACITY: usize = 128;
@@ -64,10 +80,13 @@ pub struct AppState {
     /// Port série partagé — None en mode simulateur.
     /// Partagé avec le poll_loop via le Mutex interne de DalyPort.
     pub port: Arc<RwLock<Option<Arc<DalyPort>>>>,
+
+    /// Buffer de logs pour l'interface web.
+    pub log_buffer: LogBuffer,
 }
 
 impl AppState {
-    pub fn new(config: AppConfig) -> Self {
+    pub fn new(config: AppConfig, log_buffer: LogBuffer) -> Self {
         let (ws_tx, _) = broadcast::channel(WS_BROADCAST_CAPACITY);
         let addresses = config.bms_addresses();
         let ring_size = config.serial.ring_buffer_size;
@@ -83,6 +102,7 @@ impl AppState {
             ws_tx,
             polling_active: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             port: Arc::new(RwLock::new(None)),
+            log_buffer,
         }
     }
 

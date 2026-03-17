@@ -142,7 +142,7 @@ PI_BIN_PATH ?= /usr/local/bin/daly-bms-server
 
 deploy: build-arm
 	scp $(ARM_RELEASE_DIR)/$(BINARY) $(PI_HOST):/tmp/$(BINARY)
-	ssh $(PI_HOST) "sudo mv /tmp/$(BINARY) $(PI_BIN_PATH) && sudo chmod +x $(PI_BIN_PATH) && sudo systemctl restart daly-bms"
+	ssh $(PI_HOST) "sudo install -m 755 /tmp/$(BINARY) $(PI_BIN_PATH) && sudo systemctl restart daly-bms && sudo systemctl status daly-bms --no-pager -l"
 	@echo "✓ Déployé sur $(PI_HOST)"
 
 # =============================================================================

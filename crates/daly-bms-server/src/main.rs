@@ -23,13 +23,56 @@ mod dashboard;
 
 use crate::bridges::{alerts, influx, mqtt};
 use crate::config::AppConfig;
-use crate::state::AppState;
+use crate::state::{AppState, LogBuffer, LogEntry};
 use daly_bms_core::bus::{BmsConfig, DalyBusManager, DalyPort};
 use daly_bms_core::poll::{poll_loop, PollConfig};
+use std::collections::VecDeque;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::Ordering;
 use tracing::{error, info, warn};
+use tracing::Subscriber;
+use tracing_subscriber::Layer;
+use tracing_subscriber::layer::Context;
+use tracing_subscriber::prelude::*;
+
+// =============================================================================
+// Couche tracing → buffer web
+// =============================================================================
+
+struct WebLogLayer {
+    buffer: LogBuffer,
+}
+
+struct MsgVisitor(String);
+
+impl tracing::field::Visit for MsgVisitor {
+    fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
+        if field.name() == "message" { self.0 = value.to_string(); }
+        else if !self.0.is_empty()   { self.0.push_str(&format!(" {}={}", field.name(), value)); }
+    }
+    fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
+        if field.name() == "message" { self.0 = format!("{:?}", value).trim_matches('"').to_string(); }
+        else if !self.0.is_empty()   { self.0.push_str(&format!(" {}={:?}", field.name(), value)); }
+    }
+}
+
+impl<S: Subscriber> Layer<S> for WebLogLayer {
+    fn on_event(&self, event: &tracing::Event<'_>, _ctx: Context<'_, S>) {
+        let level = event.metadata().level().to_string().to_uppercase();
+        let mut v = MsgVisitor(String::new());
+        event.record(&mut v);
+        let entry = LogEntry {
+            timestamp: chrono::Local::now().format("%H:%M:%S").to_string(),
+            level,
+            message: v.0,
+        };
+        if let Ok(mut buf) = self.buffer.lock() {
+            if buf.len() >= 200 { buf.pop_front(); }
+            buf.push_back(entry);
+        }
+    }
+}
 
 // =============================================================================
 // Arguments CLI du serveur
@@ -130,11 +173,15 @@ async fn main() -> anyhow::Result<()> {
 
     // ── Logging ────────────────────────────────────────────────────────────────
     let log_level = config.logging.level.clone();
-    tracing_subscriber::fmt()
-        .with_env_filter(
+    let log_buffer: LogBuffer = Arc::new(Mutex::new(VecDeque::new()));
+
+    tracing_subscriber::registry()
+        .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(&log_level)),
         )
+        .with(tracing_subscriber::fmt::layer())
+        .with(WebLogLayer { buffer: log_buffer.clone() })
         .init();
 
     let mode = if args.simulate { "SIMULATION" } else { "HARDWARE" };
@@ -146,7 +193,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     // ── État partagé ───────────────────────────────────────────────────────────
-    let state = AppState::new(config.clone());
+    let state = AppState::new(config.clone(), log_buffer);
 
     // ── Bridges en arrière-plan ─────────────────────────────────────────────────
 

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Logs — DalyBMS{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <h2 style="font-size:1rem;font-weight:700;">Logs serveur</h2>
+  <div style="display:flex;align-items:center;gap:0.75rem;">
+    <span style="font-size:0.75rem;color:var(--muted);" id="log-count">—</span>
+    <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:0.35rem;">
+      <input type="checkbox" id="auto-scroll" checked> Auto-scroll
+    </label>
+    <button onclick="clearLogs()" style="font-size:0.72rem;padding:0.2rem 0.6rem;border:1px solid var(--border);border-radius:4px;background:var(--surface);cursor:pointer;color:var(--muted);">
+      Vider
+    </button>
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <div id="log-container"
+       style="font-family:monospace;font-size:0.72rem;line-height:1.6;
+              max-height:70vh;overflow-y:auto;background:#0d1117;border-radius:var(--radius);">
+    <div id="log-lines" style="padding:0.5rem 0.75rem;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = {
+  'ERROR': '#f85149',
+  'WARN':  '#e3b341',
+  'INFO':  '#58a6ff',
+  'DEBUG': '#8b949e',
+  'TRACE': '#6e7681',
+};
+
+let localLogs = [];
+let lastCount = 0;
+
+function clearLogs() {
+  localLogs = [];
+  lastCount = 0;
+  render();
+}
+
+function render() {
+  const container = document.getElementById('log-lines');
+  const autoScroll = document.getElementById('auto-scroll').checked;
+  const wrap = document.getElementById('log-container');
+
+  const html = localLogs.map(function(e) {
+    const col = COLORS[e.level] || '#8b949e';
+    const lvl = e.level.padEnd(5, ' ');
+    const msg = escapeHtml(e.message);
+    return '<div style="white-space:pre-wrap;word-break:break-all;">'
+         + '<span style="color:#6e7681;">' + e.timestamp + '</span> '
+         + '<span style="color:' + col + ';font-weight:600;">' + lvl + '</span> '
+         + '<span style="color:#e6edf3;">' + msg + '</span>'
+         + '</div>';
+  }).join('');
+  container.innerHTML = html;
+
+  document.getElementById('log-count').textContent = localLogs.length + ' entrées';
+  if (autoScroll) wrap.scrollTop = wrap.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+async function fetchLogs() {
+  try {
+    const r = await fetch('/api/v1/system/logs?limit=200');
+    if (!r.ok) return;
+    const data = await r.json();
+    const incoming = (data.logs || []).reverse(); // API retourne newest-first, on remet oldest-first
+    if (incoming.length !== lastCount) {
+      localLogs = incoming;
+      lastCount = incoming.length;
+      render();
+    }
+  } catch (_) {}
+}
+
+fetchLogs();
+setInterval(fetchLogs, 3000);
+</script>
+{% endblock %}
