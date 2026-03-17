@@ -11,7 +11,7 @@ deleteDatasources:
 datasources:
   - name: InfluxDB-DalyBMS
     type: influxdb
-    uid: influxdb-dalybms-flux
+    uid: influxdb-dalybms
     access: proxy
     url: http://dalybms-influxdb:8086
     isDefault: true

@@ -1,7 +1,7 @@
 # Plan d'Implémentation — DalyBMS Rust Edition
 
-**Version** : 2.1
-**Date** : 15 Mars 2026
+**Version** : 2.2
+**Date** : 17 Mars 2026
 **Référence Python** : [thieryus007-cloud/Daly-BMS](https://github.com/thieryus007-cloud/Daly-BMS)
 **Dépôt Rust** : [thieryus007-cloud/Daly-BMS-Rust](https://github.com/thieryus007-cloud/Daly-BMS-Rust)
 
@@ -341,6 +341,114 @@ RAM disponible : ~77 MB. Le binary Rust (~10 MB) remplacera plusieurs scripts Py
 
 - Service manager différent : `systemd` sur RPi5 vs `runit/s6` sur Cerbo GX
 - Compilation native RPi5 : `cargo build --release`
+
+---
+
+### Phase 1.6 — Corrections protocole et configuration ✅ COMPLÉTÉ (17 mars 2026)
+
+#### Correction protocole Daly (commit `e8082fd`)
+
+**Bug** : Les octets data des trames de lecture étaient remplis avec des valeurs aléatoires.
+**Fix** : Forcer `[0u8; 8]` pour toutes les commandes de lecture — le BMS exige 8 zéros.
+
+```
+Trame correcte : A5 40 90 08 00 00 00 00 00 00 00 00 7D
+```
+
+#### Port API 8000 → 8080 (commit `14086f4`)
+
+**Raison** : Le port 8000 entre en conflit avec Docker Desktop sur Windows.
+**Impact** : Tous les appels API passent désormais sur `http://localhost:8080`.
+
+```toml
+# Config.toml
+[api]
+bind = "0.0.0.0:8080"
+```
+
+#### Correction Grafana — UID datasource (17 mars 2026)
+
+**Bug** : Le fichier `grafana/provisioning/datasources/influxdb.yaml` déclarait
+`uid: influxdb-dalybms-flux` mais les **33 panels** du dashboard utilisaient
+`uid: influxdb-dalybms` → tous les panels affichaient "Datasource not found".
+
+**Fix** : Aligner le UID dans le YAML sur celui utilisé par le dashboard :
+```yaml
+# Avant (cassé)
+uid: influxdb-dalybms-flux
+
+# Après (correct)
+uid: influxdb-dalybms
+```
+
+Après ce fix, redémarrer Grafana pour recharger le provisioning :
+```bash
+docker compose -f docker-compose.infra.yml restart grafana
+# ou
+make restart-grafana
+```
+
+---
+
+### Phase 1.7 — Configuration hardware Raspberry Pi 5 ✅ COMPLÉTÉ
+
+#### Matériel identifié
+
+| Composant | Détail |
+|---|---|
+| Calculateur | Raspberry Pi 5 (ou CM5) |
+| Adaptateur USB/RS485 | FTDI — Numéro de série : `BG03CWA2` |
+| Port assigné Linux | `/dev/ttyUSB0` (stable — même n° de série FTDI) |
+| Bus RS485 | 2 BMS en parallèle (adresses 0x01 et 0x02) |
+
+#### Configuration actuelle (Config.toml)
+
+| BMS | Adresse RS485 | Nom | Capacité | Index MQTT |
+|-----|--------------|-----|----------|-----------|
+| BMS 1 | `0x01` | BMS-360Ah | 360 Ah | 1 |
+| BMS 2 | `0x02` | BMS-320Ah | 320 Ah | 2 |
+
+#### Comportement auto-détection
+
+**Port USB** :
+- `port = "/dev/ttyUSB0"` → port fixe, pas d'auto-détection
+- `port = ""` → scan automatique de tous les ports tty/COM au démarrage
+- L'adaptateur FTDI (n° série `BG03CWA2`) revient toujours sur `ttyUSB0` → configuration fixe recommandée
+
+**Adresses BMS** :
+- Tant qu'un `Config.toml` existe, c'est la liste `addresses` qui est utilisée
+- L'auto-découverte (`auto_discover_addrs`) ne s'active que **sans fichier config** (`!config_from_file`)
+- Pour un 3ème BMS : ajouter manuellement dans Config.toml :
+
+```toml
+addresses = ["0x01", "0x02", "0x03"]   # ← ajouter 0x03
+
+[[bms]]
+address         = "0x03"
+name            = "BMS-280Ah"
+capacity_ah     = 280.0
+max_charge_a    = 200.0
+max_discharge_a = 120.0
+mqtt_index      = 3
+```
+
+#### Infrastructure Docker sur RPi5
+
+Services démarrés avec `docker compose -f docker-compose.infra.yml up -d` :
+
+| Service | Port | URL |
+|---------|------|-----|
+| Mosquitto MQTT | 1883 | mqtt://localhost:1883 |
+| InfluxDB 2.7 | 8086 | http://localhost:8086 |
+| Grafana 11.6 | 3001 | http://localhost:3001 |
+| Node-RED | 1880 | http://localhost:1880 |
+
+Serveur Rust (natif, hors Docker) :
+
+| Service | Port | URL |
+|---------|------|-----|
+| API REST + WebSocket | 8080 | http://localhost:8080/api/v1/ |
+| Dashboard SSR | 8080 | http://localhost:8080/dashboard |
 
 ---
 
