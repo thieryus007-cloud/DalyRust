@@ -135,7 +135,7 @@ uninstall:
 # Cross-compile + déploiement SSH vers le Pi
 # =============================================================================
 
-PI_HOST ?= pi@dalybms.local
+PI_HOST ?= pi5compute@192.168.1.141
 PI_BIN_PATH ?= /usr/local/bin/daly-bms-server
 
 .PHONY: deploy
@@ -206,5 +206,5 @@ help:
 	@echo ""
 	@echo "  Déploiement :"
 	@echo "    make install       Installer le service systemd"
-	@echo "    make deploy PI_HOST=pi@192.168.1.100  Déployer sur le Pi"
+	@echo "    make deploy                           Déployer sur pi5compute@192.168.1.141"
 	@echo ""
