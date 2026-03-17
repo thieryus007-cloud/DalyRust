@@ -1,0 +1,1316 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana",    "id": "grafana",        "name": "Grafana",        "version": "10.0.0" },
+    { "type": "datasource", "id": "influxdb",       "name": "InfluxDB",       "version": "1.0.0"  },
+    { "type": "panel",      "id": "timeseries",     "name": "Time series",    "version": ""       },
+    { "type": "panel",      "id": "gauge",          "name": "Gauge",          "version": ""       },
+    { "type": "panel",      "id": "stat",           "name": "Stat",           "version": ""       },
+    { "type": "panel",      "id": "table",          "name": "Table",          "version": ""       },
+    { "type": "panel",      "id": "bargauge",       "name": "Bar gauge",      "version": ""       },
+    { "type": "panel",      "id": "state-timeline", "name": "State timeline", "version": ""       }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Surveillance avancée des batteries Daly BMS — vue par pack + consolidée (LiFePO4)",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "icon": "external link",
+      "tags": [],
+      "title": "Vue d'ensemble",
+      "tooltip": "Tableau de bord principal",
+      "type": "link",
+      "url": "/d/dalybms-overview-v1",
+      "targetBlank": false
+    }
+  ],
+
+  "panels": [
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "⚡ Vue consolidée — tous packs",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "dark-red",    "value": null   },
+              { "color": "orange",      "value": -5000  },
+              { "color": "yellow",      "value": -500   },
+              { "color": "green",       "value": -50    },
+              { "color": "light-green", "value": 50     },
+              { "color": "blue",        "value": 500    }
+            ]
+          },
+          "unit": "watt",
+          "decimals": 0,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 28 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Puissance totale",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"power\")\n  |> last()\n  |> group()\n  |> sum(column: \"_value\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 15   },
+              { "color": "yellow", "value": 25   },
+              { "color": "green",  "value": 40   }
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0, "max": 100,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 1 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 28 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "SOC moyen",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"soc\")\n  |> last()\n  |> group()\n  |> mean(column: \"_value\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "dark-red", "value": null  },
+              { "color": "orange",   "value": -120  },
+              { "color": "yellow",   "value": -10   },
+              { "color": "green",    "value": -1    },
+              { "color": "blue",     "value": 1     }
+            ]
+          },
+          "unit": "amp",
+          "decimals": 1,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 10, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 28 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Courant total",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"current\")\n  |> last()\n  |> group()\n  |> sum(column: \"_value\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 50   },
+              { "color": "yellow", "value": 100  },
+              { "color": "green",  "value": 200  }
+            ]
+          },
+          "unit": "amph",
+          "decimals": 1,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 14, "y": 1 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 28 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Capacité totale restante",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"capacity\")\n  |> last()\n  |> group()\n  |> sum(column: \"_value\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1    }
+            ]
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "green", "index": 0, "text": "✓ OK" },
+                "1": { "color": "red",   "index": 1, "text": "⚠ ALARME" }
+              },
+              "type": "value"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 5, "x": 19, "y": 1 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 26 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Alarme active",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"any_alarm\")\n  |> last()\n  |> group()\n  |> max(column: \"_value\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 200,
+      "title": "🔋 SOC & Capacité par pack",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "mappings": [],
+          "min": 0, "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red",         "value": 10   },
+              { "color": "transparent", "value": 15   }
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 15, "x": 0, "y": 6 },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "min", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "SOC historique par pack (%)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"soc\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> rename(columns: {address: \"BMS\"})\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "min": 0, "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 15   },
+              { "color": "yellow", "value": 25   },
+              { "color": "green",  "value": 40   }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 9, "x": 15, "y": 6 },
+      "id": 11,
+      "options": {
+        "minVizHeight": 60,
+        "minVizWidth": 60,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true,
+        "text": { "titleSize": 14, "valueSize": 26 }
+      },
+      "pluginVersion": "10.4.0",
+      "title": "SOC par pack (instantané)",
+      "type": "gauge",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"soc\")\n  |> last()\n  |> rename(columns: {address: \"BMS\"})",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 300,
+      "title": "⚡ Tension · Courant · Puissance",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red",         "value": 58   },
+              { "color": "transparent", "value": 56   }
+            ]
+          },
+          "unit": "volt",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
+      "id": 20,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "min", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Tension pack (V)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"voltage\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> rename(columns: {address: \"BMS\"})\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }]
+          },
+          "unit": "amp",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "min", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Courant (A) — positif = charge, négatif = décharge",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"current\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> rename(columns: {address: \"BMS\"})\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": true,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }]
+          },
+          "unit": "watt",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "min", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Puissance (W) — positif = charge, négatif = décharge",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"power\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> rename(columns: {address: \"BMS\"})\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 400,
+      "title": "🔬 Cellules — Snapshot tensions",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "min": 2.8,
+          "max": 3.7,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "dark-red",   "value": null },
+              { "color": "red",        "value": 2.80 },
+              { "color": "orange",     "value": 2.95 },
+              { "color": "green",      "value": 3.10 },
+              { "color": "yellow",     "value": 3.55 },
+              { "color": "orange",     "value": 3.62 },
+              { "color": "dark-red",   "value": 3.65 }
+            ]
+          },
+          "unit": "volt",
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 24 },
+      "id": 30,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showUnfilled": true,
+        "valueMode": "color",
+        "text": { "valueSize": 11 }
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Tensions cellules — instantané (toutes batteries)",
+      "type": "bargauge",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -5m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_cell_voltage\" and r[\"_field\"] == \"voltage\")\n  |> last()\n  |> map(fn: (r) => ({r with _field: r.address + \"/\" + r.cell}))\n  |> yield(name: \"last\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
+      "id": 500,
+      "title": "📈 Cellules — Historique & Déséquilibre",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "mappings": [],
+          "min": 2.8,
+          "max": 3.7,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "red",         "value": 3.62 },
+              { "color": "transparent", "value": 2.95 }
+            ]
+          },
+          "unit": "volt",
+          "decimals": 3
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 16, "x": 0, "y": 34 },
+      "id": 31,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Tensions cellules historique (V) — zones rouge = hors seuil",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_cell_voltage\" and r[\"_field\"] == \"voltage\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: r.address + \"/\" + r.cell}))\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "yellow",      "value": 30   },
+              { "color": "orange",      "value": 50   },
+              { "color": "red",         "value": 80   }
+            ]
+          },
+          "unit": "mvolt",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 34 },
+      "id": 32,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Déséquilibre cellules (mV) — seuils 30/50/80 mV",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"cell_delta_mv\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> rename(columns: {address: \"BMS\"})\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
+      "id": 600,
+      "title": "🌡️ Températures & MOS",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 3,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line+area" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "transparent", "value": null },
+              { "color": "orange",      "value": 40   },
+              { "color": "red",         "value": 50   }
+            ]
+          },
+          "unit": "celsius",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 45 },
+      "id": 40,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "title": "Températures min / max par pack (°C)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\")\n  |> filter(fn: (r) => r[\"_field\"] == \"temp_max\" or r[\"_field\"] == \"temp_min\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: r.address + \" \" + r._field}))\n  |> yield(name: \"mean\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "fillOpacity": 80,
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineWidth": 1,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "red",   "index": 0, "text": "OFF" },
+                "1": { "color": "green", "index": 1, "text": "ON"  }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",   "value": null },
+              { "color": "green", "value": 1    }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 45 },
+      "id": 41,
+      "options": {
+        "alignValue": "left",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "mergeValues": true,
+        "rowHeight": 0.85,
+        "showValue": "auto",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Autorisations MOS — charge & décharge par pack",
+      "type": "state-timeline",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\")\n  |> filter(fn: (r) => r[\"_field\"] == \"charge_mos\" or r[\"_field\"] == \"discharge_mos\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: r.address + \" \" + r._field}))\n  |> yield(name: \"last\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 53 },
+      "id": 700,
+      "title": "🚨 Alarmes & Santé",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "fillOpacity": 85,
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineWidth": 1,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": { "color": "green", "index": 0, "text": "✓ OK"     },
+                "1": { "color": "red",   "index": 1, "text": "⚠ ALARME" }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red",   "value": 1    }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 54 },
+      "id": 50,
+      "options": {
+        "alignValue": "left",
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "mergeValues": true,
+        "rowHeight": 0.85,
+        "showValue": "always",
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Alarmes actives par pack",
+      "type": "state-timeline",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"any_alarm\")\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n  |> rename(columns: {address: \"BMS\"})\n  |> yield(name: \"max\")",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null },
+              { "color": "yellow", "value": 500  },
+              { "color": "orange", "value": 1000 }
+            ]
+          },
+          "unit": "none",
+          "decimals": 0,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 60 },
+      "id": 51,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 32 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Cycles de charge",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"cycles\")\n  |> last()\n  |> rename(columns: {address: \"BMS\"})",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green",  "value": null  },
+              { "color": "yellow", "value": 50    },
+              { "color": "orange", "value": 150   },
+              { "color": "red",    "value": 300   }
+            ]
+          },
+          "unit": "amph",
+          "decimals": 1,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 60 },
+      "id": 52,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "text": { "valueSize": 32 },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Ah consommés (session)",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"consumed_ah\")\n  |> last()\n  |> rename(columns: {address: \"BMS\"})",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red",    "value": null },
+              { "color": "orange", "value": 70   },
+              { "color": "yellow", "value": 85   },
+              { "color": "green",  "value": 95   }
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "min": 0, "max": 100,
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 60 },
+      "id": 53,
+      "options": {
+        "minVizHeight": 60,
+        "minVizWidth": 60,
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": { "titleSize": 14, "valueSize": 24 }
+      },
+      "pluginVersion": "10.4.0",
+      "title": "SOH — État de santé (%)",
+      "type": "gauge",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -2m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\" and r[\"_field\"] == \"soh\")\n  |> last()\n  |> rename(columns: {address: \"BMS\"})",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 },
+      "id": 800,
+      "title": "📋 Tableau récapitulatif",
+      "type": "row"
+    },
+
+    {
+      "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 80 }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "soc" },
+            "properties": [
+              { "id": "displayName",       "value": "SOC (%)"        },
+              { "id": "unit",              "value": "percent"         },
+              { "id": "decimals",          "value": 1                 },
+              { "id": "custom.cellOptions","value": { "type": "color-background", "mode": "gradient" } },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "red",    "value": null },
+                  { "color": "orange", "value": 15   },
+                  { "color": "yellow", "value": 25   },
+                  { "color": "green",  "value": 40   }
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "voltage" },
+            "properties": [
+              { "id": "displayName", "value": "Tension (V)" },
+              { "id": "unit",        "value": "volt"         },
+              { "id": "decimals",    "value": 2              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "current" },
+            "properties": [
+              { "id": "displayName", "value": "Courant (A)" },
+              { "id": "unit",        "value": "amp"          },
+              { "id": "decimals",    "value": 1              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "power" },
+            "properties": [
+              { "id": "displayName", "value": "Puissance (W)" },
+              { "id": "unit",        "value": "watt"           },
+              { "id": "decimals",    "value": 0                }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "temp_max" },
+            "properties": [
+              { "id": "displayName", "value": "T° max (°C)" },
+              { "id": "unit",        "value": "celsius"      },
+              { "id": "decimals",    "value": 1              },
+              { "id": "custom.cellOptions","value": { "type": "color-background", "mode": "basic" } },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "transparent", "value": null },
+                  { "color": "orange",      "value": 40   },
+                  { "color": "red",         "value": 50   }
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "temp_min" },
+            "properties": [
+              { "id": "displayName", "value": "T° min (°C)" },
+              { "id": "unit",        "value": "celsius"      },
+              { "id": "decimals",    "value": 1              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "cell_delta_mv" },
+            "properties": [
+              { "id": "displayName", "value": "Delta cell (mV)" },
+              { "id": "unit",        "value": "mvolt"            },
+              { "id": "decimals",    "value": 1                  },
+              { "id": "custom.cellOptions","value": { "type": "color-background", "mode": "basic" } },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green",  "value": null },
+                  { "color": "yellow", "value": 30   },
+                  { "color": "orange", "value": 50   },
+                  { "color": "red",    "value": 80   }
+                ]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "capacity" },
+            "properties": [
+              { "id": "displayName", "value": "Capacité (Ah)" },
+              { "id": "unit",        "value": "amph"           },
+              { "id": "decimals",    "value": 1                }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "charge_mos" },
+            "properties": [
+              { "id": "displayName", "value": "MOS charge" },
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "0": { "color": "red",   "text": "OFF" },
+                  "1": { "color": "green", "text": "ON"  }
+                }}
+              ]},
+              { "id": "custom.cellOptions","value": { "type": "color-background", "mode": "basic" } },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "discharge_mos" },
+            "properties": [
+              { "id": "displayName", "value": "MOS décharge" },
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "0": { "color": "red",   "text": "OFF" },
+                  "1": { "color": "green", "text": "ON"  }
+                }}
+              ]},
+              { "id": "custom.cellOptions","value": { "type": "color-background", "mode": "basic" } },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "any_alarm" },
+            "properties": [
+              { "id": "displayName", "value": "Alarme" },
+              { "id": "mappings", "value": [
+                { "type": "value", "options": {
+                  "0": { "color": "green", "text": "✓ OK"     },
+                  "1": { "color": "red",   "text": "⚠ ALARME" }
+                }}
+              ]},
+              { "id": "custom.cellOptions","value": { "type": "color-background", "mode": "basic" } },
+              { "id": "thresholds", "value": {
+                "mode": "absolute",
+                "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }]
+              }}
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "cycles" },
+            "properties": [
+              { "id": "displayName", "value": "Cycles"  },
+              { "id": "unit",        "value": "none"    },
+              { "id": "decimals",    "value": 0         }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "BMS" },
+            "properties": [
+              { "id": "custom.width", "value": 90 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "_time" },
+            "properties": [
+              { "id": "displayName",  "value": "Horodatage" },
+              { "id": "custom.width", "value": 170          }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 66 },
+      "id": 60,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [{ "desc": false, "displayName": "BMS" }]
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Résumé dernières valeurs — tous packs",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+          "query": "from(bucket: v.defaultBucket)\n  |> range(start: -5m)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\")\n  |> filter(fn: (r) => contains(value: r[\"_field\"], set: [\"soc\",\"voltage\",\"current\",\"power\",\"temp_max\",\"temp_min\",\"cell_delta_mv\",\"charge_mos\",\"discharge_mos\",\"any_alarm\",\"cycles\",\"capacity\"]))\n  |> last()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> rename(columns: {address: \"BMS\"})\n  |> group()",
+          "refId": "A"
+        }
+      ]
+    }
+
+  ],
+
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["dalybms", "lifepo4", "battery", "iot", "avance"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "influxdb", "uid": "influxdb-dalybms" },
+        "definition": "from(bucket: v.defaultBucket)\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\")\n  |> keep(columns: [\"address\"])\n  |> distinct(column: \"address\")",
+        "hide": 0,
+        "includeAll": true,
+        "multi": true,
+        "name": "bms_address",
+        "options": [],
+        "query": "from(bucket: v.defaultBucket)\n  |> range(start: -1h)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"bms_status\")\n  |> keep(columns: [\"address\"])\n  |> distinct(column: \"address\")",
+        "refresh": 2,
+        "sort": 1,
+        "type": "query",
+        "label": "BMS Address"
+      }
+    ]
+  },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DalyBMS — Batteries Avancé",
+  "uid": "dalybms-batteries-v1",
+  "version": 1
+}
