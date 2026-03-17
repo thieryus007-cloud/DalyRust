@@ -150,7 +150,7 @@ services:
     # Mode hardware réel — autodétection du port COM
     command: []
     devices:
-      - //./COM6://./COM6
+      - /dev/daly-bms:/dev/ttyUSB0
     depends_on:
       mosquitto:
         condition: service_healthy
