@@ -245,8 +245,8 @@ svstat /service/daly-bms-venus
 # Processus actifs (BusyBox)
 ps | grep daly
 
-# D-Bus — liste services battery
-dbus -y --system list | grep battery
+# D-Bus — liste services battery (syntaxe correcte Venus OS)
+dbus -y | grep battery
 
 # D-Bus — lire valeurs
 dbus -y com.victronenergy.battery.mqtt_1 /Soc GetValue
