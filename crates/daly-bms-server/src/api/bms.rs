@@ -316,13 +316,26 @@ pub async fn get_settings(
         Ok(p)  => p,
         Err(e) => return e,
     };
-    match daly_bms_core::commands::get_bms_settings(&port, addr).await {
-        Ok(s) => (StatusCode::OK, Json(json!({
-            "bms": format!("{:#04x}", addr),
-            "settings": s,
-        }))).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{:?}", e)}))).into_response(),
+    // Retry jusqu'à 3 fois avec 300 ms de délai entre tentatives.
+    // Nécessaire sur bus RS485 partagé : la première tentative peut tomber sur
+    // un moment de contention avec le polling ou un autre BMS.
+    let mut last_err = None;
+    for attempt in 0u8..3 {
+        match daly_bms_core::commands::get_bms_settings(&port, addr).await {
+            Ok(s) => return (StatusCode::OK, Json(json!({
+                "bms": format!("{:#04x}", addr),
+                "settings": s,
+            }))).into_response(),
+            Err(e) => {
+                if attempt < 2 {
+                    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                }
+                last_err = Some(e);
+            }
+        }
     }
+    let e = last_err.unwrap();
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{:?}", e)}))).into_response()
 }
 
 // =============================================================================

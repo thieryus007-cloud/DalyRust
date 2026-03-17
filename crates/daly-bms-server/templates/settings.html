@@ -414,16 +414,24 @@ function showError(addr, msg) {
   if (body) body.innerHTML = `<div class="settings-error">⚠️ ${msg}</div>`;
 }
 
-// Charger les paramètres de chaque BMS au chargement
-BMS_LIST.forEach(function(bms) {
+// Charger les paramètres de chaque BMS séquentiellement.
+// Sur bus RS485 partagé, les requêtes parallèles provoquent de la contention
+// entre BMS et des timeouts sur le second BMS.
+(function loadNext(idx) {
+  if (idx >= BMS_LIST.length) return;
+  var bms = BMS_LIST[idx];
   fetch('/api/v1/bms/' + bms.addr + '/settings')
     .then(function(r) { return r.json(); })
     .then(function(data) {
-      if (data.error) { showError(bms.addr, data.error); return; }
-      renderSettings(bms.addr, data.settings);
+      if (data.error) { showError(bms.addr, data.error); }
+      else { renderSettings(bms.addr, data.settings); }
+      loadNext(idx + 1);
     })
-    .catch(function(e) { showError(bms.addr, 'Erreur réseau : ' + e.message); });
-});
+    .catch(function(e) {
+      showError(bms.addr, 'Erreur réseau : ' + e.message);
+      loadNext(idx + 1);
+    });
+}(0));
 
 // ─── Toggle formulaire d'édition ─────────────────────────────────────────────
 function toggleForm(type, addr) {
