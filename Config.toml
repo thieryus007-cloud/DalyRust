@@ -51,7 +51,7 @@ addresses = ["0x01", "0x02"]
 
 [api]
 # Interface et port d'écoute (0.0.0.0 = accessible depuis le réseau local)
-bind = "0.0.0.0:8000"
+bind = "0.0.0.0:8080"
 
 # Clé API pour protéger les endpoints d'écriture (MOS, SOC, config, reset)
 # Vide ou absent = pas d'authentification (développement uniquement !)
