@@ -208,8 +208,8 @@ name            = "BMS-360Ah"
 capacity_ah     = 360.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
-mqtt_index      = 1    # doit correspondre à l'adresse RS485 (topic santuario/bms/1/venus)
-device_instance = 141  # DeviceInstance Venus OS / VRM (ex: 141, 142...)
+mqtt_index      = 1    # index topic MQTT (santuario/bms/1/venus), même que dbus-mqtt-battery-41
+device_instance = 151  # DeviceInstance Venus OS / VRM (141/142 = dbus-mqtt-battery, 151/152 = daly-bms-venus)
 
 [[bms]]
 address         = "0x02"
@@ -217,8 +217,8 @@ name            = "BMS-320Ah"
 capacity_ah     = 320.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
-mqtt_index      = 2    # doit correspondre à l'adresse RS485 (topic santuario/bms/2/venus)
-device_instance = 142  # DeviceInstance Venus OS / VRM
+mqtt_index      = 2    # index topic MQTT (santuario/bms/2/venus), même que dbus-mqtt-battery-42
+device_instance = 152  # DeviceInstance Venus OS / VRM
 
 
 # =============================================================================
