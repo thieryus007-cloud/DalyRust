@@ -26,8 +26,12 @@ INSTALL_DIR="/data/daly-bms"
 SERVICE_DIR="/data/etc/sv"
 ACTIVE_DIR="/service"
 
-# Binaires cross-compilés (ARM64)
-TARGET="aarch64-unknown-linux-gnu"
+# Architecture : armv7 (NanoPi 32-bit) ou aarch64 (64-bit, défaut)
+if [ "${ARCH:-}" = "armv7" ]; then
+    TARGET="armv7-unknown-linux-gnueabihf"
+else
+    TARGET="aarch64-unknown-linux-gnu"
+fi
 RELEASE_DIR="target/${TARGET}/release"
 
 echo "=== Déploiement daly-bms-venus sur Venus OS ${GX_IP} ==="

@@ -13,9 +13,11 @@
 CARGO      := cargo
 BINARY     := daly-bms-server
 CLI        := daly-bms-cli
-TARGET_ARM := aarch64-unknown-linux-gnu
+TARGET_ARM    := aarch64-unknown-linux-gnu
+TARGET_ARMV7  := armv7-unknown-linux-gnueabihf
 RELEASE_DIR := target/release
 ARM_RELEASE_DIR := target/$(TARGET_ARM)/release
+ARMV7_RELEASE_DIR := target/$(TARGET_ARMV7)/release
 
 # =============================================================================
 # Infrastructure Docker
@@ -55,7 +57,7 @@ ps:
 # Compilation
 # =============================================================================
 
-.PHONY: build build-arm build-cli build-venus build-venus-arm install-venus
+.PHONY: build build-arm build-arm-v7 build-cli build-venus build-venus-arm build-venus-armv7 install-venus install-venus-v7
 
 VENUS_BIN  := daly-bms-venus
 
@@ -83,10 +85,26 @@ build-venus-arm:
 	@echo "  $(ARM_RELEASE_DIR)/$(BINARY)"
 	@echo "  $(ARM_RELEASE_DIR)/$(VENUS_BIN)"
 
+build-arm-v7:
+	CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
+	  $(CARGO) build --release --target $(TARGET_ARMV7) --bin $(BINARY)
+	@echo "✓ Binaire ARMv7 : $(ARMV7_RELEASE_DIR)/$(BINARY)"
+
+build-venus-armv7:
+	CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
+	  $(CARGO) build --release --target $(TARGET_ARMV7) --bin $(VENUS_BIN) --bin $(BINARY)
+	@echo "✓ Binaires ARMv7 Venus OS :"
+	@echo "  $(ARMV7_RELEASE_DIR)/$(BINARY)"
+	@echo "  $(ARMV7_RELEASE_DIR)/$(VENUS_BIN)"
+
 # Déploiement sur Venus OS (remplacer GX_IP par l'IP de votre GX)
 GX_IP ?= 192.168.1.120
 install-venus: build-venus-arm
 	./nanoPi/install-venus.sh $(GX_IP)
+
+# Déploiement sur Venus OS armv7l (NanoPi 32-bit)
+install-venus-v7: build-venus-armv7
+	ARCH=armv7 ./nanoPi/install-venus.sh $(GX_IP)
 
 build-all:
 	$(CARGO) build --release
