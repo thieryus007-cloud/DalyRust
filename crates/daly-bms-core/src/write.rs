@@ -93,8 +93,10 @@ pub async fn set_soc(
     info!(bms = format!("{:#04x}", addr), "set_soc → {:.1}%", soc_percent);
     let raw = (soc_percent * 10.0) as u16;
     let mut data = [0u8; 8];
-    data[0] = (raw >> 8) as u8;
-    data[1] = (raw & 0xFF) as u8;
+    // Protocole Daly 0x21 : bytes [4-9] = date/time (mis à 0), bytes [10-11] = SOC
+    // → data[6..7] dans le payload de 8 octets
+    data[6] = (raw >> 8) as u8;
+    data[7] = (raw & 0xFF) as u8;
     port.send_command(addr, DataId::SetSoc, data).await?;
     Ok(())
 }

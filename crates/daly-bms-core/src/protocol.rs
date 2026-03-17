@@ -157,12 +157,15 @@ impl RequestFrame {
         Self::new(bms_address, cmd, data)
     }
 
-    /// Trame d'écriture SOC : valeur en % × 10, uint16 BE dans data[0..1].
+    /// Trame d'écriture SOC : valeur en % × 10, uint16 BE dans data[6..7].
+    ///
+    /// Protocole 0x21 : bytes [4-9] = date/time (zéros), bytes [10-11] = SOC
+    /// → data[6..7] dans le payload de 8 octets (conforme python-daly-bms).
     pub fn write_soc(bms_address: u8, soc_percent: f32) -> Self {
         let raw = (soc_percent * 10.0) as u16;
         let mut data = [0u8; 8];
-        data[0] = (raw >> 8) as u8;
-        data[1] = (raw & 0xFF) as u8;
+        data[6] = (raw >> 8) as u8;
+        data[7] = (raw & 0xFF) as u8;
         Self::new(bms_address, DataId::SetSoc, data)
     }
 
