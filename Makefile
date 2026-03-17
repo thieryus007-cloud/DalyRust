@@ -141,8 +141,8 @@ PI_BIN_PATH ?= /usr/local/bin/daly-bms-server
 .PHONY: deploy
 
 deploy: build-arm
-	scp $(ARM_RELEASE_DIR)/$(BINARY) $(PI_HOST):$(PI_BIN_PATH)
-	ssh $(PI_HOST) "sudo systemctl restart daly-bms"
+	scp $(ARM_RELEASE_DIR)/$(BINARY) $(PI_HOST):/tmp/$(BINARY)
+	ssh $(PI_HOST) "sudo mv /tmp/$(BINARY) $(PI_BIN_PATH) && sudo chmod +x $(PI_BIN_PATH) && sudo systemctl restart daly-bms"
 	@echo "✓ Déployé sur $(PI_HOST)"
 
 # =============================================================================
