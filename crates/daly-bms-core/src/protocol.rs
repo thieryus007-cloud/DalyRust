@@ -157,12 +157,12 @@ impl RequestFrame {
         Self::new(bms_address, cmd, data)
     }
 
-    /// Trame d'écriture SOC : valeur en % × 10, uint16 BE dans data[4..5].
+    /// Trame d'écriture SOC : valeur en % × 10, uint16 BE dans data[0..1].
     pub fn write_soc(bms_address: u8, soc_percent: f32) -> Self {
         let raw = (soc_percent * 10.0) as u16;
         let mut data = [0u8; 8];
-        data[4] = (raw >> 8) as u8;
-        data[5] = (raw & 0xFF) as u8;
+        data[0] = (raw >> 8) as u8;
+        data[1] = (raw & 0xFF) as u8;
         Self::new(bms_address, DataId::SetSoc, data)
     }
 

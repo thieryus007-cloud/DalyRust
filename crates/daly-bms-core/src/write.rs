@@ -91,15 +91,11 @@ pub async fn set_soc(
         return Err(anyhow::anyhow!("SOC hors plage [0, 100] : {}", soc_percent).into());
     }
     info!(bms = format!("{:#04x}", addr), "set_soc → {:.1}%", soc_percent);
-    use crate::protocol::RequestFrame;
-    let frame = RequestFrame::write_soc(addr, soc_percent);
-    // Envoi direct (send_command reconstruit la trame)
-    port.send_command(addr, DataId::SetSoc, {
-        let mut d = [0u8; 8];
-        d.copy_from_slice(&frame.bytes[4..12]);
-        d
-    })
-    .await?;
+    let raw = (soc_percent * 10.0) as u16;
+    let mut data = [0u8; 8];
+    data[0] = (raw >> 8) as u8;
+    data[1] = (raw & 0xFF) as u8;
+    port.send_command(addr, DataId::SetSoc, data).await?;
     Ok(())
 }
 
