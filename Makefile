@@ -55,7 +55,9 @@ ps:
 # Compilation
 # =============================================================================
 
-.PHONY: build build-arm build-cli
+.PHONY: build build-arm build-cli build-venus build-venus-arm install-venus
+
+VENUS_BIN  := daly-bms-venus
 
 build:
 	$(CARGO) build --release --bin $(BINARY)
@@ -68,6 +70,23 @@ build-arm:
 
 build-cli:
 	$(CARGO) build --release --bin $(CLI)
+
+# Phase 3 — Venus OS D-Bus bridge
+build-venus:
+	$(CARGO) build --release --bin $(VENUS_BIN)
+	@echo "✓ Binaire Venus : $(RELEASE_DIR)/$(VENUS_BIN)"
+
+build-venus-arm:
+	CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+	  $(CARGO) build --release --target $(TARGET_ARM) --bin $(VENUS_BIN) --bin $(BINARY)
+	@echo "✓ Binaires ARM Venus OS :"
+	@echo "  $(ARM_RELEASE_DIR)/$(BINARY)"
+	@echo "  $(ARM_RELEASE_DIR)/$(VENUS_BIN)"
+
+# Déploiement sur Venus OS (remplacer GX_IP par l'IP de votre GX)
+GX_IP ?= 192.168.1.120
+install-venus: build-venus-arm
+	./nanoPi/install-venus.sh $(GX_IP)
 
 build-all:
 	$(CARGO) build --release

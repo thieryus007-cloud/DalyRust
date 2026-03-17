@@ -96,6 +96,39 @@ publish_interval_sec = 1
 format = "json"
 
 
+# =============================================================================
+# Venus OS D-Bus bridge (daly-bms-venus)
+# =============================================================================
+# Ce service publie chaque BMS comme com.victronenergy.battery.{prefix}_{index}
+# sur le bus D-Bus de Venus OS, alimenté par les payloads MQTT /venus.
+#
+# Prérequis :
+#   - daly-bms-server actif avec mqtt.enabled = true
+#   - Broker Mosquitto accessible (mqtt.host + mqtt.port ci-dessus)
+#   - daly-bms-venus déployé sur le NanoPi/GX (voir nanoPi/install-venus.sh)
+
+[venus]
+enabled = true
+
+# Bus D-Bus :
+#   "system"  → /var/run/dbus/system_bus_socket (Venus OS production)
+#   "session" → $DBUS_SESSION_BUS_ADDRESS       (test développement sans sudo)
+dbus_bus = "system"
+
+# Préfixe du suffixe de service D-Bus.
+# Service résultant : com.victronenergy.battery.{prefix}_{mqtt_index}
+# Ex: "mqtt" + mqtt_index=1 → com.victronenergy.battery.mqtt_1
+service_prefix = "mqtt"
+
+# Watchdog (secondes) : si aucune donnée MQTT pendant ce délai,
+# /Connected passe à 0 → Venus OS marque la batterie comme hors ligne
+watchdog_sec = 30
+
+# Intervalle de republication forcée (secondes) — garantit le keepalive Venus OS
+# Doit être < watchdog_sec et < 60s (keepalive MQTT bridge Venus)
+republish_sec = 25
+
+
 [influxdb]
 # true  = activer l'écriture InfluxDB (Docker infra doit être démarré)
 # false = désactiver (pas de Docker, ou test sans InfluxDB)

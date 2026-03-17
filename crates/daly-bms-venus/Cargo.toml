@@ -1,0 +1,42 @@
+[package]
+name        = "daly-bms-venus"
+description = "Venus OS D-Bus battery service bridge for Daly BMS (MQTT → D-Bus)"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+rust-version.workspace = true
+
+[[bin]]
+name = "daly-bms-venus"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio       = { workspace = true }
+
+# D-Bus — pure Rust, no libdbus-dev required → easy ARM cross-compile
+zbus        = { version = "4", default-features = false, features = ["tokio"] }
+zvariant    = { version = "4", default-features = false }
+
+# MQTT subscriber (re-use existing broker)
+rumqttc     = { workspace = true }
+
+# Serialisation
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+toml        = { workspace = true }
+
+# Error handling
+anyhow      = { workspace = true }
+thiserror   = { workspace = true }
+
+# Logging
+tracing               = { workspace = true }
+tracing-subscriber    = { workspace = true }
+
+# CLI + config
+clap        = { workspace = true }
+
+# Misc
+tokio-util  = { workspace = true }

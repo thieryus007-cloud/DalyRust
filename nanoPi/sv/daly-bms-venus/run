@@ -1,0 +1,14 @@
+#!/bin/sh
+# Service runit pour daly-bms-venus (Venus OS D-Bus bridge)
+#
+# Activé via :
+#   ln -s /data/etc/sv/daly-bms-venus /service/
+#
+# Logs : svlogd (via ./log/run) ou stderr vers journalctl
+#
+# IMPORTANT : le service system D-Bus de Venus OS doit être actif.
+# Vérifier : ls /var/run/dbus/system_bus_socket
+
+exec /data/daly-bms/daly-bms-venus \
+    --config /data/daly-bms/config.toml \
+    2>&1

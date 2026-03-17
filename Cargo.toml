@@ -8,6 +8,7 @@ members = [
     "crates/daly-bms-server",
     "crates/daly-bms-cli",
     "crates/daly-bms-probe",
+    "crates/daly-bms-venus",
 ]
 
 [workspace.package]
@@ -66,6 +67,10 @@ chrono        = { version = "0.4",  features = ["serde"] }
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 clap          = { version = "4",    features = ["derive", "color", "env"] }
+
+# ── D-Bus pure Rust (no libdbus-dev — easy ARM cross-compile) ─────────────────
+zbus          = { version = "4",    default-features = false, features = ["tokio"] }
+zvariant      = { version = "4",    default-features = false }
 
 # ── UUID ───────────────────────────────────────────────────────────────────────
 uuid          = { version = "1",    features = ["v4"] }
