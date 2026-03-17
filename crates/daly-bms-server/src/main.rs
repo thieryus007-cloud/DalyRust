@@ -229,6 +229,9 @@ async fn main() -> anyhow::Result<()> {
                     info!("Port série {} ouvert à {} baud", resolved_port, config.serial.baud);
                     state.polling_active.store(true, Ordering::Relaxed);
 
+                    // Rendre le port disponible pour les commandes d'écriture
+                    state.set_port(port.clone()).await;
+
                     // ── 2. Résoudre les adresses BMS (auto-découverte ou config) ──
                     let addresses = if auto_discover_addrs {
                         info!("Découverte automatique des BMS sur le bus RS485 (0x01..0x04)...");

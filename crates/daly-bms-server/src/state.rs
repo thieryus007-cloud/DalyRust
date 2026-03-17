@@ -4,6 +4,7 @@
 //! et les handlers Axum.
 
 use crate::config::AppConfig;
+use daly_bms_core::bus::DalyPort;
 use daly_bms_core::types::BmsSnapshot;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::Arc;
@@ -59,6 +60,10 @@ pub struct AppState {
 
     /// Indicateur polling actif.
     pub polling_active: Arc<std::sync::atomic::AtomicBool>,
+
+    /// Port série partagé — None en mode simulateur.
+    /// Partagé avec le poll_loop via le Mutex interne de DalyPort.
+    pub port: Arc<RwLock<Option<Arc<DalyPort>>>>,
 }
 
 impl AppState {
@@ -77,7 +82,13 @@ impl AppState {
             buffers: Arc::new(RwLock::new(buffers)),
             ws_tx,
             polling_active: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            port: Arc::new(RwLock::new(None)),
         }
+    }
+
+    /// Enregistre le port série ouvert (mode hardware uniquement).
+    pub async fn set_port(&self, port: Arc<DalyPort>) {
+        *self.port.write().await = Some(port);
     }
 
     /// Enregistre un nouveau snapshot dans le ring buffer et broadcast WebSocket.

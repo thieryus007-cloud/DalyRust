@@ -156,9 +156,148 @@
   </table>
 </div>
 
+{# ─── Actions BMS ─────────────────────────────────────────────────────────── #}
+<div class="card chart-section" style="margin-bottom:1rem">
+  <div class="card-title">Actions BMS</div>
+  <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
+    <button onclick="openSocModal()" class="btn-action">⚡ Calibrer SOC</button>
+    <button onclick="openResetModal()" class="btn-action btn-danger">⚠ Reset BMS</button>
+    <span style="font-size:0.7rem;color:var(--muted)">
+      Mot de passe Daly requis &nbsp;·&nbsp; Inopérant en mode simulateur
+    </span>
+  </div>
+</div>
+
+{# ─── Modal Calibration SOC ───────────────────────────────────────────────── #}
+<div id="modal-soc" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeSocModal()">
+  <div class="modal-box">
+    <div class="modal-title">⚡ Calibration SOC</div>
+    <div class="modal-body">
+      <label class="modal-label">Nouvelle valeur SOC (%)</label>
+      <input type="number" id="soc-value" min="0" max="100" step="0.1" value="100" class="modal-input">
+      <label class="modal-label" style="margin-top:0.75rem">Mot de passe Daly</label>
+      <input type="password" id="soc-password" value="12345678" class="modal-input" autocomplete="off">
+      <div id="soc-result" style="margin-top:0.6rem;min-height:1.2em;font-size:0.75rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeSocModal()" class="btn-modal-cancel">Annuler</button>
+      <button onclick="submitSoc()" class="btn-modal-confirm">Envoyer</button>
+    </div>
+  </div>
+</div>
+
+{# ─── Modal Reset BMS ─────────────────────────────────────────────────────── #}
+<div id="modal-reset" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeResetModal()">
+  <div class="modal-box">
+    <div class="modal-title" style="color:var(--red)">⚠ Reset BMS {{ detail.summary.address_hex }}</div>
+    <div class="modal-body">
+      <p style="color:var(--red);font-size:0.8rem;background:rgba(207,34,46,0.07);border:1px solid rgba(207,34,46,0.25);border-radius:4px;padding:0.6rem 0.75rem;margin-bottom:0.75rem">
+        Cette opération réinitialise le BMS. Les paramètres de fonctionnement sont conservés par le BMS mais la communication sera interrompue quelques secondes.
+      </p>
+      <label class="modal-label">Mot de passe Daly</label>
+      <input type="password" id="reset-password" value="12345678" class="modal-input" autocomplete="off">
+      <label class="modal-label" style="margin-top:0.75rem;display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+        <input type="checkbox" id="reset-confirm" style="width:auto">
+        Je confirme le reset du BMS {{ detail.summary.address_hex }}
+      </label>
+      <div id="reset-result" style="margin-top:0.6rem;min-height:1.2em;font-size:0.75rem"></div>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeResetModal()" class="btn-modal-cancel">Annuler</button>
+      <button onclick="submitReset()" class="btn-modal-confirm" style="background:var(--red)">Reset</button>
+    </div>
+  </div>
+</div>
+
 {# JSON ECharts (cachés) #}
 <script type="application/json" id="opt-cells">{{ detail.cells_bar_json|safe }}</script>
 <script type="application/json" id="opt-boxplot">{{ detail.cells_boxplot_json|safe }}</script>
+
+<style>
+  .btn-action {
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--accent);
+    background: var(--surface);
+    color: var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+  .btn-action:hover { background: rgba(9,105,218,0.08); }
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: rgba(207,34,46,0.08); }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    width: min(440px, 92vw);
+    padding: 1.5rem;
+  }
+  .modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .modal-body { display: flex; flex-direction: column; }
+  .modal-label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .modal-input {
+    width: 100%;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: var(--surface2);
+    color: var(--text);
+  }
+  .modal-input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+  .btn-modal-cancel {
+    padding: 0.4rem 1rem;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  .btn-modal-confirm {
+    padding: 0.4rem 1rem;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .btn-modal-confirm:hover { opacity: 0.88; }
+  .btn-modal-cancel:hover  { background: var(--border); }
+</style>
 
 {% endblock %}
 
@@ -166,6 +305,7 @@
 <script>
 (function() {
   const BMS_ADDR = {{ detail.summary.address }};
+  window._bmsAddr = BMS_ADDR;  // exposé pour les fonctions globales (modals)
 
   // ─── Initialisation des graphiques ────────────────────────────────────────
   function initChart(domId, optId) {
@@ -324,5 +464,73 @@
   setTimeout(refreshHistory, 5000);
   setInterval(refreshHistory, 30000);
 })();
+
+// ─── Actions BMS — fonctions globales (appelées depuis onclick="") ───────────
+function openSocModal()   { document.getElementById('modal-soc').style.display   = 'flex'; }
+function closeSocModal()  { document.getElementById('modal-soc').style.display   = 'none'; document.getElementById('soc-result').textContent = ''; }
+function openResetModal() { document.getElementById('modal-reset').style.display = 'flex'; }
+function closeResetModal(){ document.getElementById('modal-reset').style.display = 'none'; document.getElementById('reset-result').textContent = ''; document.getElementById('reset-confirm').checked = false; }
+
+function _bmsActionResult(id, ok, msg) {
+  var el = document.getElementById(id);
+  el.style.color = ok ? 'var(--green)' : 'var(--red)';
+  el.textContent = msg;
+}
+
+function submitSoc() {
+  var soc = parseFloat(document.getElementById('soc-value').value);
+  var pwd = document.getElementById('soc-password').value;
+  if (isNaN(soc) || soc < 0 || soc > 100) {
+    _bmsActionResult('soc-result', false, 'SOC invalide — valeur entre 0 et 100 %');
+    return;
+  }
+  document.getElementById('soc-result').style.color = 'var(--muted)';
+  document.getElementById('soc-result').textContent = 'Envoi en cours…';
+  fetch('/api/v1/bms/' + window._bmsAddr + '/soc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ soc: soc, password: pwd })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      var msg = '✓ SOC calibré à ' + soc.toFixed(1) + ' %';
+      if (data.warning) msg += '  (' + data.warning + ')';
+      _bmsActionResult('soc-result', true, msg);
+      setTimeout(closeSocModal, 2500);
+    } else {
+      _bmsActionResult('soc-result', false, '✗ ' + (data.error || 'Erreur inconnue'));
+    }
+  })
+  .catch(function(e) { _bmsActionResult('soc-result', false, '✗ Erreur réseau : ' + e); });
+}
+
+function submitReset() {
+  var pwd     = document.getElementById('reset-password').value;
+  var confirm = document.getElementById('reset-confirm').checked;
+  if (!confirm) {
+    _bmsActionResult('reset-result', false, 'Cocher la case de confirmation');
+    return;
+  }
+  document.getElementById('reset-result').style.color = 'var(--muted)';
+  document.getElementById('reset-result').textContent = 'Envoi du reset…';
+  fetch('/api/v1/bms/' + window._bmsAddr + '/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ confirm: true, password: pwd })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      var msg = '✓ Reset envoyé — BMS redémarre (quelques secondes d\'interruption)';
+      if (data.warning) msg += '  (' + data.warning + ')';
+      _bmsActionResult('reset-result', true, msg);
+      setTimeout(closeResetModal, 3000);
+    } else {
+      _bmsActionResult('reset-result', false, '✗ ' + (data.error || 'Erreur inconnue'));
+    }
+  })
+  .catch(function(e) { _bmsActionResult('reset-result', false, '✗ Erreur réseau : ' + e); });
+}
 </script>
 {% endblock %}

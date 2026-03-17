@@ -211,70 +211,160 @@ pub async fn compare_all(State(state): State<AppState>) -> Json<Value> {
 // POST — Écriture
 // =============================================================================
 
+/// Mot de passe Daly requis pour les commandes d'écriture (identique à l'app Daly).
+const DALY_WRITE_PASSWORD: &str = "12345678";
+
+/// Extrait le port série depuis l'état. Retourne une erreur HTTP si indisponible.
+async fn require_port(state: &AppState) -> Result<std::sync::Arc<daly_bms_core::bus::DalyPort>, Response> {
+    let guard = state.port.read().await;
+    match guard.as_ref() {
+        Some(p) => Ok(p.clone()),
+        None => Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"error": "Port série non disponible (mode simulateur ou port non ouvert)"})),
+        ).into_response()),
+    }
+}
+
 #[derive(Deserialize)]
 pub struct MosCommand {
     #[allow(dead_code)]
     pub charge: Option<bool>,
     #[allow(dead_code)]
     pub discharge: Option<bool>,
+    #[allow(dead_code)]
+    pub password: Option<String>,
 }
 
-/// POST /api/v1/bms/:id/mos
+/// POST /api/v1/bms/:id/mos — Non implémenté (hors scope interface web)
 pub async fn set_mos(
     Path(_id): Path<String>,
     State(_state): State<AppState>,
     Json(_body): Json<MosCommand>,
 ) -> impl IntoResponse {
-    // TODO: Phase 2 — appeler daly_bms_core::write::set_charge_mos / set_discharge_mos
-    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Phase 2"})))
+    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Commande MOS non exposée via l'interface web"})))
 }
 
 #[derive(Deserialize)]
 pub struct SocCommand {
-    #[allow(dead_code)]
     pub soc: f32,
+    pub password: String,
 }
 
 /// POST /api/v1/bms/:id/soc
+///
+/// Calibre le SOC du BMS à la valeur indiquée.
+/// Body JSON : `{ "soc": 80.0, "password": "12345678" }`
 pub async fn set_soc(
-    Path(_id): Path<String>,
-    State(_state): State<AppState>,
-    Json(_body): Json<SocCommand>,
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<SocCommand>,
 ) -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Phase 2"})))
+    if body.password != DALY_WRITE_PASSWORD {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Mot de passe incorrect"}))).into_response();
+    }
+    if !(0.0..=100.0).contains(&body.soc) {
+        return (StatusCode::BAD_REQUEST, Json(json!({"error": "SOC hors plage [0, 100]"}))).into_response();
+    }
+    if state.config.read_only.enabled {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Mode lecture seule actif"}))).into_response();
+    }
+    let addr = match parse_addr(&id) {
+        Some(a) => a,
+        None => return (StatusCode::BAD_REQUEST, Json(json!({"error": "Adresse BMS invalide"}))).into_response(),
+    };
+    let port = match require_port(&state).await {
+        Ok(p)  => p,
+        Err(e) => return e,
+    };
+    match daly_bms_core::write::set_soc(&port, addr, body.soc, false).await {
+        Ok(()) => (StatusCode::OK, Json(json!({
+            "ok": true,
+            "bms": format!("{:#04x}", addr),
+            "soc": body.soc,
+        }))).into_response(),
+        Err(daly_bms_core::error::DalyError::Timeout { .. }) => {
+            // Certains BMS n'envoient pas d'ACK après écriture SOC — comportement normal.
+            (StatusCode::OK, Json(json!({
+                "ok": true,
+                "bms": format!("{:#04x}", addr),
+                "soc": body.soc,
+                "warning": "Pas d'ACK BMS (commande probablement reçue — vérifier le SOC dans 5s)",
+            }))).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{:?}", e)}))).into_response(),
+    }
 }
 
-/// POST /api/v1/bms/:id/soc/full
+/// POST /api/v1/bms/:id/soc/full — SOC → 100%
 pub async fn set_soc_full(
-    Path(_id): Path<String>,
+    Path(id): Path<String>,
     State(_state): State<AppState>,
 ) -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Phase 2"})))
+    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Utiliser POST /soc avec { soc: 100, password: ... }",
+        "hint": format!("POST /api/v1/bms/{}/soc", id)
+    })))
 }
 
-/// POST /api/v1/bms/:id/soc/empty
+/// POST /api/v1/bms/:id/soc/empty — SOC → 0%
 pub async fn set_soc_empty(
-    Path(_id): Path<String>,
+    Path(id): Path<String>,
     State(_state): State<AppState>,
 ) -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Phase 2"})))
+    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Utiliser POST /soc avec { soc: 0, password: ... }",
+        "hint": format!("POST /api/v1/bms/{}/soc", id)
+    })))
 }
 
 #[derive(Deserialize)]
 pub struct ResetCommand {
     pub confirm: bool,
+    pub password: String,
 }
 
 /// POST /api/v1/bms/:id/reset
+///
+/// Réinitialise le BMS. Nécessite `confirm: true` ET le mot de passe Daly.
+/// Body JSON : `{ "confirm": true, "password": "12345678" }`
 pub async fn reset_bms(
-    Path(_id): Path<String>,
-    State(_state): State<AppState>,
+    Path(id): Path<String>,
+    State(state): State<AppState>,
     Json(body): Json<ResetCommand>,
 ) -> impl IntoResponse {
     if !body.confirm {
         return (StatusCode::BAD_REQUEST, Json(json!({"error": "confirm: true requis"}))).into_response();
     }
-    (StatusCode::NOT_IMPLEMENTED, Json(json!({"error": "Phase 2"}))).into_response()
+    if body.password != DALY_WRITE_PASSWORD {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Mot de passe incorrect"}))).into_response();
+    }
+    if state.config.read_only.enabled {
+        return (StatusCode::FORBIDDEN, Json(json!({"error": "Mode lecture seule actif"}))).into_response();
+    }
+    let addr = match parse_addr(&id) {
+        Some(a) => a,
+        None => return (StatusCode::BAD_REQUEST, Json(json!({"error": "Adresse BMS invalide"}))).into_response(),
+    };
+    let port = match require_port(&state).await {
+        Ok(p)  => p,
+        Err(e) => return e,
+    };
+    match daly_bms_core::write::reset_bms(&port, addr, false).await {
+        Ok(()) => (StatusCode::OK, Json(json!({
+            "ok": true,
+            "bms": format!("{:#04x}", addr),
+            "action": "reset",
+        }))).into_response(),
+        Err(daly_bms_core::error::DalyError::Timeout { .. }) => {
+            // Le reset ne renvoie généralement pas d'ACK.
+            (StatusCode::OK, Json(json!({
+                "ok": true,
+                "bms": format!("{:#04x}", addr),
+                "action": "reset",
+                "warning": "Pas d'ACK BMS (normal après un reset)",
+            }))).into_response()
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("{:?}", e)}))).into_response(),
+    }
 }
 
 // =============================================================================
