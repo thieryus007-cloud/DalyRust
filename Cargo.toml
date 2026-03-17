@@ -49,17 +49,17 @@ tower-http    = { version = "0.5",  features = ["cors", "trace", "compression-gz
 rumqttc       = "0.25"
 
 # ── InfluxDB 2.x ───────────────────────────────────────────────────────────────
-influxdb2             = "0.5"
+influxdb2             = { version = "0.5", default-features = false, features = ["rustls"] }
 influxdb2-structmap   = "0.2"
 
 # ── SQLite (alertes) ───────────────────────────────────────────────────────────
 rusqlite      = { version = "0.31", features = ["bundled"] }
 
 # ── HTTP client (Telegram) ─────────────────────────────────────────────────────
-reqwest       = { version = "0.12", features = ["json"] }
+reqwest       = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 
 # ── Email ──────────────────────────────────────────────────────────────────────
-lettre        = { version = "0.11", features = ["tokio1-native-tls"] }
+lettre        = { version = "0.11", features = ["tokio1-rustls-tls"], default-features = false }
 
 # ── Date/time ──────────────────────────────────────────────────────────────────
 chrono        = { version = "0.4",  features = ["serde"] }
