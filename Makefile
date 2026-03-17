@@ -62,8 +62,8 @@ build:
 	@echo "✓ Binaire : $(RELEASE_DIR)/$(BINARY)"
 
 build-arm:
-	@command -v cross >/dev/null 2>&1 || cargo install cross
-	cross build --release --target $(TARGET_ARM) --bin $(BINARY)
+	CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+	  $(CARGO) build --release --target $(TARGET_ARM) --bin $(BINARY)
 	@echo "✓ Binaire ARM : $(ARM_RELEASE_DIR)/$(BINARY)"
 
 build-cli:
