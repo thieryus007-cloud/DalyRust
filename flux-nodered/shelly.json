@@ -637,8 +637,8 @@
     {
         "id": "victron_mqtt",
         "type": "mqtt-broker",
-        "name": "Victron MQTT",
-        "broker": "192.168.1.120",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
         "port": "1883",
         "clientid": "nodered_shelly",
         "autoConnect": true,

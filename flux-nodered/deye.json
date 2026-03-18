@@ -167,91 +167,6 @@
         "wires": []
     },
     {
-        "id": "4dbaa5208e3ad638",
-        "type": "victron-input-custom",
-        "z": "66a9fe8bcf4c06a4",
-        "service": "com.victronenergy.vebus/275",
-        "path": "/Ac/Out/L1/F",
-        "serviceObj": {
-            "service": "com.victronenergy.vebus/275",
-            "name": "MultiPlus-II 48/5000/70-50 (275)"
-        },
-        "pathObj": {
-            "path": "/Ac/Out/L1/F",
-            "name": "/Ac/Out/L1/F",
-            "type": "number",
-            "value": 49.948848724365234
-        },
-        "name": "",
-        "onlyChanges": false,
-        "roundValues": "2",
-        "outputs": 1,
-        "x": 210,
-        "y": 300,
-        "wires": [
-            [
-                "9ab315f950ad97af"
-            ]
-        ]
-    },
-    {
-        "id": "47f624e50d43dded",
-        "type": "victron-input-custom",
-        "z": "66a9fe8bcf4c06a4",
-        "service": "com.victronenergy.vebus/275",
-        "path": "/Ac/ActiveIn/Connected",
-        "serviceObj": {
-            "service": "com.victronenergy.vebus/275",
-            "name": "MultiPlus-II 48/5000/70-50 (275)"
-        },
-        "pathObj": {
-            "path": "/Ac/ActiveIn/Connected",
-            "name": "/Ac/ActiveIn/Connected",
-            "type": "number",
-            "value": 0
-        },
-        "name": "",
-        "onlyChanges": false,
-        "outputs": 1,
-        "x": 250,
-        "y": 40,
-        "wires": [
-            [
-                "359031c7637e26a8"
-            ]
-        ]
-    },
-    {
-        "id": "de719af38af0f0c3",
-        "type": "victron-input-vebus",
-        "z": "66a9fe8bcf4c06a4",
-        "service": "com.victronenergy.vebus/275",
-        "path": "/Ac/State/IgnoreAcIn1",
-        "serviceObj": {
-            "service": "com.victronenergy.vebus/275",
-            "name": "MultiPlus-II 48/5000/70-50"
-        },
-        "pathObj": {
-            "path": "/Ac/State/IgnoreAcIn1",
-            "type": "enum",
-            "name": "AC input 1 ignored",
-            "enum": {
-                "0": "AC input not ignored",
-                "1": "AC input ignored"
-            }
-        },
-        "name": "",
-        "onlyChanges": false,
-        "outputs": 1,
-        "x": 210,
-        "y": 360,
-        "wires": [
-            [
-                "b8d5d7042431f1f0"
-            ]
-        ]
-    },
-    {
         "id": "b8d5d7042431f1f0",
         "type": "debug",
         "z": "66a9fe8bcf4c06a4",
@@ -270,10 +185,10 @@
     {
         "id": "victron_mqtt",
         "type": "mqtt-broker",
-        "name": "Victron MQTT",
-        "broker": "192.168.1.120",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
         "port": "1883",
-        "clientid": "nodered_shelly",
+        "clientid": "nodered_deye",
         "autoConnect": true,
         "usetls": false,
         "protocolVersion": "4",
@@ -296,11 +211,104 @@
         "sessionExpiry": ""
     },
     {
-        "id": "47bf3c7fb962c974",
-        "type": "global-config",
-        "env": [],
-        "modules": {
-            "@victronenergy/node-red-contrib-victron": "1.6.60"
-        }
+        "id": "mqtt-in-freq",
+        "type": "mqtt in",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Fréquence AC Out",
+        "topic": "N/c0619ab9929a/vebus/275/Ac/Out/L1/F",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "victron_mqtt",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 210,
+        "y": 300,
+        "wires": [
+            [
+                "fn-extract-freq"
+            ]
+        ]
+    },
+    {
+        "id": "fn-extract-freq",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Extract freq value",
+        "func": "var v = msg.payload;\nif (v && v.value !== undefined) { msg.payload = {value: v.value}; }\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 300,
+        "wires": [
+            [
+                "9ab315f950ad97af"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-in-grid",
+        "type": "mqtt in",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Grid Connected",
+        "topic": "N/c0619ab9929a/vebus/275/Ac/ActiveIn/Connected",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "victron_mqtt",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 250,
+        "y": 40,
+        "wires": [
+            [
+                "fn-extract-grid"
+            ]
+        ]
+    },
+    {
+        "id": "fn-extract-grid",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Extract grid value",
+        "func": "var v = msg.payload;\nif (v && v.value !== undefined) { msg.payload = {value: v.value}; }\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 40,
+        "wires": [
+            [
+                "359031c7637e26a8"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-in-ignoreac",
+        "type": "mqtt in",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "IgnoreAcIn1",
+        "topic": "N/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "victron_mqtt",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 210,
+        "y": 360,
+        "wires": [
+            [
+                "b8d5d7042431f1f0"
+            ]
+        ]
     }
 ]
