@@ -39,154 +39,6 @@
         "sessionExpiry": ""
     },
     {
-        "id": "ed4c2a5b6513adae",
-        "type": "debug",
-        "z": "a6cee929caef49e9",
-        "name": "debug 13",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 400,
-        "y": 80,
-        "wires": []
-    },
-    {
-        "id": "f4aeeef9c6de1545",
-        "type": "mqtt in",
-        "z": "a6cee929caef49e9",
-        "name": "AC-Input Source",
-        "topic": "N/c0619ab9929a/system/0/Ac/ActiveIn/Source",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker_testing",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 190,
-        "y": 80,
-        "wires": [
-            [
-                "ed4c2a5b6513adae"
-            ]
-        ]
-    },
-    {
-        "id": "1d32abd6c0baec8b",
-        "type": "mqtt in",
-        "z": "a6cee929caef49e9",
-        "name": "VE.Bus Charge Current",
-        "topic": "N/c0619ab9929a/system/0/Dc/Vebus/Current",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker_testing",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 210,
-        "y": 200,
-        "wires": [
-            [
-                "eb463ed6bbb8e743"
-            ]
-        ]
-    },
-    {
-        "id": "eb463ed6bbb8e743",
-        "type": "debug",
-        "z": "a6cee929caef49e9",
-        "name": "debug 14",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 540,
-        "y": 200,
-        "wires": []
-    },
-    {
-        "id": "5e78bada02a09175",
-        "type": "debug",
-        "z": "a6cee929caef49e9",
-        "name": "debug 15",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 540,
-        "y": 260,
-        "wires": []
-    },
-    {
-        "id": "a5988317ad1f7b7e",
-        "type": "mqtt in",
-        "z": "a6cee929caef49e9",
-        "name": "Battery Voltage (system)",
-        "topic": "N/c0619ab9929a/system/0/Dc/Battery/Voltage",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker_testing",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 200,
-        "y": 260,
-        "wires": [
-            [
-                "5e78bada02a09175"
-            ]
-        ]
-    },
-    {
-        "id": "d1b7e76e5da85b9e",
-        "type": "mqtt in",
-        "z": "a6cee929caef49e9",
-        "name": "IgnoreAcIn1 (custom)",
-        "topic": "N/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker_testing",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 210,
-        "y": 480,
-        "wires": [
-            [
-                "fbb741eb739b995e"
-            ]
-        ]
-    },
-    {
-        "id": "fbb741eb739b995e",
-        "type": "debug",
-        "z": "a6cee929caef49e9",
-        "name": "debug 16",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 540,
-        "y": 480,
-        "wires": []
-    },
-    {
         "id": "9e937ff7d326ded3",
         "type": "comment",
         "z": "a6cee929caef49e9",
@@ -207,11 +59,109 @@
         "wires": []
     },
     {
-        "id": "41554f2771ecb73f",
+        "id": "f4aeeef9c6de1545",
         "type": "mqtt in",
         "z": "a6cee929caef49e9",
-        "name": "SmartShunt Voltage",
-        "topic": "N/c0619ab9929a/battery/274/Dc/0/Voltage",
+        "name": "Venus system | AC-Input",
+        "topic": "N/c0619ab9929a/system/0/Ac/ActiveIn/Source",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_testing",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 80,
+        "wires": [
+            ["showval_ac_source"]
+        ]
+    },
+    {
+        "id": "showval_ac_source",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nconst labels = {0:'Not available',1:'Grid',2:'Generator',3:'Shore',240:'Inverting'};\nconst label = labels[v] !== undefined ? `${v} (${labels[v]})` : String(v);\nnode.status({fill:'green', shape:'dot', text: label});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 80,
+        "wires": [["ed4c2a5b6513adae"]]
+    },
+    {
+        "id": "ed4c2a5b6513adae",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 13",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 520,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "f58b2010d030cbaf",
+        "type": "mqtt in",
+        "z": "a6cee929caef49e9",
+        "name": "Venus settings | Maximum System Grid Feed In (W)",
+        "topic": "N/c0619ab9929a/settings/0/Settings/CGwacs/MaxFeedInPower",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_testing",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 140,
+        "wires": [["showval_maxfeedin"]]
+    },
+    {
+        "id": "showval_maxfeedin",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nnode.status({fill:'green', shape:'dot', text: String(v)});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 140,
+        "wires": [["72f8b52315b5ac38"]]
+    },
+    {
+        "id": "72f8b52315b5ac38",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 19",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "1d32abd6c0baec8b",
+        "type": "mqtt in",
+        "z": "a6cee929caef49e9",
+        "name": "Venus system | VE.Bus charge current (A)",
+        "topic": "N/c0619ab9929a/system/0/Dc/Vebus/Current",
         "qos": "0",
         "datatype": "json",
         "broker": "pi5_mqtt_broker_testing",
@@ -220,12 +170,119 @@
         "rh": 0,
         "inputs": 0,
         "x": 200,
+        "y": 200,
+        "wires": [["showval_vebus_current"]]
+    },
+    {
+        "id": "showval_vebus_current",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nnode.status({fill:'green', shape:'dot', text: String(v)});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 200,
+        "wires": [["eb463ed6bbb8e743"]]
+    },
+    {
+        "id": "eb463ed6bbb8e743",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 14",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "a5988317ad1f7b7e",
+        "type": "mqtt in",
+        "z": "a6cee929caef49e9",
+        "name": "Venus system | Battery voltage (V)",
+        "topic": "N/c0619ab9929a/system/0/Dc/Battery/Voltage",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_testing",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 260,
+        "wires": [["showval_bat_volt_sys"]]
+    },
+    {
+        "id": "showval_bat_volt_sys",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nnode.status({fill:'green', shape:'dot', text: parseFloat(v).toFixed(2)});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 260,
+        "wires": [["5e78bada02a09175"]]
+    },
+    {
+        "id": "5e78bada02a09175",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 15",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "41554f2771ecb73f",
+        "type": "mqtt in",
+        "z": "a6cee929caef49e9",
+        "name": "SmartShunt 300A | Battery voltage (V)",
+        "topic": "N/c0619ab9929a/battery/274/Dc/0/Voltage",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_testing",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
         "y": 320,
-        "wires": [
-            [
-                "6fd6a665df20c104"
-            ]
-        ]
+        "wires": [["showval_bat_volt_ss"]]
+    },
+    {
+        "id": "showval_bat_volt_ss",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nnode.status({fill:'green', shape:'dot', text: parseFloat(v).toFixed(2)});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 320,
+        "wires": [["6fd6a665df20c104"]]
     },
     {
         "id": "6fd6a665df20c104",
@@ -239,16 +296,16 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 540,
+        "x": 560,
         "y": 320,
         "wires": []
     },
     {
-        "id": "ab80795ff702d565",
+        "id": "ef5cb526fecadd87",
         "type": "mqtt in",
         "z": "a6cee929caef49e9",
-        "name": "SmartShunt Voltage (store)",
-        "topic": "N/c0619ab9929a/battery/274/Dc/0/Voltage",
+        "name": "MultiPlus-II 48/5000/70-50 | Switch Position",
+        "topic": "N/c0619ab9929a/vebus/275/Mode",
         "qos": "0",
         "datatype": "json",
         "broker": "pi5_mqtt_broker_testing",
@@ -256,37 +313,94 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 180,
-        "y": 640,
-        "wires": [
-            [
-                "42978931ab02fe9d"
-            ]
-        ]
+        "x": 200,
+        "y": 380,
+        "wires": [["showval_vebus_mode"]]
     },
     {
-        "id": "42978931ab02fe9d",
+        "id": "showval_vebus_mode",
         "type": "function",
         "z": "a6cee929caef49e9",
-        "name": "Store Voltage",
-        "func": "const voltage = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('batteryVoltage', voltage);\nnode.status({fill: \"blue\", shape: \"dot\", text: `${voltage.toFixed(2)}V`});\nreturn msg;",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nconst labels = {1:'Charger Only',2:'Inverter Only',3:'On',4:'Off'};\nconst label = labels[v] !== undefined ? `${v} (${labels[v]})` : String(v);\nnode.status({fill:'green', shape:'dot', text: label});\nreturn msg;",
         "outputs": 1,
-        "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 500,
-        "y": 640,
-        "wires": [
-            []
-        ]
+        "x": 420,
+        "y": 380,
+        "wires": [["114ce9094d78d8a4"]]
+    },
+    {
+        "id": "114ce9094d78d8a4",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 10",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "d1b7e76e5da85b9e",
+        "type": "mqtt in",
+        "z": "a6cee929caef49e9",
+        "name": "MultiPlus-II 48/5000/70-50 (275) | /Ac/State/IgnoreAcIn1",
+        "topic": "N/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_testing",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 480,
+        "wires": [["showval_ignore_custom"]]
+    },
+    {
+        "id": "showval_ignore_custom",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nnode.status({fill:'green', shape:'dot', text: String(v)});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 480,
+        "wires": [["fbb741eb739b995e"]]
+    },
+    {
+        "id": "fbb741eb739b995e",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 16",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 600,
+        "y": 480,
+        "wires": []
     },
     {
         "id": "5491e5ea8a8248ae",
         "type": "mqtt in",
         "z": "a6cee929caef49e9",
-        "name": "IgnoreAcIn1 (vebus)",
+        "name": "MultiPlus-II 48/5000/70-50 | AC input 1 ignored",
         "topic": "N/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
         "qos": "0",
         "datatype": "json",
@@ -297,18 +411,14 @@
         "inputs": 0,
         "x": 200,
         "y": 540,
-        "wires": [
-            [
-                "b62ff0a615ef391a"
-            ]
-        ]
+        "wires": [["b62ff0a615ef391a"]]
     },
     {
         "id": "b62ff0a615ef391a",
         "type": "function",
         "z": "a6cee929caef49e9",
         "name": "Detect Change",
-        "func": "const currentValue = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nconst previousValue = context.get('lastValue');\nconst batteryVoltage = flow.get('batteryVoltage') || 0;\n\nif (previousValue !== currentValue) {\n    context.set('lastValue', currentValue);\n    \n    const status = currentValue === 1 ? \"AC INPUT IGNORED\" : \"AC INPUT ACTIVE\";\n    node.status({fill: currentValue === 1 ? \"green\" : \"red\", shape: \"dot\", text: `${status} @ ${batteryVoltage.toFixed(2)}V`});\n    \n    msg.payload = {\n        value: currentValue,\n        status: status,\n        batteryVoltage: batteryVoltage,\n        timestamp: new Date().toISOString()\n    };\n    \n    return msg;\n}\n\nnode.status({fill: \"grey\", shape: \"ring\", text: \"No change\"});\nreturn null;",
+        "func": "const currentValue = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nconst previousValue = context.get('lastValue');\nconst batteryVoltage = flow.get('batteryVoltage') || 0;\n\nconst labels = {0:'AC input not ignored', 1:'AC input ignored'};\nconst label = labels[currentValue] !== undefined ? `${currentValue} (${labels[currentValue]})` : String(currentValue);\n\nif (previousValue !== currentValue) {\n    context.set('lastValue', currentValue);\n    \n    const status = currentValue === 1 ? \"AC INPUT IGNORED\" : \"AC INPUT ACTIVE\";\n    node.status({fill: currentValue === 1 ? \"green\" : \"red\", shape: \"dot\", text: `${status} @ ${batteryVoltage.toFixed(2)}V`});\n    \n    msg.payload = {\n        value: currentValue,\n        status: status,\n        batteryVoltage: batteryVoltage,\n        timestamp: new Date().toISOString()\n    };\n    \n    return msg;\n}\n\nnode.status({fill: \"grey\", shape: \"ring\", text: label});\nreturn null;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -317,11 +427,7 @@
         "libs": [],
         "x": 500,
         "y": 540,
-        "wires": [
-            [
-                "dfb1e21ee425592c"
-            ]
-        ]
+        "wires": [["dfb1e21ee425592c"]]
     },
     {
         "id": "dfb1e21ee425592c",
@@ -341,11 +447,11 @@
         "wires": []
     },
     {
-        "id": "f58b2010d030cbaf",
+        "id": "ab80795ff702d565",
         "type": "mqtt in",
         "z": "a6cee929caef49e9",
-        "name": "MaxFeedInPower",
-        "topic": "N/c0619ab9929a/settings/0/Settings/CGwacs/MaxFeedInPower",
+        "name": "SmartShunt 300A | Battery voltage (V)",
+        "topic": "N/c0619ab9929a/battery/274/Dc/0/Voltage",
         "qos": "0",
         "datatype": "json",
         "broker": "pi5_mqtt_broker_testing",
@@ -353,52 +459,32 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 230,
-        "y": 140,
-        "wires": [
-            [
-                "72f8b52315b5ac38"
-            ]
-        ]
+        "x": 190,
+        "y": 660,
+        "wires": [["42978931ab02fe9d"]]
     },
     {
-        "id": "72f8b52315b5ac38",
-        "type": "debug",
+        "id": "42978931ab02fe9d",
+        "type": "function",
         "z": "a6cee929caef49e9",
-        "name": "debug 19",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 540,
-        "y": 140,
-        "wires": []
+        "name": "Store Voltage",
+        "func": "const voltage = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('batteryVoltage', voltage);\nnode.status({fill: \"blue\", shape: \"dot\", text: `${voltage.toFixed(2)}V`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 660,
+        "wires": [[]]
     },
     {
-        "id": "114ce9094d78d8a4",
-        "type": "debug",
-        "z": "a6cee929caef49e9",
-        "name": "debug 10",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 540,
-        "y": 380,
-        "wires": []
-    },
-    {
-        "id": "ef5cb526fecadd87",
+        "id": "005435979c6e171f",
         "type": "mqtt in",
         "z": "a6cee929caef49e9",
-        "name": "VE.Bus Mode",
-        "topic": "N/c0619ab9929a/vebus/275/Mode",
+        "name": "Micro-Onduleurs (32) | /Ac/Current",
+        "topic": "N/c0619ab9929a/pvinverter/32/Ac/Current",
         "qos": "0",
         "datatype": "json",
         "broker": "pi5_mqtt_broker_testing",
@@ -406,13 +492,24 @@
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 210,
-        "y": 380,
-        "wires": [
-            [
-                "114ce9094d78d8a4"
-            ]
-        ]
+        "x": 180,
+        "y": 720,
+        "wires": [["showval_pv_current"]]
+    },
+    {
+        "id": "showval_pv_current",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "",
+        "func": "const v = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nnode.status({fill:'green', shape:'dot', text: parseFloat(v).toFixed(2)});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 720,
+        "wires": [["d6933f1a3d46769b"]]
     },
     {
         "id": "d6933f1a3d46769b",
@@ -426,29 +523,8 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 520,
+        "x": 540,
         "y": 720,
         "wires": []
-    },
-    {
-        "id": "005435979c6e171f",
-        "type": "mqtt in",
-        "z": "a6cee929caef49e9",
-        "name": "Micro-Onduleurs AC Current",
-        "topic": "N/c0619ab9929a/pvinverter/32/Ac/Current",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker_testing",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 190,
-        "y": 720,
-        "wires": [
-            [
-                "d6933f1a3d46769b"
-            ]
-        ]
     }
 ]
