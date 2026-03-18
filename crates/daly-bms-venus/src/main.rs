@@ -26,7 +26,11 @@
 
 mod battery_service;
 mod config;
+mod heatpump_manager;
+mod heatpump_service;
 mod manager;
+mod meteo_manager;
+mod meteo_service;
 mod mqtt_source;
 mod sensor_manager;
 mod temperature_service;
@@ -35,8 +39,13 @@ mod types;
 use anyhow::Result;
 use clap::Parser;
 use config::VenusServiceConfig;
+use heatpump_manager::HeatpumpManager;
 use manager::BatteryManager;
-use mqtt_source::{start_mqtt_source, start_sensor_mqtt_source};
+use meteo_manager::MeteoManager;
+use mqtt_source::{
+    start_heatpump_mqtt_source, start_meteo_mqtt_source, start_mqtt_source,
+    start_sensor_mqtt_source,
+};
 use sensor_manager::SensorManager;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
@@ -92,13 +101,16 @@ async fn main() -> Result<()> {
     }
 
     info!(
-        version     = env!("CARGO_PKG_VERSION"),
-        dbus_bus    = %cfg.venus.dbus_bus,
-        mqtt_host   = %cfg.mqtt.host,
-        bms_prefix  = %cfg.mqtt.topic_prefix,
-        heat_prefix = %cfg.heat.topic_prefix,
-        bms_count   = cfg.bms.len(),
-        sensor_count = cfg.sensors.len(),
+        version          = env!("CARGO_PKG_VERSION"),
+        dbus_bus         = %cfg.venus.dbus_bus,
+        mqtt_host        = %cfg.mqtt.host,
+        bms_prefix       = %cfg.mqtt.topic_prefix,
+        heat_prefix      = %cfg.heat.topic_prefix,
+        heatpump_prefix  = %cfg.heatpump.topic_prefix,
+        meteo_topic      = %cfg.meteo.topic,
+        bms_count        = cfg.bms.len(),
+        sensor_count     = cfg.sensors.len(),
+        heatpump_count   = cfg.heatpumps.len(),
         "daly-bms-venus démarrage"
     );
 
@@ -133,9 +145,44 @@ async fn main() -> Result<()> {
         start_sensor_mqtt_source(mqtt_cfg2, heat_prefix, sensor_tx).await;
     });
 
-    let sensor_manager = SensorManager::new(cfg.venus, cfg.sensors, sensor_rx);
-    if let Err(e) = sensor_manager.run().await {
-        error!("SensorManager terminé avec erreur : {:#}", e);
+    let sensor_manager = SensorManager::new(cfg.venus.clone(), cfg.sensors, sensor_rx);
+    tokio::spawn(async move {
+        if let Err(e) = sensor_manager.run().await {
+            error!("SensorManager terminé avec erreur : {:#}", e);
+        }
+    });
+
+    // -------------------------------------------------------------------------
+    // Bridge heatpump : MQTT heatpump/{n}/venus → D-Bus heatpump.{n}
+    // -------------------------------------------------------------------------
+    let (heatpump_tx, heatpump_rx) = mpsc::channel(64);
+    let mqtt_cfg3       = cfg.mqtt.clone();
+    let heatpump_prefix = cfg.heatpump.topic_prefix.clone();
+    tokio::spawn(async move {
+        start_heatpump_mqtt_source(mqtt_cfg3, heatpump_prefix, heatpump_tx).await;
+    });
+
+    let heatpump_manager = HeatpumpManager::new(cfg.venus.clone(), cfg.heatpumps, heatpump_rx);
+    tokio::spawn(async move {
+        if let Err(e) = heatpump_manager.run().await {
+            error!("HeatpumpManager terminé avec erreur : {:#}", e);
+        }
+    });
+
+    // -------------------------------------------------------------------------
+    // Bridge météo : MQTT santuario/meteo/venus → D-Bus com.victronenergy.meteo
+    // -------------------------------------------------------------------------
+    let (meteo_tx, meteo_rx) = mpsc::channel(16);
+    let mqtt_cfg4    = cfg.mqtt.clone();
+    let meteo_topic  = cfg.meteo.topic.clone();
+    tokio::spawn(async move {
+        start_meteo_mqtt_source(mqtt_cfg4, meteo_topic, meteo_tx).await;
+    });
+
+    // Le MeteoManager est le dernier et bloque le thread principal
+    let meteo_manager = MeteoManager::new(cfg.venus, cfg.meteo, meteo_rx);
+    if let Err(e) = meteo_manager.run().await {
+        error!("MeteoManager terminé avec erreur : {:#}", e);
         std::process::exit(1);
     }
 

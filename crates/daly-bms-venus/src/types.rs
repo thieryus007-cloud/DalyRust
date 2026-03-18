@@ -46,6 +46,88 @@ pub struct HeatPayload {
 }
 
 // =============================================================================
+// Payload pompe à chaleur / chauffe-eau (santuario/heatpump/{n}/venus)
+// =============================================================================
+
+/// Payload pour pompes à chaleur et chauffe-eau.
+///
+/// Publié par Node-RED sur `santuario/heatpump/{n}/venus`.
+/// Cible D-Bus : `com.victronenergy.heatpump.{n}`
+///
+/// Chemins D-Bus exposés (wiki Victron — Heatpump) :
+///   /State              enum état de la pompe (TBD Victron)
+///   /Temperature        température eau courante °C (optionnelle)
+///   /TargetTemperature  température eau cible °C (optionnelle)
+///   /Ac/Power           puissance consommée W
+///   /Ac/Energy/Forward  énergie totale consommée kWh
+///   /Position           0=AC Output, 1=AC Input
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HeatpumpPayload {
+    /// État de la pompe à chaleur (enum Victron, TBD).
+    #[serde(rename = "State", default)]
+    pub state: i32,
+
+    /// Température eau courante °C (optionnelle).
+    #[serde(rename = "Temperature", default)]
+    pub temperature: Option<f64>,
+
+    /// Température eau cible °C (optionnelle).
+    #[serde(rename = "TargetTemperature", default)]
+    pub target_temperature: Option<f64>,
+
+    /// Données électriques AC.
+    #[serde(rename = "Ac", default)]
+    pub ac: Option<HeatpumpAcPayload>,
+
+    /// Position : 0=AC Output, 1=AC Input.
+    #[serde(rename = "Position", default)]
+    pub position: i32,
+}
+
+/// Sous-payload AC pour la pompe à chaleur.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct HeatpumpAcPayload {
+    /// Puissance consommée en W.
+    #[serde(rename = "Power", default)]
+    pub power: f64,
+
+    /// Énergie totale consommée.
+    #[serde(rename = "Energy", default)]
+    pub energy: Option<HeatpumpEnergyPayload>,
+}
+
+/// Sous-payload énergie pour la pompe à chaleur.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct HeatpumpEnergyPayload {
+    /// Énergie totale consommée en kWh.
+    #[serde(rename = "Forward", default)]
+    pub forward: f64,
+}
+
+// =============================================================================
+// Payload capteur météo / irradiance (santuario/meteo/venus)
+// =============================================================================
+
+/// Payload pour capteur d'irradiance et données météo.
+///
+/// Publié par Node-RED (capteur RS485 sur Pi5) sur `santuario/meteo/venus`.
+/// Cible D-Bus : `com.victronenergy.meteo`
+///
+/// Chemins D-Bus exposés (wiki Victron — Meteo) :
+///   /Irradiance    irradiance courante en W/m²
+///   /TodaysYield   production du jour en kWh (depuis le lever du soleil)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MeteoPayload {
+    /// Irradiance courante en W/m².
+    #[serde(rename = "Irradiance", default)]
+    pub irradiance: f64,
+
+    /// Production du jour en kWh (depuis le lever du soleil).
+    #[serde(rename = "TodaysYield", default)]
+    pub todays_yield: f64,
+}
+
+// =============================================================================
 // Payload batteries (santuario/bms/{n}/venus)
 // =============================================================================
 

@@ -25,13 +25,25 @@ pub struct VenusServiceConfig {
     #[serde(default)]
     pub bms: Vec<BmsRef>,
 
-    /// Configuration du préfixe MQTT heat (capteurs température)
+    /// Configuration du préfixe MQTT heat (capteurs température outdoor)
     #[serde(default)]
     pub heat: HeatConfig,
 
     /// Configurations par capteur de température
     #[serde(default)]
     pub sensors: Vec<SensorRef>,
+
+    /// Configuration MQTT heatpump (pompes à chaleur / chauffe-eau)
+    #[serde(default)]
+    pub heatpump: HeatpumpConfig,
+
+    /// Configurations par pompe à chaleur
+    #[serde(default)]
+    pub heatpumps: Vec<HeatpumpRef>,
+
+    /// Configuration du service météo (irradiance RS485)
+    #[serde(default)]
+    pub meteo: MeteoConfig,
 }
 
 /// Référence à la config MQTT du serveur principal.
@@ -133,6 +145,71 @@ pub struct SensorRef {
     /// DeviceInstance Venus OS D-Bus (affiché dans VRM).
     /// Si absent, utilise `mqtt_index` comme fallback.
     pub device_instance: Option<u32>,
+}
+
+// =============================================================================
+// Configuration pompes à chaleur / chauffe-eau (heatpump)
+// =============================================================================
+
+/// Préfixe MQTT pour les pompes à chaleur.
+///
+/// Topic abonné : `{topic_prefix}/{n}/venus`
+/// Exemple : `santuario/heatpump/1/venus`
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct HeatpumpConfig {
+    /// Préfixe des topics heatpump (ex: "santuario/heatpump")
+    pub topic_prefix: String,
+}
+
+impl Default for HeatpumpConfig {
+    fn default() -> Self {
+        Self { topic_prefix: "santuario/heatpump".to_string() }
+    }
+}
+
+/// Configuration d'une pompe à chaleur individuelle.
+///
+/// Une section `[[heatpumps]]` par appareil dans le TOML.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct HeatpumpRef {
+    /// Index dans le topic MQTT (ex: 1 → `santuario/heatpump/1/venus`).
+    pub mqtt_index: Option<u8>,
+
+    /// Nom affiché dans Venus OS (`/ProductName`).
+    pub name: Option<String>,
+
+    /// DeviceInstance Venus OS D-Bus.
+    pub device_instance: Option<u32>,
+}
+
+// =============================================================================
+// Configuration capteur météo / irradiance (meteo)
+// =============================================================================
+
+/// Configuration du service météo D-Bus.
+///
+/// Topic MQTT fixe : `{topic}` (sans index, un seul capteur).
+/// Exemple : `santuario/meteo/venus`
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MeteoConfig {
+    /// Topic MQTT fixe du capteur météo (ex: "santuario/meteo/venus")
+    pub topic: String,
+
+    /// Nom affiché dans Venus OS
+    pub product_name: String,
+
+    /// DeviceInstance Venus OS D-Bus
+    pub device_instance: u32,
+}
+
+impl Default for MeteoConfig {
+    fn default() -> Self {
+        Self {
+            topic:           "santuario/meteo/venus".to_string(),
+            product_name:    "Irradiance Sensor".to_string(),
+            device_instance: 30,
+        }
+    }
 }
 
 // =============================================================================

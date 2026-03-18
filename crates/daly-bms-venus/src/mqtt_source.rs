@@ -6,7 +6,7 @@
 //! - `{heat_prefix}/+/venus` → capteurs température → `SensorMqttEvent`
 
 use crate::config::MqttRef;
-use crate::types::{HeatPayload, VenusPayload};
+use crate::types::{HeatPayload, HeatpumpPayload, MeteoPayload, VenusPayload};
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -32,6 +32,22 @@ pub struct SensorMqttEvent {
     pub mqtt_index: u8,
     /// Payload température parsé
     pub payload: HeatPayload,
+}
+
+/// Événement pompe à chaleur reçu depuis MQTT (topic heatpump).
+#[derive(Debug)]
+pub struct HeatpumpMqttEvent {
+    /// Index (ex: `santuario/heatpump/1/venus` → `1`)
+    pub mqtt_index: u8,
+    /// Payload pompe à chaleur parsé
+    pub payload: HeatpumpPayload,
+}
+
+/// Événement capteur météo reçu depuis MQTT (topic fixe `santuario/meteo/venus`).
+#[derive(Debug)]
+pub struct MeteoMqttEvent {
+    /// Payload irradiance/météo parsé
+    pub payload: MeteoPayload,
 }
 
 // =============================================================================
@@ -229,6 +245,136 @@ async fn sensor_connect_and_run(
             Err(e) => {
                 return Err(e.into());
             }
+        }
+    }
+}
+
+// =============================================================================
+// Source MQTT pour pompes à chaleur (santuario/heatpump/{n}/venus)
+// =============================================================================
+
+/// Démarre la source MQTT pour les pompes à chaleur / chauffe-eau.
+///
+/// S'abonne sur `{heatpump_prefix}/+/venus`, parse le `HeatpumpPayload`
+/// et émet des `HeatpumpMqttEvent` vers le `HeatpumpManager`.
+pub async fn start_heatpump_mqtt_source(
+    cfg:              MqttRef,
+    heatpump_prefix:  String,
+    tx:               mpsc::Sender<HeatpumpMqttEvent>,
+) {
+    let subscribe_topic = format!("{}/+/venus", heatpump_prefix);
+
+    info!(
+        broker = %format!("{}:{}", cfg.host, cfg.port),
+        topic  = %subscribe_topic,
+        "Démarrage source MQTT pompes à chaleur"
+    );
+
+    loop {
+        match heatpump_connect_and_run(&cfg, &subscribe_topic, &heatpump_prefix, &tx).await {
+            Ok(())  => warn!("MQTT source heatpump terminée de façon inattendue, reconnexion dans 5s"),
+            Err(e)  => error!("MQTT source heatpump erreur : {:#}, reconnexion dans 5s", e),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
+async fn heatpump_connect_and_run(
+    cfg:              &MqttRef,
+    subscribe_topic:  &str,
+    heatpump_prefix:  &str,
+    tx:               &mpsc::Sender<HeatpumpMqttEvent>,
+) -> anyhow::Result<()> {
+    let client_id = format!("daly-bms-venus-heatpump-{}", uuid_short());
+    let mut opts = MqttOptions::new(client_id, &cfg.host, cfg.port);
+    opts.set_keep_alive(Duration::from_secs(30));
+    opts.set_clean_session(true);
+    if let (Some(u), Some(p)) = (&cfg.username, &cfg.password) { opts.set_credentials(u, p); }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 64);
+    client.subscribe(subscribe_topic, QoS::AtLeastOnce).await?;
+    info!("MQTT heatpump connecté, abonnement sur '{}'", subscribe_topic);
+
+    loop {
+        match eventloop.poll().await {
+            Ok(Event::Incoming(Packet::Publish(msg))) => {
+                let topic = &msg.topic;
+                debug!(topic = %topic, "MQTT heatpump message reçu");
+                if let Some(idx) = extract_mqtt_index(topic, heatpump_prefix) {
+                    match serde_json::from_slice::<HeatpumpPayload>(&msg.payload) {
+                        Ok(payload) => {
+                            let evt = HeatpumpMqttEvent { mqtt_index: idx, payload };
+                            if tx.send(evt).await.is_err() { return Ok(()); }
+                        }
+                        Err(e) => warn!(topic = %topic, "Échec parsing payload heatpump: {}", e),
+                    }
+                }
+            }
+            Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT heatpump ConnAck reçu"),
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+// =============================================================================
+// Source MQTT pour capteur météo (santuario/meteo/venus — topic fixe)
+// =============================================================================
+
+/// Démarre la source MQTT pour le capteur météo/irradiance.
+///
+/// S'abonne sur le topic FIXE `{meteo_topic}` (ex: `santuario/meteo/venus`),
+/// parse le `MeteoPayload` et émet des `MeteoMqttEvent` vers le `MeteoManager`.
+pub async fn start_meteo_mqtt_source(
+    cfg:         MqttRef,
+    meteo_topic: String,
+    tx:          mpsc::Sender<MeteoMqttEvent>,
+) {
+    info!(
+        broker = %format!("{}:{}", cfg.host, cfg.port),
+        topic  = %meteo_topic,
+        "Démarrage source MQTT capteur météo"
+    );
+
+    loop {
+        match meteo_connect_and_run(&cfg, &meteo_topic, &tx).await {
+            Ok(())  => warn!("MQTT source météo terminée de façon inattendue, reconnexion dans 5s"),
+            Err(e)  => error!("MQTT source météo erreur : {:#}, reconnexion dans 5s", e),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
+async fn meteo_connect_and_run(
+    cfg:         &MqttRef,
+    meteo_topic: &str,
+    tx:          &mpsc::Sender<MeteoMqttEvent>,
+) -> anyhow::Result<()> {
+    let client_id = format!("daly-bms-venus-meteo-{}", uuid_short());
+    let mut opts = MqttOptions::new(client_id, &cfg.host, cfg.port);
+    opts.set_keep_alive(Duration::from_secs(30));
+    opts.set_clean_session(true);
+    if let (Some(u), Some(p)) = (&cfg.username, &cfg.password) { opts.set_credentials(u, p); }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 64);
+    client.subscribe(meteo_topic, QoS::AtLeastOnce).await?;
+    info!("MQTT météo connecté, abonnement sur '{}'", meteo_topic);
+
+    loop {
+        match eventloop.poll().await {
+            Ok(Event::Incoming(Packet::Publish(msg))) => {
+                debug!(topic = %msg.topic, "MQTT météo message reçu");
+                match serde_json::from_slice::<MeteoPayload>(&msg.payload) {
+                    Ok(payload) => {
+                        let evt = MeteoMqttEvent { payload };
+                        if tx.send(evt).await.is_err() { return Ok(()); }
+                    }
+                    Err(e) => warn!(topic = %msg.topic, "Échec parsing payload météo: {}", e),
+                }
+            }
+            Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT météo ConnAck reçu"),
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
         }
     }
 }

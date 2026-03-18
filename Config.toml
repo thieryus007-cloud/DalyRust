@@ -130,10 +130,10 @@ republish_sec = 25
 
 
 # =============================================================================
-# Capteurs de température (daly-bms-venus → com.victronenergy.temperature.{n})
+# Capteurs de température extérieure (com.victronenergy.temperature.{n})
 # =============================================================================
 # Topic MQTT source : santuario/heat/{n}/venus
-# Payload attendu (publié par Node-RED) :
+# Payload attendu (publié par Node-RED depuis Open-Meteo) :
 #   { "Temperature": 15.3, "TemperatureType": 4, "Humidity": 65.0, "Pressure": 101.3 }
 #
 # TemperatureType : 0=battery 1=fridge 2=generic 3=Room 4=Outdoor 5=WaterHeater 6=Freezer
@@ -149,11 +149,50 @@ name             = "Temperature Exterieure"
 temperature_type = 4       # 4 = Outdoor
 device_instance  = 20      # DeviceInstance Venus OS / VRM
 
-[[sensors]]
-mqtt_index       = 2       # Topic : santuario/heat/2/venus
-name             = "Chauffe-eau"
-temperature_type = 5       # 5 = WaterHeater
-device_instance  = 21      # DeviceInstance Venus OS / VRM
+# =============================================================================
+# Pompes à chaleur / chauffe-eau (com.victronenergy.heatpump.{n})
+# =============================================================================
+# Topic MQTT source : santuario/heatpump/{n}/venus
+# Payload attendu (publié par Node-RED) :
+#   { "State": 0, "Temperature": 55.0, "TargetTemperature": 60.0,
+#     "Ac": { "Power": 1200.0, "Energy": { "Forward": 125.5 } }, "Position": 0 }
+#
+# /State             — enum état (TBD Victron)
+# /Temperature       — température eau courante °C
+# /TargetTemperature — température eau cible °C
+# /Ac/Power          — puissance consommée W
+# /Ac/Energy/Forward — énergie totale kWh
+# /Position          — 0=AC Output, 1=AC Input
+
+[heatpump]
+# Préfixe des topics heatpump
+topic_prefix = "santuario/heatpump"
+
+[[heatpumps]]
+mqtt_index      = 1       # Topic : santuario/heatpump/1/venus
+name            = "Chauffe-eau"
+device_instance = 30      # DeviceInstance Venus OS / VRM
+
+# Pompe à chaleur LG (future intégration — même service D-Bus)
+# [[heatpumps]]
+# mqtt_index      = 2     # Topic : santuario/heatpump/2/venus
+# name            = "PAC LG Climatisation"
+# device_instance = 31
+
+# =============================================================================
+# Capteur météo / irradiance RS485 (com.victronenergy.meteo)
+# =============================================================================
+# Topic MQTT source FIXE : santuario/meteo/venus (sans index — un seul capteur)
+# Payload attendu (publié par Node-RED depuis capteur RS485 Pi5) :
+#   { "Irradiance": 750.0, "TodaysYield": 12.5 }
+#
+# /Irradiance    — irradiance courante W/m²
+# /TodaysYield   — production du jour kWh (depuis le lever du soleil)
+
+[meteo]
+topic           = "santuario/meteo/venus"
+product_name    = "Capteur Irradiance"
+device_instance = 40      # DeviceInstance Venus OS / VRM
 
 
 [influxdb]
