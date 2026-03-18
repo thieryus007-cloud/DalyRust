@@ -198,6 +198,29 @@ services:
     networks:
       - dalybms-net
 
+  # ── Venus OS keepalive ──────────────────────────────────────────────────────
+  # Venus OS exige un publish sur R/<portalId>/keepalive toutes les 60s
+  # Sans ce keepalive, Venus OS ne publie aucune donnée sur N/#
+  venus-keepalive:
+    image: eclipse-mosquitto:2.0.18
+    container_name: dalybms-venus-keepalive
+    restart: unless-stopped
+    entrypoint: >
+      sh -c "while true; do
+        mosquitto_pub -h mosquitto -p 1883 -t 'R/c0619ab9929a/keepalive' -m '' -q 0;
+        sleep 55;
+      done"
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "2"
+    networks:
+      - dalybms-net
+
 # =============================================================================
 # Réseau interne
 # =============================================================================
