@@ -8,6 +8,7 @@ Pi5 (192.168.1.141) user: pi5compute pw: pi5compute : daly-bms-server (Rust, sys
 NanoPi Neo3 (192.168.1.120) user: root pw: 12345678 : Venus OS, BusyBox v1.36.1, Linux armv7l, santuario-venus-bridge (Rust, D-Bus), Node-RED :1881 avec les flows existants, Mosquitto local.
 VRM instance: c0619ab9929a
 
+https://github.com/thieryus007-cloud/Daly-BMS-Rust/blob/main/flux-nodered/
 
 Objectif de la session : Migrer les flows Node-RED du NanoPi vers le Pi5.
 
