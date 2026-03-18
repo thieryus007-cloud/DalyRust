@@ -182,14 +182,10 @@ impl SensorValues {
         m.insert("/TemperatureType".into(), DbusItem::i32(self.temperature_type));
         m.insert("/CustomName".into(),      DbusItem::str(&self.custom_name));
 
-        // Optionnels — toujours publiés (0.0 si absent) pour que Venus OS
-        // les connaisse dès GetItems() et puisse les afficher dynamiquement.
-        if let Some(h) = self.humidity {
-            m.insert("/Humidity".into(), DbusItem::f64(h, "%"));
-        }
-        if let Some(p) = self.pressure {
-            m.insert("/Pressure".into(), DbusItem::f64(p, "kPa"));
-        }
+        // Toujours enregistrés (0.0 si absent) pour que le chemin D-Bus existe
+        // dès la création du service et soit interrogeable immédiatement.
+        m.insert("/Humidity".into(), DbusItem::f64(self.humidity.unwrap_or(0.0), "%"));
+        m.insert("/Pressure".into(), DbusItem::f64(self.pressure.unwrap_or(0.0), "kPa"));
 
         m
     }
