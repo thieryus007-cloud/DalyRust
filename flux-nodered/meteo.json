@@ -8,40 +8,6 @@
         "env": []
     },
     {
-        "id": "5f73eb6239a06311",
-        "type": "victron-virtual",
-        "z": "e6e3a16384301f83",
-        "name": "Outdoor temp",
-        "outputs": 1,
-        "device": "temperature",
-        "default_values": false,
-        "battery_capacity": 25,
-        "include_battery_temperature": false,
-        "grid_nrofphases": 1,
-        "include_motor_temp": false,
-        "include_controller_temp": false,
-        "include_coolant_temp": false,
-        "include_motor_rpm": true,
-        "include_motor_direction": true,
-        "position": 0,
-        "pvinverter_nrofphases": 1,
-        "fluid_type": 0,
-        "include_tank_battery": false,
-        "include_tank_temperature": false,
-        "tank_battery_voltage": 3.3,
-        "tank_capacity": 0.2,
-        "temperature_type": "4",
-        "include_humidity": false,
-        "include_pressure": false,
-        "include_temp_battery": false,
-        "temp_battery_voltage": 3.3,
-        "x": 130,
-        "y": 120,
-        "wires": [
-            []
-        ]
-    },
-    {
         "id": "e8ba731c3af093d3",
         "type": "inject",
         "z": "e6e3a16384301f83",
@@ -89,7 +55,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Extraire température",
-        "func": "const temp = msg.payload.current.temperature_2m;\nconst humidity = msg.payload.current.relative_humidity_2m;\n\n// Stocker dans contexte global\ncontext.global.set('outdoor_temp', temp);\n\n// Envoyer température\nmsg.payload = temp;\n\nnode.warn(`Température extérieure: ${temp}°C, Humidité: ${humidity}%`);\n\nreturn msg;",
+        "func": "const temp = msg.payload.current.temperature_2m;\nconst humidity = msg.payload.current.relative_humidity_2m;\n\n// Stocker dans contexte global\ncontext.global.set('outdoor_temp', temp);\n\n// Payload Venus MQTT format\nmsg.payload = {\"value\": temp};\nmsg.topic = \"W/c0619ab9929a/temperature/100/Temperature\";\n\nnode.warn(`Température extérieure: ${temp}°C, Humidité: ${humidity}%`);\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -100,30 +66,25 @@
         "y": 120,
         "wires": [
             [
-                "temp_display",
+                "meteo_mqtt_out",
                 "d65816bfa4e7b8c4"
             ]
         ]
     },
     {
-        "id": "temp_display",
-        "type": "victron-output-custom",
+        "id": "meteo_mqtt_out",
+        "type": "mqtt out",
         "z": "e6e3a16384301f83",
-        "service": "com.victronenergy.temperature/100",
-        "path": "/Temperature",
-        "serviceObj": {
-            "service": "com.victronenergy.temperature/100",
-            "name": "meteo (100)"
-        },
-        "pathObj": {
-            "path": "/Temperature",
-            "name": "/Temperature",
-            "type": "number",
-            "value": 2.2
-        },
-        "name": "Affichage Température",
-        "onlyChanges": true,
-        "outputs": 0,
+        "name": "Venus Température",
+        "topic": "",
+        "qos": "0",
+        "retain": "",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "pi5_mqtt_broker",
         "x": 680,
         "y": 120,
         "wires": []
@@ -145,11 +106,34 @@
         "wires": []
     },
     {
-        "id": "21d7ba1f9564916b",
-        "type": "global-config",
-        "env": [],
-        "modules": {
-            "@victronenergy/node-red-contrib-victron": "1.6.60"
-        }
+        "id": "pi5_mqtt_broker",
+        "type": "mqtt-broker",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
     }
 ]
