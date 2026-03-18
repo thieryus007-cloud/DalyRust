@@ -241,6 +241,12 @@ Binaire produit : `target/armv7-unknown-linux-gnueabihf/release/daly-bms-venus`
 **Ordre obligatoire : arrêter avant de copier.**
 
 ```bash
+
+Apres commit sur Github
+
+Sur Pi5
+git pull origin claude/migrate-nodered-pi5-91idx
+
 # 1. Sur NanoPi — arrêter le service
 svc -d /data/etc/sv/daly-bms-venus
 
