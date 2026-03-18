@@ -8,114 +8,59 @@
         "env": []
     },
     {
-        "id": "2e0a5cd48c88f3d4",
+        "id": "pi5_mqtt_broker_wh",
+        "type": "mqtt-broker",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
+        "port": "1883",
+        "clientid": "nodered_waterheater",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "d85c77f854599bc1",
+        "type": "comment",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Conditions",
+        "info": "WaterHeater doit être en mode VACATION pour une des conditions suivantes\nSi AC in est connecté: Read AC input = 0\nOu\nSi SOC < 85%\nOu\nSi Batterie décharge en cours: smartshunt <= 0\nOu\nSi Total de production solaire inferieure a 2500W \n\nSinon WaterHeater doit être en mode Heat_PUMP\n\nau demmarage il doit etre en mode VACATION",
+        "x": 100,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "1b4c273e1b2387fe",
         "type": "inject",
         "z": "a9df6ef8e6d5c24e",
-        "name": "Initialisation au démarrage",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
+        "name": "SET HEAT_PUMP",
+        "props": [],
         "repeat": "",
         "crontab": "",
-        "once": true,
-        "onceDelay": "2",
+        "once": false,
+        "onceDelay": "",
         "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 180,
-        "y": 540,
-        "wires": [
-            [
-                "539ddc272bcb1575"
-            ]
-        ]
-    },
-    {
-        "id": "539ddc272bcb1575",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Forcer l'initialisation",
-        "func": "flow.set('current_mode', null);\nflow.set('last_change_time', 0);\nflow.set('wh_ac_ignored', null);\nflow.set('wh_soc', null);\nflow.set('wh_battery_current', null);\nflow.set('wh_pv_dc', 0);\nflow.set('wh_pv_ac', 0);\nflow.set('wh_production', 0);\n\nnode.status({fill:'green',shape:'dot',text:'Initialisé'});\n\n// Forcer VACATION au démarrage\nmsg.payload = {mode: 'vacation', reasons: ['Démarrage']};\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 420,
-        "y": 540,
-        "wires": [
-            [
-                "df84ff20a7f8a525"
-            ]
-        ]
-    },
-    {
-        "id": "f657abfd5f8d6ed7",
-        "type": "victron-input-system",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.system/0",
-        "path": "/Ac/PvOnOutput/L1/Power",
-        "serviceObj": {
-            "service": "com.victronenergy.system/0",
-            "name": "Venus system"
-        },
-        "pathObj": {
-            "path": "/Ac/PvOnOutput/L1/Power",
-            "type": "float",
-            "name": "PV - AC-coupled on output L1 (W)"
-        },
-        "name": "",
-        "onlyChanges": false,
-        "roundValues": "0",
-        "outputs": 1,
-        "x": 230,
-        "y": 760,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "f761b5e744731a1d",
-        "type": "victron-input-system",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.system/0",
-        "path": "/Dc/Pv/Power",
-        "serviceObj": {
-            "service": "com.victronenergy.system/0",
-            "name": "Venus system"
-        },
-        "pathObj": {
-            "path": "/Dc/Pv/Power",
-            "type": "float",
-            "name": "MPPTs - power (W)"
-        },
-        "name": "",
-        "onlyChanges": false,
-        "roundValues": "0",
-        "outputs": 1,
-        "x": 180,
-        "y": 700,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "b4f5e933b5270923",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Détecter changement Heat Pump",
-        "func": "const previousMode = flow.get('current_mode') || null;\nconst lastChangeTime = flow.get('last_change_time') || 0;\nconst currentMode = 'heat_pump';\n\nconst MIN_DELAY_MINUTES = 15;\nconst timeSinceLastChange = (Date.now() - lastChangeTime) / 1000 / 60;\n\nif (previousMode !== currentMode) {\n    if (timeSinceLastChange >= MIN_DELAY_MINUTES || previousMode === null) {\n        flow.set('current_mode', currentMode);\n        flow.set('last_change_time', Date.now());\n        node.status({fill:\"cyan\",shape:\"dot\",text:`✓ Changement: ${previousMode} → HEAT_PUMP`});\n        return msg;\n    } else {\n        node.status({\n            fill:\"orange\",\n            shape:\"ring\",\n            text:`⏳ Trop tôt (${timeSinceLastChange.toFixed(1)}/${MIN_DELAY_MINUTES} min)`\n        });\n        return null;\n    }\n}\n\nnode.status({fill:\"grey\",shape:\"ring\",text:\"➔ Déjà en HEAT_PUMP\"});\nreturn null;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 700,
-        "y": 180,
+        "x": 150,
+        "y": 120,
         "wires": [
             [
                 "742fc8bdc1346534"
@@ -163,6 +108,386 @@
         "y": 120,
         "wires": [
             []
+        ]
+    },
+    {
+        "id": "b8603b751d2427c0",
+        "type": "delay",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "15s",
+        "pauseType": "delay",
+        "timeout": "15",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 410,
+        "y": 60,
+        "wires": [
+            [
+                "f6a2bee686009fd3"
+            ]
+        ]
+    },
+    {
+        "id": "f6a2bee686009fd3",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Set 60 °C Jour",
+        "func": "msg.headers = {\n    'Authorization': 'Bearer thinqpat_975d93159fdcf31033e33a3b9c49009ae1ffbf345dfa6dcb4e2f',\n    'x-message-id': 'fNvdZ1brTn-wWKUIWGoSVw',\n    'x-country': 'FR',\n    'x-client-id': 'Santuario-123456',\n    'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',\n    'Content-Type': 'application/json'\n};\n\nmsg.payload = {\n    \"temperature\": {\n        \"targetTemperature\": 60\n    }\n};\nmsg.url = 'https://api-eic.lgthinq.com/devices/918c240ab4c6e3eee70a4e9ac015c18ddd8b4f933c3d9ff813446d8f8dddf720/control';\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 60,
+        "wires": [
+            [
+                "44126b912830004f"
+            ]
+        ]
+    },
+    {
+        "id": "44126b912830004f",
+        "type": "http request",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Post",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 750,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b4f5e933b5270923",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Détecter changement Heat Pump",
+        "func": "const previousMode = flow.get('current_mode') || null;\nconst lastChangeTime = flow.get('last_change_time') || 0;\nconst currentMode = 'heat_pump';\n\nconst MIN_DELAY_MINUTES = 15;\nconst timeSinceLastChange = (Date.now() - lastChangeTime) / 1000 / 60;\n\nif (previousMode !== currentMode) {\n    if (timeSinceLastChange >= MIN_DELAY_MINUTES || previousMode === null) {\n        flow.set('current_mode', currentMode);\n        flow.set('last_change_time', Date.now());\n        node.status({fill:\"cyan\",shape:\"dot\",text:`✓ Changement: ${previousMode} → HEAT_PUMP`});\n        return msg;\n    } else {\n        node.status({\n            fill:\"orange\",\n            shape:\"ring\",\n            text:`⏳ Trop tôt (${timeSinceLastChange.toFixed(1)}/${MIN_DELAY_MINUTES} min)`\n        });\n        return null;\n    }\n}\n\nnode.status({fill:\"grey\",shape:\"ring\",text:\"➔ Déjà en HEAT_PUMP\"});\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 180,
+        "wires": [
+            [
+                "742fc8bdc1346534"
+            ]
+        ]
+    },
+    {
+        "id": "dab931ace197ea01",
+        "type": "mqtt in",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Read AC Input Ignored",
+        "topic": "N/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 140,
+        "y": 220,
+        "wires": [
+            [
+                "8035355231263694"
+            ]
+        ]
+    },
+    {
+        "id": "8035355231263694",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Stocker AC Input Ignored",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_ac_ignored', v);\nnode.status({fill:'blue',shape:'dot',text:`AC ignored: ${v}`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 220,
+        "wires": [
+            [
+                "12783be690eddf9a"
+            ]
+        ]
+    },
+    {
+        "id": "083cba5e60036a82",
+        "type": "mqtt in",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Battery State of Charge (%)",
+        "topic": "N/c0619ab9929a/system/0/Dc/Battery/Soc",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 280,
+        "wires": [
+            [
+                "2ab1969a96bb62cf"
+            ]
+        ]
+    },
+    {
+        "id": "2ab1969a96bb62cf",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Stocker SOC WH",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_soc', v);\nnode.status({fill:'blue',shape:'dot',text:`SOC: ${v}%`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 490,
+        "y": 280,
+        "wires": [
+            [
+                "12783be690eddf9a"
+            ]
+        ]
+    },
+    {
+        "id": "0458a76c3fa28646",
+        "type": "mqtt in",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "SmartShunt 300A | Battery current (A)",
+        "topic": "N/c0619ab9929a/battery/274/Dc/0/Current",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 190,
+        "y": 340,
+        "wires": [
+            [
+                "c779937ba8a6ce05"
+            ]
+        ]
+    },
+    {
+        "id": "c779937ba8a6ce05",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Stocker Current WH",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_battery_current', v);\nnode.status({fill:'blue',shape:'dot',text:`Current: ${v}A`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 340,
+        "wires": [
+            [
+                "12783be690eddf9a"
+            ]
+        ]
+    },
+    {
+        "id": "7d47d5b26b410280",
+        "type": "mqtt in",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "PV DC Power",
+        "topic": "N/c0619ab9929a/system/0/Dc/Pv/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 110,
+        "y": 400,
+        "wires": [
+            [
+                "f3cf01b6a614f04e"
+            ]
+        ]
+    },
+    {
+        "id": "f3cf01b6a614f04e",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Stocker PV DC",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_pv_dc', v || 0);\nnode.status({fill:'blue',shape:'dot',text:`PV DC: ${v}W`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 400,
+        "wires": [
+            [
+                "f15c25ce137fa64f"
+            ]
+        ]
+    },
+    {
+        "id": "2845d37e7aa093d6",
+        "type": "mqtt in",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "PV AC Power",
+        "topic": "N/c0619ab9929a/system/0/Ac/PvOnOutput/L1/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 110,
+        "y": 460,
+        "wires": [
+            [
+                "5fc106188282c05f"
+            ]
+        ]
+    },
+    {
+        "id": "5fc106188282c05f",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Stocker PV AC",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_pv_ac', v || 0);\nnode.status({fill:'blue',shape:'dot',text:`PV AC: ${v}W`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 280,
+        "y": 460,
+        "wires": [
+            [
+                "f15c25ce137fa64f"
+            ]
+        ]
+    },
+    {
+        "id": "f15c25ce137fa64f",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Calcul Production Totale",
+        "func": "const pvDC = flow.get('wh_pv_dc') || 0;\nconst pvAC = flow.get('wh_pv_ac') || 0;\nconst total = pvDC + pvAC;\nflow.set('wh_production', total);\nnode.status({fill:'green',shape:'dot',text:`Total: ${total}W (DC:${pvDC}W + AC:${pvAC}W)`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 420,
+        "wires": [
+            [
+                "12783be690eddf9a"
+            ]
+        ]
+    },
+    {
+        "id": "2e0a5cd48c88f3d4",
+        "type": "inject",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Initialisation au démarrage",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 540,
+        "wires": [
+            [
+                "539ddc272bcb1575"
+            ]
+        ]
+    },
+    {
+        "id": "539ddc272bcb1575",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Forcer l'initialisation",
+        "func": "flow.set('current_mode', null);\nflow.set('last_change_time', 0);\nflow.set('wh_ac_ignored', null);\nflow.set('wh_soc', null);\nflow.set('wh_battery_current', null);\nflow.set('wh_pv_dc', 0);\nflow.set('wh_pv_ac', 0);\nflow.set('wh_production', 0);\n\nnode.status({fill:'green',shape:'dot',text:'Initialisé'});\n\n// Forcer VACATION au démarrage\nmsg.payload = {mode: 'vacation', reasons: ['Démarrage']};\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 540,
+        "wires": [
+            [
+                "df84ff20a7f8a525"
+            ]
+        ]
+    },
+    {
+        "id": "12783be690eddf9a",
+        "type": "function",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "Évaluation",
+        "func": "const PRODUCTION_MIN    = 2000;  // W\nconst DEBOUNCE_MINUTES  = 5;     // délai de confirmation pour conditions instables\n\nconst acIgnored  = flow.get('wh_ac_ignored');\nconst soc        = flow.get('wh_soc');\nconst current    = flow.get('wh_battery_current');\nconst production = flow.get('wh_production') || 0;\nconst now        = Date.now();\n\n// --- Conditions immédiates (stables) ---\nconst acConnected = (acIgnored !== null && acIgnored !== undefined && acIgnored === 0);\nconst socLow      = (soc !== null && soc !== undefined && soc < 95);\n\n// --- Conditions avec debounce (instables) ---\n// discharging\nconst dischargingNow = (current !== null && current !== undefined && current <= 0);\nif (dischargingNow) {\n    if (!context.get('dischargeStart')) {\n        context.set('dischargeStart', now);\n    }\n} else {\n    context.set('dischargeStart', null);\n}\nconst dischargeStart    = context.get('dischargeStart');\nconst dischargeElapsed  = dischargeStart ? (now - dischargeStart) / 60000 : 0;\nconst discharging       = dischargingNow && (dischargeElapsed >= DEBOUNCE_MINUTES);\n\n// prodInsuff\nconst prodInsuffNow = (production <= PRODUCTION_MIN);\nif (prodInsuffNow) {\n    if (!context.get('prodInsuffStart')) {\n        context.set('prodInsuffStart', now);\n    }\n} else {\n    context.set('prodInsuffStart', null);\n}\nconst prodInsuffStart   = context.get('prodInsuffStart');\nconst prodInsuffElapsed = prodInsuffStart ? (now - prodInsuffStart) / 60000 : 0;\nconst prodInsuff        = prodInsuffNow && (prodInsuffElapsed >= DEBOUNCE_MINUTES);\n\n// --- Décision ---\nconst vacation = acConnected || socLow || discharging || prodInsuff;\n\nlet reasons = [];\nif (acConnected) reasons.push('AC connecté');\nif (socLow)      reasons.push(`SOC ${soc}%<85%`);\nif (discharging) reasons.push(`Décharge ${current}A (${dischargeElapsed.toFixed(1)}min)`);\nif (prodInsuff)  reasons.push(`Prod ${production}W≤${PRODUCTION_MIN}W (${prodInsuffElapsed.toFixed(1)}min)`);\n\n// Statut détaillé même quand en attente de confirmation\nlet pending = [];\nif (dischargingNow && !discharging) pending.push(`Décharge ${dischargeElapsed.toFixed(1)}/${DEBOUNCE_MINUTES}min`);\nif (prodInsuffNow  && !prodInsuff)  pending.push(`Prod ${prodInsuffElapsed.toFixed(1)}/${DEBOUNCE_MINUTES}min`);\n\nmsg.payload = {\n    mode: vacation ? 'vacation' : 'heat_pump',\n    ac_ignored: acIgnored,\n    soc: soc,\n    battery_current: current,\n    production: production,\n    reasons: vacation ? reasons : [`SOC≥85%, AC ignoré, Charge, Prod ${production}W>${PRODUCTION_MIN}W`]\n};\n\nif (vacation) {\n    node.status({fill:'yellow', shape:'ring', text:`VACATION: ${reasons.join(' | ')}`});\n    return [null, msg];\n} else if (pending.length > 0) {\n    node.status({fill:'orange', shape:'ring', text:`⏳ Attente: ${pending.join(' | ')}`});\n    return [null, null];\n} else {\n    node.status({fill:'cyan', shape:'dot', text:`HEAT_PUMP: Prod ${production}W, SOC ${soc}%`});\n    return [msg, null];\n}\n",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 690,
+        "y": 280,
+        "wires": [
+            [
+                "b4f5e933b5270923"
+            ],
+            [
+                "df84ff20a7f8a525"
+            ]
         ]
     },
     {
@@ -230,6 +555,31 @@
         ]
     },
     {
+        "id": "ad0b7d6eb708141c",
+        "type": "delay",
+        "z": "a9df6ef8e6d5c24e",
+        "name": "15s",
+        "pauseType": "delay",
+        "timeout": "15",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 450,
+        "y": 640,
+        "wires": [
+            [
+                "65c30da6a42500ac"
+            ]
+        ]
+    },
+    {
         "id": "65c30da6a42500ac",
         "type": "function",
         "z": "a9df6ef8e6d5c24e",
@@ -272,413 +622,41 @@
         ]
     },
     {
-        "id": "f6a2bee686009fd3",
-        "type": "function",
+        "id": "f657abfd5f8d6ed7",
+        "type": "mqtt in",
         "z": "a9df6ef8e6d5c24e",
-        "name": "Set 60 °C Jour",
-        "func": "msg.headers = {\n    'Authorization': 'Bearer thinqpat_975d93159fdcf31033e33a3b9c49009ae1ffbf345dfa6dcb4e2f',\n    'x-message-id': 'fNvdZ1brTn-wWKUIWGoSVw',\n    'x-country': 'FR',\n    'x-client-id': 'Santuario-123456',\n    'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',\n    'Content-Type': 'application/json'\n};\n\nmsg.payload = {\n    \"temperature\": {\n        \"targetTemperature\": 60\n    }\n};\nmsg.url = 'https://api-eic.lgthinq.com/devices/918c240ab4c6e3eee70a4e9ac015c18ddd8b4f933c3d9ff813446d8f8dddf720/control';\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 60,
-        "wires": [
-            [
-                "44126b912830004f"
-            ]
-        ]
-    },
-    {
-        "id": "44126b912830004f",
-        "type": "http request",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Post",
-        "method": "POST",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 750,
-        "y": 60,
+        "name": "PV AC-coupled output L1 (W)",
+        "topic": "N/c0619ab9929a/system/0/Ac/PvOnOutput/L1/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 230,
+        "y": 760,
         "wires": [
             []
         ]
     },
     {
-        "id": "ad0b7d6eb708141c",
-        "type": "delay",
+        "id": "f761b5e744731a1d",
+        "type": "mqtt in",
         "z": "a9df6ef8e6d5c24e",
-        "name": "15s",
-        "pauseType": "delay",
-        "timeout": "15",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 450,
-        "y": 640,
+        "name": "MPPTs - power (W)",
+        "topic": "N/c0619ab9929a/system/0/Dc/Pv/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_wh",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 180,
+        "y": 700,
         "wires": [
-            [
-                "65c30da6a42500ac"
-            ]
+            []
         ]
-    },
-    {
-        "id": "b8603b751d2427c0",
-        "type": "delay",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "15s",
-        "pauseType": "delay",
-        "timeout": "15",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 410,
-        "y": 60,
-        "wires": [
-            [
-                "f6a2bee686009fd3"
-            ]
-        ]
-    },
-    {
-        "id": "1b4c273e1b2387fe",
-        "type": "inject",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "SET HEAT_PUMP",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "x": 150,
-        "y": 120,
-        "wires": [
-            [
-                "742fc8bdc1346534"
-            ]
-        ]
-    },
-    {
-        "id": "d85c77f854599bc1",
-        "type": "comment",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Conditions",
-        "info": "WaterHeater doit être en mode VACATION pour une des conditions suivantes\nSi AC in est connecté: Read AC input = 0\nOu\nSi SOC < 85%\nOu\nSi Batterie décharge en cours: smartshunt <= 0\nOu\nSi Total de production solaire inferieure a 2500W \n\nSinon WaterHeater doit être en mode Heat_PUMP\n\nau demmarage il doit etre en mode VACATION",
-        "x": 100,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "083cba5e60036a82",
-        "type": "victron-input-system",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.system/0",
-        "path": "/Dc/Battery/Soc",
-        "serviceObj": {
-            "service": "com.victronenergy.system/0",
-            "name": "Venus system"
-        },
-        "pathObj": {
-            "path": "/Dc/Battery/Soc",
-            "type": "float",
-            "name": "Battery State of Charge (%)"
-        },
-        "name": "",
-        "onlyChanges": false,
-        "roundValues": "0",
-        "outputs": 1,
-        "x": 210,
-        "y": 280,
-        "wires": [
-            [
-                "2ab1969a96bb62cf"
-            ]
-        ]
-    },
-    {
-        "id": "dab931ace197ea01",
-        "type": "victron-input-vebus",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.vebus/275",
-        "path": "/Ac/State/IgnoreAcIn1",
-        "serviceObj": {
-            "service": "com.victronenergy.vebus/275",
-            "name": "MultiPlus-II 48/5000/70-50"
-        },
-        "pathObj": {
-            "path": "/Ac/State/IgnoreAcIn1",
-            "type": "enum",
-            "name": "AC input 1 ignored",
-            "enum": {
-                "0": "AC input not ignored",
-                "1": "AC input ignored"
-            }
-        },
-        "name": "Read AC Input Ignored",
-        "onlyChanges": false,
-        "outputs": 1,
-        "x": 140,
-        "y": 220,
-        "wires": [
-            [
-                "8035355231263694"
-            ]
-        ]
-    },
-    {
-        "id": "0458a76c3fa28646",
-        "type": "victron-input-battery",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.battery/274",
-        "path": "/Dc/0/Current",
-        "serviceObj": {
-            "service": "com.victronenergy.battery/274",
-            "name": "SmartShunt 300A"
-        },
-        "pathObj": {
-            "path": "/Dc/0/Current",
-            "type": "float",
-            "name": "Battery current (A)"
-        },
-        "name": "",
-        "onlyChanges": false,
-        "roundValues": "1",
-        "outputs": 1,
-        "x": 190,
-        "y": 340,
-        "wires": [
-            [
-                "c779937ba8a6ce05"
-            ]
-        ]
-    },
-    {
-        "id": "8035355231263694",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Stocker AC Input Ignored",
-        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_ac_ignored', v);\nnode.status({fill:'blue',shape:'dot',text:`AC ignored: ${v}`});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 390,
-        "y": 220,
-        "wires": [
-            [
-                "12783be690eddf9a"
-            ]
-        ]
-    },
-    {
-        "id": "2ab1969a96bb62cf",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Stocker SOC WH",
-        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_soc', v);\nnode.status({fill:'blue',shape:'dot',text:`SOC: ${v}%`});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 490,
-        "y": 280,
-        "wires": [
-            [
-                "12783be690eddf9a"
-            ]
-        ]
-    },
-    {
-        "id": "c779937ba8a6ce05",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Stocker Current WH",
-        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_battery_current', v);\nnode.status({fill:'blue',shape:'dot',text:`Current: ${v}A`});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 480,
-        "y": 340,
-        "wires": [
-            [
-                "12783be690eddf9a"
-            ]
-        ]
-    },
-    {
-        "id": "7d47d5b26b410280",
-        "type": "victron-input-system",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.system/0",
-        "path": "/Dc/Pv/Power",
-        "serviceObj": {
-            "service": "com.victronenergy.system/0",
-            "name": "Venus system"
-        },
-        "pathObj": {
-            "path": "/Dc/Pv/Power",
-            "type": "float",
-            "name": "MPPTs - power (W)"
-        },
-        "name": "PV DC Power",
-        "onlyChanges": false,
-        "roundValues": "0",
-        "outputs": 1,
-        "x": 110,
-        "y": 400,
-        "wires": [
-            [
-                "f3cf01b6a614f04e"
-            ]
-        ]
-    },
-    {
-        "id": "2845d37e7aa093d6",
-        "type": "victron-input-system",
-        "z": "a9df6ef8e6d5c24e",
-        "service": "com.victronenergy.system/0",
-        "path": "/Ac/PvOnOutput/L1/Power",
-        "serviceObj": {
-            "service": "com.victronenergy.system/0",
-            "name": "Venus system"
-        },
-        "pathObj": {
-            "path": "/Ac/PvOnOutput/L1/Power",
-            "type": "float",
-            "name": "PV - AC-coupled on output L1 (W)"
-        },
-        "name": "PV AC Power",
-        "onlyChanges": false,
-        "roundValues": "0",
-        "outputs": 1,
-        "x": 110,
-        "y": 460,
-        "wires": [
-            [
-                "5fc106188282c05f"
-            ]
-        ]
-    },
-    {
-        "id": "f3cf01b6a614f04e",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Stocker PV DC",
-        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_pv_dc', v || 0);\nnode.status({fill:'blue',shape:'dot',text:`PV DC: ${v}W`});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 280,
-        "y": 400,
-        "wires": [
-            [
-                "f15c25ce137fa64f"
-            ]
-        ]
-    },
-    {
-        "id": "5fc106188282c05f",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Stocker PV AC",
-        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('wh_pv_ac', v || 0);\nnode.status({fill:'blue',shape:'dot',text:`PV AC: ${v}W`});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 280,
-        "y": 460,
-        "wires": [
-            [
-                "f15c25ce137fa64f"
-            ]
-        ]
-    },
-    {
-        "id": "f15c25ce137fa64f",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Calcul Production Totale",
-        "func": "const pvDC = flow.get('wh_pv_dc') || 0;\nconst pvAC = flow.get('wh_pv_ac') || 0;\nconst total = pvDC + pvAC;\nflow.set('wh_production', total);\nnode.status({fill:'green',shape:'dot',text:`Total: ${total}W (DC:${pvDC}W + AC:${pvAC}W)`});\nreturn msg;",
-        "outputs": 1,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 510,
-        "y": 420,
-        "wires": [
-            [
-                "12783be690eddf9a"
-            ]
-        ]
-    },
-    {
-        "id": "12783be690eddf9a",
-        "type": "function",
-        "z": "a9df6ef8e6d5c24e",
-        "name": "Évaluation",
-        "func": "const PRODUCTION_MIN    = 2000;  // W\nconst DEBOUNCE_MINUTES  = 5;     // délai de confirmation pour conditions instables\n\nconst acIgnored  = flow.get('wh_ac_ignored');\nconst soc        = flow.get('wh_soc');\nconst current    = flow.get('wh_battery_current');\nconst production = flow.get('wh_production') || 0;\nconst now        = Date.now();\n\n// --- Conditions immédiates (stables) ---\nconst acConnected = (acIgnored !== null && acIgnored !== undefined && acIgnored === 0);\nconst socLow      = (soc !== null && soc !== undefined && soc < 95);\n\n// --- Conditions avec debounce (instables) ---\n// discharging\nconst dischargingNow = (current !== null && current !== undefined && current <= 0);\nif (dischargingNow) {\n    if (!context.get('dischargeStart')) {\n        context.set('dischargeStart', now);\n    }\n} else {\n    context.set('dischargeStart', null);\n}\nconst dischargeStart    = context.get('dischargeStart');\nconst dischargeElapsed  = dischargeStart ? (now - dischargeStart) / 60000 : 0;\nconst discharging       = dischargingNow && (dischargeElapsed >= DEBOUNCE_MINUTES);\n\n// prodInsuff\nconst prodInsuffNow = (production <= PRODUCTION_MIN);\nif (prodInsuffNow) {\n    if (!context.get('prodInsuffStart')) {\n        context.set('prodInsuffStart', now);\n    }\n} else {\n    context.set('prodInsuffStart', null);\n}\nconst prodInsuffStart   = context.get('prodInsuffStart');\nconst prodInsuffElapsed = prodInsuffStart ? (now - prodInsuffStart) / 60000 : 0;\nconst prodInsuff        = prodInsuffNow && (prodInsuffElapsed >= DEBOUNCE_MINUTES);\n\n// --- Décision ---\nconst vacation = acConnected || socLow || discharging || prodInsuff;\n\nlet reasons = [];\nif (acConnected) reasons.push('AC connecté');\nif (socLow)      reasons.push(`SOC ${soc}%<85%`);\nif (discharging) reasons.push(`Décharge ${current}A (${dischargeElapsed.toFixed(1)}min)`);\nif (prodInsuff)  reasons.push(`Prod ${production}W≤${PRODUCTION_MIN}W (${prodInsuffElapsed.toFixed(1)}min)`);\n\n// Statut détaillé même quand en attente de confirmation\nlet pending = [];\nif (dischargingNow && !discharging) pending.push(`Décharge ${dischargeElapsed.toFixed(1)}/${DEBOUNCE_MINUTES}min`);\nif (prodInsuffNow  && !prodInsuff)  pending.push(`Prod ${prodInsuffElapsed.toFixed(1)}/${DEBOUNCE_MINUTES}min`);\n\nmsg.payload = {\n    mode: vacation ? 'vacation' : 'heat_pump',\n    ac_ignored: acIgnored,\n    soc: soc,\n    battery_current: current,\n    production: production,\n    reasons: vacation ? reasons : [`SOC≥85%, AC ignoré, Charge, Prod ${production}W>${PRODUCTION_MIN}W`]\n};\n\nif (vacation) {\n    node.status({fill:'yellow', shape:'ring', text:`VACATION: ${reasons.join(' | ')}`});\n    return [null, msg];\n} else if (pending.length > 0) {\n    node.status({fill:'orange', shape:'ring', text:`⏳ Attente: ${pending.join(' | ')}`});\n    return [null, null];\n} else {\n    node.status({fill:'cyan', shape:'dot', text:`HEAT_PUMP: Prod ${production}W, SOC ${soc}%`});\n    return [msg, null];\n}\n",
-        "outputs": 2,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 690,
-        "y": 280,
-        "wires": [
-            [
-                "b4f5e933b5270923"
-            ],
-            [
-                "df84ff20a7f8a525"
-            ]
-        ]
-    },
-    {
-        "id": "fedc522364249ce4",
-        "type": "global-config",
-        "env": [],
-        "modules": {
-            "@victronenergy/node-red-contrib-victron": "1.6.60"
-        }
     }
 ]

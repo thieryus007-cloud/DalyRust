@@ -8,6 +8,57 @@
         "env": []
     },
     {
+        "id": "pi5_mqtt_broker_swh",
+        "type": "mqtt-broker",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
+        "port": "1883",
+        "clientid": "nodered_setwaterheater",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "23efecea2e615363",
+        "type": "comment",
+        "z": "eca20a68bef0de32",
+        "name": "MQTT topics",
+        "info": "subscriptions:\n0: \"app/clients/Santuario-123456/push\"\n1: \"app/clients/Santuario-123456/inbox\"\npublications: array[1]\n0: \"app/clients/Santuario-123456/outbox\"\nurl: \"https://api-eic.lgthinq.com/client/certificate\"\n",
+        "x": 110,
+        "y": 20,
+        "wires": []
+    },
+    {
+        "id": "6777ad8d7d167c43",
+        "type": "comment",
+        "z": "eca20a68bef0de32",
+        "name": "https://smartsolution.developer.lge.com/en/apiManage/thinq_connect#tag/Client-API/paths/~1client/delete",
+        "info": "https://smartsolution.developer.lge.com/en/apiManage/thinq_connect#tag/Client-API/paths/~1client/delete",
+        "x": 400,
+        "y": 60,
+        "wires": []
+    },
+    {
         "id": "f070bfd5caf24aba",
         "type": "inject",
         "z": "eca20a68bef0de32",
@@ -105,234 +156,6 @@
         "wires": []
     },
     {
-        "id": "6777ad8d7d167c43",
-        "type": "comment",
-        "z": "eca20a68bef0de32",
-        "name": "https://smartsolution.developer.lge.com/en/apiManage/thinq_connect#tag/Client-API/paths/~1client/delete",
-        "info": "https://smartsolution.developer.lge.com/en/apiManage/thinq_connect#tag/Client-API/paths/~1client/delete",
-        "x": 400,
-        "y": 60,
-        "wires": []
-    },
-    {
-        "id": "af9a45220f23a72f",
-        "type": "inject",
-        "z": "eca20a68bef0de32",
-        "name": "SET targetTemperature",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "x": 140,
-        "y": 640,
-        "wires": [
-            [
-                "d1049248c0b17e15"
-            ]
-        ]
-    },
-    {
-        "id": "29843fa3927ca9a0",
-        "type": "http request",
-        "z": "eca20a68bef0de32",
-        "name": "",
-        "method": "POST",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 550,
-        "y": 640,
-        "wires": [
-            [
-                "cf3e64065ccd05c4"
-            ]
-        ]
-    },
-    {
-        "id": "cf3e64065ccd05c4",
-        "type": "debug",
-        "z": "eca20a68bef0de32",
-        "name": "",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 710,
-        "y": 640,
-        "wires": []
-    },
-    {
-        "id": "15ebde54ddc29a1e",
-        "type": "comment",
-        "z": "eca20a68bef0de32",
-        "name": "Enregistrer le client",
-        "info": "",
-        "x": 110,
-        "y": 580,
-        "wires": []
-    },
-    {
-        "id": "d1049248c0b17e15",
-        "type": "function",
-        "z": "eca20a68bef0de32",
-        "name": "Set 40 °C Nuit",
-        "func": "msg.headers = {\n    'Authorization': 'Bearer thinqpat_975d93159fdcf31033e33a3b9c49009ae1ffbf345dfa6dcb4e2f',\n    'x-message-id': 'fNvdZ1brTn-wWKUIWGoSVw',\n    'x-country': 'FR',\n    'x-client-id': 'Santuario-123456',\n    'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',\n    'Content-Type': 'application/json'\n};\n\nmsg.payload = {\n    \"body\": {\n        \"type\": \"MQTT\",\n        \"service-code\": \"SVC202\",\n        \"device-type\": \"607\"\n    }\n\n};\n\nmsg.url = 'https://api-eic.lgthinq.com/client';\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 360,
-        "y": 640,
-        "wires": [
-            [
-                "29843fa3927ca9a0"
-            ]
-        ]
-    },
-    {
-        "id": "c067917d9663e579",
-        "type": "inject",
-        "z": "eca20a68bef0de32",
-        "name": "SET targetTemperature",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "x": 140,
-        "y": 720,
-        "wires": [
-            [
-                "0eab5845f49d1210"
-            ]
-        ]
-    },
-    {
-        "id": "94525c748f0975a2",
-        "type": "http request",
-        "z": "eca20a68bef0de32",
-        "name": "",
-        "method": "POST",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 530,
-        "y": 720,
-        "wires": [
-            [
-                "1dabe69425a7843e"
-            ]
-        ]
-    },
-    {
-        "id": "1dabe69425a7843e",
-        "type": "debug",
-        "z": "eca20a68bef0de32",
-        "name": "",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "complete": "true",
-        "targetType": "full",
-        "x": 690,
-        "y": 720,
-        "wires": []
-    },
-    {
-        "id": "0eab5845f49d1210",
-        "type": "function",
-        "z": "eca20a68bef0de32",
-        "name": "Set 55°C Jour",
-        "func": "msg.headers = {\n    'Authorization': 'Bearer thinqpat_975d93159fdcf31033e33a3b9c49009ae1ffbf345dfa6dcb4e2f',\n    'x-message-id': 'fNvdZ1brTn-wWKUIWGoSVw',\n    'x-country': 'FR',\n    'x-client-id': 'Santuario-123456',\n    'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',\n    'Content-Type': 'application/json'\n};\n\nmsg.payload = {\n    \"temperature\": {\n        \"targetTemperature\": 55\n    }\n};\n\nmsg.url = 'https://api-eic.lgthinq.com/devices/918c240ab4c6e3eee70a4e9ac015c18ddd8b4f933c3d9ff813446d8f8dddf720/control';\n\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 360,
-        "y": 720,
-        "wires": [
-            [
-                "94525c748f0975a2"
-            ]
-        ]
-    },
-    {
-        "id": "356507781f925f50",
-        "type": "comment",
-        "z": "eca20a68bef0de32",
-        "name": "set temperature",
-        "info": "",
-        "x": 360,
-        "y": 680,
-        "wires": []
-    },
-    {
-        "id": "23efecea2e615363",
-        "type": "comment",
-        "z": "eca20a68bef0de32",
-        "name": "MQTT topics",
-        "info": "subscriptions:\n0: \"app/clients/Santuario-123456/push\"\n1: \"app/clients/Santuario-123456/inbox\"\npublications: array[1]\n0: \"app/clients/Santuario-123456/outbox\"\nurl: \"https://api-eic.lgthinq.com/client/certificate\"\n",
-        "x": 110,
-        "y": 20,
-        "wires": []
-    },
-    {
-        "id": "24aeda907cd8a6cd",
-        "type": "victron-virtual",
-        "z": "eca20a68bef0de32",
-        "name": "WaterHeater VRM 101",
-        "outputs": 1,
-        "device": "temperature",
-        "default_values": true,
-        "battery_capacity": 25,
-        "include_battery_temperature": false,
-        "grid_nrofphases": 1,
-        "include_motor_temp": false,
-        "include_controller_temp": false,
-        "include_coolant_temp": false,
-        "include_motor_rpm": true,
-        "include_motor_direction": true,
-        "position": 0,
-        "pvinverter_nrofphases": 1,
-        "fluid_type": 0,
-        "include_tank_battery": false,
-        "include_tank_temperature": false,
-        "tank_battery_voltage": 3.3,
-        "tank_capacity": 0.2,
-        "temperature_type": "5",
-        "include_humidity": false,
-        "include_pressure": false,
-        "include_temp_battery": false,
-        "temp_battery_voltage": 3.3,
-        "x": 340,
-        "y": 180,
-        "wires": [
-            []
-        ]
-    },
-    {
         "id": "8e0e3c8068a3f54a",
         "type": "inject",
         "z": "eca20a68bef0de32",
@@ -345,6 +168,25 @@
         "topic": "",
         "x": 150,
         "y": 240,
+        "wires": [
+            [
+                "7bb2a5727f5c2df1"
+            ]
+        ]
+    },
+    {
+        "id": "ecdba2928ba2d78b",
+        "type": "inject",
+        "z": "eca20a68bef0de32",
+        "name": "Test manuel",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 110,
+        "y": 340,
         "wires": [
             [
                 "7bb2a5727f5c2df1"
@@ -411,13 +253,13 @@
         "y": 360,
         "wires": [
             [
-                "f40892d3456258a4"
+                "wrap_temp_out"
             ],
             [
-                "1bc326182065ca33"
+                "wrap_name_out"
             ],
             [
-                "6c932d2ba6b65f6a"
+                "wrap_status_out"
             ],
             [
                 "39edfb8355493944"
@@ -425,92 +267,115 @@
         ]
     },
     {
-        "id": "f40892d3456258a4",
-        "type": "victron-output-custom",
+        "id": "wrap_temp_out",
+        "type": "function",
         "z": "eca20a68bef0de32",
-        "service": "com.victronenergy.temperature/101",
-        "path": "/TemperatureType",
-        "serviceObj": {
-            "service": "com.victronenergy.temperature/101",
-            "name": "WaterHeater (101)"
-        },
-        "pathObj": {
-            "path": "/TemperatureType",
-            "name": "/TemperatureType",
-            "type": "number",
-            "value": 5
-        },
         "name": "Température actuelle",
-        "onlyChanges": false,
-        "outputs": 0,
-        "x": 720,
+        "func": "const v = msg.payload;\nnode.status({fill:'green', shape:'dot', text: `${v}°C`});\nmsg.payload = {value: v};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 300,
+        "wires": [
+            [
+                "f40892d3456258a4"
+            ]
+        ]
+    },
+    {
+        "id": "f40892d3456258a4",
+        "type": "mqtt out",
+        "z": "eca20a68bef0de32",
+        "name": "W temperature/101/TemperatureType",
+        "topic": "W/c0619ab9929a/temperature/101/TemperatureType",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "pi5_mqtt_broker_swh",
+        "x": 870,
         "y": 300,
         "wires": []
     },
     {
-        "id": "1bc326182065ca33",
-        "type": "victron-output-custom",
+        "id": "wrap_name_out",
+        "type": "function",
         "z": "eca20a68bef0de32",
-        "service": "com.victronenergy.temperature/101",
-        "path": "/CustomName",
-        "serviceObj": {
-            "service": "com.victronenergy.temperature/101",
-            "name": "WaterHeater (101)"
-        },
-        "pathObj": {
-            "path": "/CustomName",
-            "name": "/CustomName",
-            "type": "string",
-            "value": "WaterHeater"
-        },
         "name": "Mode + Target",
-        "onlyChanges": false,
-        "outputs": 0,
-        "x": 700,
+        "func": "const v = msg.payload;\nnode.status({fill:'green', shape:'dot', text: v});\nmsg.payload = {value: v};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 610,
+        "y": 360,
+        "wires": [
+            [
+                "1bc326182065ca33"
+            ]
+        ]
+    },
+    {
+        "id": "1bc326182065ca33",
+        "type": "mqtt out",
+        "z": "eca20a68bef0de32",
+        "name": "W temperature/101/CustomName",
+        "topic": "W/c0619ab9929a/temperature/101/CustomName",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "pi5_mqtt_broker_swh",
+        "x": 840,
         "y": 360,
         "wires": []
     },
     {
-        "id": "6c932d2ba6b65f6a",
-        "type": "victron-output-custom",
+        "id": "wrap_status_out",
+        "type": "function",
         "z": "eca20a68bef0de32",
-        "service": "com.victronenergy.temperature/101",
-        "path": "/Status",
-        "serviceObj": {
-            "service": "com.victronenergy.temperature/101",
-            "name": "WaterHeater (101)"
-        },
-        "pathObj": {
-            "path": "/Status",
-            "name": "/Status",
-            "type": "number",
-            "value": 0
-        },
         "name": "Statut coloré",
-        "onlyChanges": false,
-        "outputs": 0,
-        "x": 690,
+        "func": "const v = msg.payload;\nnode.status({fill: v === 1 ? 'red' : 'green', shape:'dot', text: v === 1 ? 'TURBO' : 'NORMAL'});\nmsg.payload = {value: v};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
         "y": 420,
-        "wires": []
-    },
-    {
-        "id": "ecdba2928ba2d78b",
-        "type": "inject",
-        "z": "eca20a68bef0de32",
-        "name": "Test manuel",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": "",
-        "topic": "",
-        "x": 110,
-        "y": 340,
         "wires": [
             [
-                "7bb2a5727f5c2df1"
+                "6c932d2ba6b65f6a"
             ]
         ]
+    },
+    {
+        "id": "6c932d2ba6b65f6a",
+        "type": "mqtt out",
+        "z": "eca20a68bef0de32",
+        "name": "W temperature/101/Status",
+        "topic": "W/c0619ab9929a/temperature/101/Status",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "pi5_mqtt_broker_swh",
+        "x": 810,
+        "y": 420,
+        "wires": []
     },
     {
         "id": "39edfb8355493944",
@@ -533,11 +398,177 @@
         ]
     },
     {
-        "id": "6dd158659111e8af",
-        "type": "global-config",
-        "env": [],
-        "modules": {
-            "@victronenergy/node-red-contrib-victron": "1.6.60"
-        }
+        "id": "15ebde54ddc29a1e",
+        "type": "comment",
+        "z": "eca20a68bef0de32",
+        "name": "Enregistrer le client",
+        "info": "",
+        "x": 110,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "356507781f925f50",
+        "type": "comment",
+        "z": "eca20a68bef0de32",
+        "name": "set temperature",
+        "info": "",
+        "x": 360,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "af9a45220f23a72f",
+        "type": "inject",
+        "z": "eca20a68bef0de32",
+        "name": "SET targetTemperature",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 640,
+        "wires": [
+            [
+                "d1049248c0b17e15"
+            ]
+        ]
+    },
+    {
+        "id": "d1049248c0b17e15",
+        "type": "function",
+        "z": "eca20a68bef0de32",
+        "name": "Set 40 °C Nuit",
+        "func": "msg.headers = {\n    'Authorization': 'Bearer thinqpat_975d93159fdcf31033e33a3b9c49009ae1ffbf345dfa6dcb4e2f',\n    'x-message-id': 'fNvdZ1brTn-wWKUIWGoSVw',\n    'x-country': 'FR',\n    'x-client-id': 'Santuario-123456',\n    'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',\n    'Content-Type': 'application/json'\n};\n\nmsg.payload = {\n    \"body\": {\n        \"type\": \"MQTT\",\n        \"service-code\": \"SVC202\",\n        \"device-type\": \"607\"\n    }\n\n};\n\nmsg.url = 'https://api-eic.lgthinq.com/client';\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 640,
+        "wires": [
+            [
+                "29843fa3927ca9a0"
+            ]
+        ]
+    },
+    {
+        "id": "29843fa3927ca9a0",
+        "type": "http request",
+        "z": "eca20a68bef0de32",
+        "name": "",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 550,
+        "y": 640,
+        "wires": [
+            [
+                "cf3e64065ccd05c4"
+            ]
+        ]
+    },
+    {
+        "id": "cf3e64065ccd05c4",
+        "type": "debug",
+        "z": "eca20a68bef0de32",
+        "name": "",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 710,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "c067917d9663e579",
+        "type": "inject",
+        "z": "eca20a68bef0de32",
+        "name": "SET targetTemperature",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "x": 140,
+        "y": 720,
+        "wires": [
+            [
+                "0eab5845f49d1210"
+            ]
+        ]
+    },
+    {
+        "id": "0eab5845f49d1210",
+        "type": "function",
+        "z": "eca20a68bef0de32",
+        "name": "Set 55°C Jour",
+        "func": "msg.headers = {\n    'Authorization': 'Bearer thinqpat_975d93159fdcf31033e33a3b9c49009ae1ffbf345dfa6dcb4e2f',\n    'x-message-id': 'fNvdZ1brTn-wWKUIWGoSVw',\n    'x-country': 'FR',\n    'x-client-id': 'Santuario-123456',\n    'x-api-key': 'v6GFvkweNo7DK7yD3ylIZ9w52aKBU0eJ7wLXkSR3',\n    'Content-Type': 'application/json'\n};\n\nmsg.payload = {\n    \"temperature\": {\n        \"targetTemperature\": 55\n    }\n};\n\nmsg.url = 'https://api-eic.lgthinq.com/devices/918c240ab4c6e3eee70a4e9ac015c18ddd8b4f933c3d9ff813446d8f8dddf720/control';\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 720,
+        "wires": [
+            [
+                "94525c748f0975a2"
+            ]
+        ]
+    },
+    {
+        "id": "94525c748f0975a2",
+        "type": "http request",
+        "z": "eca20a68bef0de32",
+        "name": "",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 530,
+        "y": 720,
+        "wires": [
+            [
+                "1dabe69425a7843e"
+            ]
+        ]
+    },
+    {
+        "id": "1dabe69425a7843e",
+        "type": "debug",
+        "z": "eca20a68bef0de32",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "complete": "true",
+        "targetType": "full",
+        "x": 690,
+        "y": 720,
+        "wires": []
     }
 ]
