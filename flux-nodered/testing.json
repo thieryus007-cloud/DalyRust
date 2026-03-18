@@ -1,0 +1,508 @@
+[
+    {
+        "id": "a6cee929caef49e9",
+        "type": "tab",
+        "label": "Testing",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "ed4c2a5b6513adae",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 13",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "f4aeeef9c6de1545",
+        "type": "victron-input-system",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.system/0",
+        "path": "/Ac/ActiveIn/Source",
+        "serviceObj": {
+            "service": "com.victronenergy.system/0",
+            "name": "Venus system"
+        },
+        "pathObj": {
+            "path": "/Ac/ActiveIn/Source",
+            "type": "enum",
+            "name": "AC-Input",
+            "enum": {
+                "0": "Not available",
+                "1": "Grid",
+                "2": "Generator",
+                "3": "Shore",
+                "240": "Inverting"
+            }
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 190,
+        "y": 80,
+        "wires": [
+            [
+                "ed4c2a5b6513adae"
+            ]
+        ]
+    },
+    {
+        "id": "1d32abd6c0baec8b",
+        "type": "victron-input-system",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.system/0",
+        "path": "/Dc/Vebus/Current",
+        "serviceObj": {
+            "service": "com.victronenergy.system/0",
+            "name": "Venus system"
+        },
+        "pathObj": {
+            "path": "/Dc/Vebus/Current",
+            "type": "float",
+            "name": "VE.Bus charge current (A)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "2",
+        "outputs": 1,
+        "x": 240,
+        "y": 200,
+        "wires": [
+            [
+                "eb463ed6bbb8e743"
+            ]
+        ]
+    },
+    {
+        "id": "eb463ed6bbb8e743",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 14",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "5e78bada02a09175",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 15",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "a5988317ad1f7b7e",
+        "type": "victron-input-system",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.system/0",
+        "path": "/Dc/Battery/Voltage",
+        "serviceObj": {
+            "service": "com.victronenergy.system/0",
+            "name": "Venus system"
+        },
+        "pathObj": {
+            "path": "/Dc/Battery/Voltage",
+            "type": "float",
+            "name": "Battery voltage (V)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "3",
+        "outputs": 1,
+        "x": 220,
+        "y": 260,
+        "wires": [
+            [
+                "5e78bada02a09175"
+            ]
+        ]
+    },
+    {
+        "id": "d1b7e76e5da85b9e",
+        "type": "victron-input-custom",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.vebus/275",
+        "path": "/Ac/State/IgnoreAcIn1",
+        "serviceObj": {
+            "service": "com.victronenergy.vebus/275",
+            "name": "MultiPlus-II 48/5000/70-50 (275)"
+        },
+        "pathObj": {
+            "path": "/Ac/State/IgnoreAcIn1",
+            "name": "/Ac/State/IgnoreAcIn1",
+            "type": "number",
+            "value": 0
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 240,
+        "y": 480,
+        "wires": [
+            [
+                "fbb741eb739b995e"
+            ]
+        ]
+    },
+    {
+        "id": "fbb741eb739b995e",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 16",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "9e937ff7d326ded3",
+        "type": "comment",
+        "z": "a6cee929caef49e9",
+        "name": "1 - Grid & 240 - Inverting",
+        "info": "",
+        "x": 190,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "510ab9be8d8523e4",
+        "type": "comment",
+        "z": "a6cee929caef49e9",
+        "name": "0 - AC input not ignored 1 - AC input ignored",
+        "info": "",
+        "x": 250,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "41554f2771ecb73f",
+        "type": "victron-input-battery",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.battery/274",
+        "path": "/Dc/0/Voltage",
+        "serviceObj": {
+            "service": "com.victronenergy.battery/274",
+            "name": "SmartShunt 300A"
+        },
+        "pathObj": {
+            "path": "/Dc/0/Voltage",
+            "type": "float",
+            "name": "Battery voltage (V)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "3",
+        "outputs": 1,
+        "x": 230,
+        "y": 320,
+        "wires": [
+            [
+                "6fd6a665df20c104"
+            ]
+        ]
+    },
+    {
+        "id": "6fd6a665df20c104",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 18",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 320,
+        "wires": []
+    },
+    {
+        "id": "ab80795ff702d565",
+        "type": "victron-input-battery",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.battery/274",
+        "path": "/Dc/0/Voltage",
+        "serviceObj": {
+            "service": "com.victronenergy.battery/274",
+            "name": "SmartShunt 300A"
+        },
+        "pathObj": {
+            "path": "/Dc/0/Voltage",
+            "type": "float",
+            "name": "Battery voltage (V)"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "3",
+        "outputs": 1,
+        "x": 190,
+        "y": 640,
+        "wires": [
+            [
+                "42978931ab02fe9d"
+            ]
+        ]
+    },
+    {
+        "id": "42978931ab02fe9d",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "Store Voltage",
+        "func": "const voltage = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('batteryVoltage', voltage);\nnode.status({fill: \"blue\", shape: \"dot\", text: `${voltage.toFixed(2)}V`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 640,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5491e5ea8a8248ae",
+        "type": "victron-input-vebus",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.vebus/275",
+        "path": "/Ac/State/IgnoreAcIn1",
+        "serviceObj": {
+            "service": "com.victronenergy.vebus/275",
+            "name": "MultiPlus-II 48/5000/70-50"
+        },
+        "pathObj": {
+            "path": "/Ac/State/IgnoreAcIn1",
+            "type": "enum",
+            "name": "AC input 1 ignored",
+            "enum": {
+                "0": "AC input not ignored",
+                "1": "AC input ignored"
+            }
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 210,
+        "y": 540,
+        "wires": [
+            [
+                "b62ff0a615ef391a"
+            ]
+        ]
+    },
+    {
+        "id": "b62ff0a615ef391a",
+        "type": "function",
+        "z": "a6cee929caef49e9",
+        "name": "Detect Change",
+        "func": "const currentValue = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nconst previousValue = context.get('lastValue');\nconst batteryVoltage = flow.get('batteryVoltage') || 0;\n\nif (previousValue !== currentValue) {\n    context.set('lastValue', currentValue);\n    \n    const status = currentValue === 1 ? \"AC INPUT IGNORED\" : \"AC INPUT ACTIVE\";\n    node.status({fill: currentValue === 1 ? \"green\" : \"red\", shape: \"dot\", text: `${status} @ ${batteryVoltage.toFixed(2)}V`});\n    \n    msg.payload = {\n        value: currentValue,\n        status: status,\n        batteryVoltage: batteryVoltage,\n        timestamp: new Date().toISOString()\n    };\n    \n    return msg;\n}\n\nnode.status({fill: \"grey\", shape: \"ring\", text: \"No change\"});\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 540,
+        "wires": [
+            [
+                "dfb1e21ee425592c"
+            ]
+        ]
+    },
+    {
+        "id": "dfb1e21ee425592c",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "AC Input Status Changed",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 490,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "f58b2010d030cbaf",
+        "type": "victron-input-settings",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.settings",
+        "path": "/Settings/CGwacs/MaxFeedInPower",
+        "serviceObj": {
+            "service": "com.victronenergy.settings",
+            "name": "Venus settings"
+        },
+        "pathObj": {
+            "path": "/Settings/CGwacs/MaxFeedInPower",
+            "type": "integer",
+            "name": "Maximum System Grid Feed In (W)",
+            "remarks": "<ul><li>-1: No limit</li><li> &gt;=0: limited system feed-in</li></ul><p>Applies to DC-coupled and AC-coupled feed-in.</p>",
+            "mode": "both"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 270,
+        "y": 140,
+        "wires": [
+            [
+                "72f8b52315b5ac38"
+            ]
+        ]
+    },
+    {
+        "id": "72f8b52315b5ac38",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 19",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "114ce9094d78d8a4",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 10",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "ef5cb526fecadd87",
+        "type": "victron-input-vebus",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.vebus/275",
+        "path": "/Mode",
+        "serviceObj": {
+            "service": "com.victronenergy.vebus/275",
+            "name": "MultiPlus-II 48/5000/70-50"
+        },
+        "pathObj": {
+            "path": "/Mode",
+            "type": "enum",
+            "name": "Switch Position",
+            "enum": {
+                "1": "Charger Only",
+                "2": "Inverter Only",
+                "3": "On",
+                "4": "Off"
+            },
+            "mode": "both"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 240,
+        "y": 380,
+        "wires": [
+            [
+                "114ce9094d78d8a4"
+            ]
+        ]
+    },
+    {
+        "id": "d6933f1a3d46769b",
+        "type": "debug",
+        "z": "a6cee929caef49e9",
+        "name": "debug 23",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 520,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "005435979c6e171f",
+        "type": "victron-input-custom",
+        "z": "a6cee929caef49e9",
+        "service": "com.victronenergy.pvinverter/32",
+        "path": "/Ac/Current",
+        "serviceObj": {
+            "service": "com.victronenergy.pvinverter/32",
+            "name": "Micro-Onduleurs (32)"
+        },
+        "pathObj": {
+            "path": "/Ac/Current",
+            "name": "/Ac/Current",
+            "type": "number",
+            "value": 7.314
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "2",
+        "outputs": 1,
+        "x": 200,
+        "y": 720,
+        "wires": [
+            [
+                "d6933f1a3d46769b"
+            ]
+        ]
+    },
+    {
+        "id": "49cacf5000799dfa",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@victronenergy/node-red-contrib-victron": "1.6.60"
+        }
+    }
+]

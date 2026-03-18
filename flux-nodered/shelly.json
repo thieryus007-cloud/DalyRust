@@ -1,0 +1,679 @@
+[
+    {
+        "id": "ac86aa2e81aa948f",
+        "type": "tab",
+        "label": "Shelly",
+        "disabled": false,
+        "info": "shellypro2pm-ec62608840a4",
+        "env": []
+    },
+    {
+        "id": "d2bbbbdf0da7127f",
+        "type": "comment",
+        "z": "ac86aa2e81aa948f",
+        "name": "shellypro2pm-ec62608840a4",
+        "info": "\nmsg.payload : Object\nobject\nble: object\ncloud: object\neth: object\ninput0: object\nid: 0\nstate: false\ninput1: object\nid: 1\nstate: false\nmqtt: object\nconnected: true\n\nswitch0: object\nid: 0\nsource: \"HTTP\"\noutput: false\napower: 0\nvoltage: 1.6\ncurrent: 0\npf: 0\naenergy: object\ntotal: 0\nby_minute: array[3]\n0: 0\n1: 0\n2: 0\nminute_ts: 1768292313\ntemperature: object\ntC: 14.5\ntF: 58.2",
+        "x": 320,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "c256c8ec1a6f1910",
+        "type": "comment",
+        "z": "ac86aa2e81aa948f",
+        "name": "192.168.1.136",
+        "info": "",
+        "x": 110,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "c7a0e4079be31b94",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 0 ON",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "x": 130,
+        "y": 80,
+        "wires": [
+            [
+                "38f66599d6be9fce"
+            ]
+        ]
+    },
+    {
+        "id": "1282831ff5bd108d",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 0 OFF",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "98f19c3076043382"
+            ]
+        ]
+    },
+    {
+        "id": "c3e45752232556c3",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 1 ON",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "x": 130,
+        "y": 200,
+        "wires": [
+            [
+                "4e9bcc49324c6973"
+            ]
+        ]
+    },
+    {
+        "id": "664b11a3564c15ed",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 1 OFF",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "x": 130,
+        "y": 240,
+        "wires": [
+            [
+                "119323ee1f8c937c"
+            ]
+        ]
+    },
+    {
+        "id": "38f66599d6be9fce",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 0 ON",
+        "func": "msg.payload = JSON.stringify({\n    \"id\": 1,\n    \"src\": \"nodered\",\n    \"method\": \"Switch.Set\",\n    \"params\": {\n        \"id\": 0,\n        \"on\": true\n    }\n});\nmsg.topic = \"shellypro2pm-ec62608840a4/rpc\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 80,
+        "wires": [
+            [
+                "ed47a16a4d8ad7a0"
+            ]
+        ]
+    },
+    {
+        "id": "98f19c3076043382",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 0 OFF",
+        "func": "msg.payload = JSON.stringify({\n    \"id\": 2,\n    \"src\": \"nodered\",\n    \"method\": \"Switch.Set\",\n    \"params\": {\n        \"id\": 0,\n        \"on\": false\n    }\n});\nmsg.topic = \"shellypro2pm-ec62608840a4/rpc\";\nreturn msg;",
+        "outputs": 1,
+        "x": 330,
+        "y": 120,
+        "wires": [
+            [
+                "ed47a16a4d8ad7a0"
+            ]
+        ]
+    },
+    {
+        "id": "4e9bcc49324c6973",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 1 ON",
+        "func": "msg.payload = JSON.stringify({\n    \"id\": 3,\n    \"src\": \"nodered\",\n    \"method\": \"Switch.Set\",\n    \"params\": {\n        \"id\": 1,\n        \"on\": true\n    }\n});\nmsg.topic = \"shellypro2pm-ec62608840a4/rpc\";\nreturn msg;",
+        "outputs": 1,
+        "x": 330,
+        "y": 200,
+        "wires": [
+            [
+                "ed47a16a4d8ad7a0"
+            ]
+        ]
+    },
+    {
+        "id": "119323ee1f8c937c",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 1 OFF",
+        "func": "msg.payload = JSON.stringify({\n    \"id\": 4,\n    \"src\": \"nodered\",\n    \"method\": \"Switch.Set\",\n    \"params\": {\n        \"id\": 1,\n        \"on\": false\n    }\n});\nmsg.topic = \"shellypro2pm-ec62608840a4/rpc\";\nreturn msg;",
+        "outputs": 1,
+        "x": 330,
+        "y": 240,
+        "wires": [
+            [
+                "ed47a16a4d8ad7a0"
+            ]
+        ]
+    },
+    {
+        "id": "ed47a16a4d8ad7a0",
+        "type": "mqtt out",
+        "z": "ac86aa2e81aa948f",
+        "name": "Shelly Command",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "broker": "victron_mqtt",
+        "x": 560,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "5a889a25b41aaeac",
+        "type": "mqtt in",
+        "z": "ac86aa2e81aa948f",
+        "name": "Shelly Events",
+        "topic": "shellypro2pm-ec62608840a4/events/rpc",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "victron_mqtt",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 90,
+        "y": 320,
+        "wires": [
+            [
+                "f5f8f5eeabc73bd8"
+            ]
+        ]
+    },
+    {
+        "id": "f5f8f5eeabc73bd8",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Parse Events",
+        "func": "const data = msg.payload;\n\nif (data.method === \"NotifyStatus\" && data.params) {\n    const msgs = [];\n    \n    // Switch 0\n    if (data.params[\"switch:0\"]) {\n        const sw0 = data.params[\"switch:0\"];\n        msgs[0] = {\n            payload: {\n                switch: 0,\n                output: sw0.output,\n                apower: sw0.apower || 0,\n                voltage: sw0.voltage || 0,\n                current: sw0.current || 0,\n                temperature: sw0.temperature ? sw0.temperature.tC : null\n            },\n            topic: \"switch0\"\n        };\n    }\n    \n    // Switch 1\n    if (data.params[\"switch:1\"]) {\n        const sw1 = data.params[\"switch:1\"];\n        msgs[1] = {\n            payload: {\n                switch: 1,\n                output: sw1.output,\n                apower: sw1.apower || 0,\n                voltage: sw1.voltage || 0,\n                current: sw1.current || 0,\n                temperature: sw1.temperature ? sw1.temperature.tC : null\n            },\n            topic: \"switch1\"\n        };\n    }\n    \n    return msgs;\n}\n\nreturn null;",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 320,
+        "wires": [
+            [
+                "08ad3d322ef50448"
+            ],
+            [
+                "766b0326328fdf24"
+            ]
+        ]
+    },
+    {
+        "id": "08ad3d322ef50448",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Format Switch 0",
+        "func": "const p = msg.payload;\nmsg.payload = `Switch 0: ${p.output ? 'ON' : 'OFF'} | ${p.apower}W | ${p.voltage}V | ${p.current}A | ${p.temperature}°C`;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 280,
+        "wires": [
+            [
+                "a0138644541decde"
+            ]
+        ]
+    },
+    {
+        "id": "766b0326328fdf24",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "Format Switch 1",
+        "func": "const p = msg.payload;\nmsg.payload = `Switch 1: ${p.output ? 'ON' : 'OFF'} | ${p.apower}W | ${p.voltage}V | ${p.current}A | ${p.temperature}°C`;\nreturn msg;",
+        "outputs": 1,
+        "x": 440,
+        "y": 340,
+        "wires": [
+            [
+                "b9482f252b28dcc6"
+            ]
+        ]
+    },
+    {
+        "id": "a0138644541decde",
+        "type": "debug",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 0 Status",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 620,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "b9482f252b28dcc6",
+        "type": "debug",
+        "z": "ac86aa2e81aa948f",
+        "name": "Switch 1 Status",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 620,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "456ec271e69c447d",
+        "type": "mqtt in",
+        "z": "ac86aa2e81aa948f",
+        "name": "Shelly Online",
+        "topic": "shellypro2pm-ec62608840a4/online",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "victron_mqtt",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 530,
+        "y": 80,
+        "wires": [
+            [
+                "8dd715529cbe4c09"
+            ]
+        ]
+    },
+    {
+        "id": "8dd715529cbe4c09",
+        "type": "debug",
+        "z": "ac86aa2e81aa948f",
+        "name": "Connection",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 690,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "ef2bb57cb4a01c52",
+        "type": "debug",
+        "z": "ac86aa2e81aa948f",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 670,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "dd6e07df484cf25d",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "0 on",
+        "func": "msg.payload = {\n    method: \"Switch.Set\",\n    parameters : {\n        id : 0,\n        on : true,\n        toggle_after : 2 // optional flip back time in seconds\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 460,
+        "wires": [
+            [
+                "0946617faabee529"
+            ]
+        ]
+    },
+    {
+        "id": "f4a4f94b7597fd62",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "0 off",
+        "func": "msg.payload = {\n    method: \"Switch.Set\",\n    parameters : {\n        id : 0,\n        on : false,\n        toggle_after : 2 // optional flip back time in seconds\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 520,
+        "wires": [
+            [
+                "0946617faabee529"
+            ]
+        ]
+    },
+    {
+        "id": "3bafaa26c0990bfd",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Turn On",
+        "props": [
+            {
+                "p": "payload",
+                "v": "",
+                "vt": "date"
+            },
+            {
+                "p": "topic",
+                "v": "",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 124.99413108825684,
+        "y": 460.193359375,
+        "wires": [
+            [
+                "dd6e07df484cf25d"
+            ]
+        ]
+    },
+    {
+        "id": "bc5836b027ddf130",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Turn Off",
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 520,
+        "wires": [
+            [
+                "f4a4f94b7597fd62"
+            ]
+        ]
+    },
+    {
+        "id": "8144d63e6b511f56",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Get Status",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 400,
+        "wires": [
+            [
+                "0946617faabee529"
+            ]
+        ]
+    },
+    {
+        "id": "1bbf39eb2e3f31cc",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "0 toggle",
+        "func": "msg.payload = {\n    method: \"Switch.Toggle\",\n    parameters : {\n        id : 0,\n    }\n};\nreturn msg;\n",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 260,
+        "y": 580,
+        "wires": [
+            [
+                "0946617faabee529"
+            ]
+        ]
+    },
+    {
+        "id": "83b40ae14b52fa78",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Toggle",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 110,
+        "y": 580,
+        "wires": [
+            [
+                "1bbf39eb2e3f31cc"
+            ]
+        ]
+    },
+    {
+        "id": "0946617faabee529",
+        "type": "shelly-gen2",
+        "z": "ac86aa2e81aa948f",
+        "hostname": "192.168.1.136",
+        "description": "",
+        "mode": "polling",
+        "verbose": false,
+        "server": "04263f2d054cc2a1",
+        "uploadretryinterval": "5000",
+        "pollinginterval": 5000,
+        "pollstatus": false,
+        "getstatusoncommand": false,
+        "devicetype": "Relay",
+        "devicetypemustmatchexactly": false,
+        "captureblutooth": false,
+        "outputs": 1,
+        "x": 480,
+        "y": 460,
+        "wires": [
+            [
+                "ef2bb57cb4a01c52"
+            ]
+        ]
+    },
+    {
+        "id": "06f5efc81c072168",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "id 0",
+        "func": "msg.payload = {\n    method: \"Switch.GetConfig\",\n    parameters : {\n        id : 0,\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 640,
+        "wires": [
+            [
+                "0946617faabee529"
+            ]
+        ]
+    },
+    {
+        "id": "c84e6c31c1e74efc",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Get Config",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 640,
+        "wires": [
+            [
+                "06f5efc81c072168"
+            ]
+        ]
+    },
+    {
+        "id": "c385f85baa074e0e",
+        "type": "function",
+        "z": "ac86aa2e81aa948f",
+        "name": "id 0",
+        "func": "msg.payload = {\n    method: \"Switch.SetConfig\",\n    parameters : {\n        id : 0,\n        config : {\n            // name : \"switch\",\n            // in_mode : \"follow\",\n            // initial_state : \"restore_last\",\n            auto_on : true,\n            // auto_on_delay : 60.00,\n            // auto_off : false,\n            // auto_off_delay : 60.00,\n            // power_limit : 3500\n        }\n    }\n};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 250,
+        "y": 680,
+        "wires": [
+            [
+                "0946617faabee529"
+            ]
+        ]
+    },
+    {
+        "id": "10b39060ced09f8b",
+        "type": "inject",
+        "z": "ac86aa2e81aa948f",
+        "name": "Set Config",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 120,
+        "y": 680,
+        "wires": [
+            [
+                "c385f85baa074e0e"
+            ]
+        ]
+    },
+    {
+        "id": "victron_mqtt",
+        "type": "mqtt-broker",
+        "name": "Victron MQTT",
+        "broker": "192.168.1.120",
+        "port": "1883",
+        "clientid": "nodered_shelly",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "04263f2d054cc2a1",
+        "type": "shelly-gen2-server",
+        "port": "10001",
+        "hostname": "unimatrix"
+    },
+    {
+        "id": "fc56cacd3a9a0c7e",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-shelly": "11.7.2"
+        }
+    }
+]

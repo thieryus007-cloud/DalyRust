@@ -1,0 +1,306 @@
+[
+    {
+        "id": "66a9fe8bcf4c06a4",
+        "type": "tab",
+        "label": "Commande DEYE ",
+        "disabled": false,
+        "info": "Gestion DEYE avec protection anti-oscillation\n- Minimum 2 min OFF avant rallumage\n- Hystérésis large\n- Uniquement en off-grid"
+    },
+    {
+        "id": "9ab315f950ad97af",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Stocker Fréquence",
+        "func": "const freq = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('frequency', freq);\nnode.status({fill:\"blue\",shape:\"dot\",text:`${freq} Hz`});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 150,
+        "y": 240,
+        "wires": [
+            [
+                "974ddf12c7af6ef1"
+            ]
+        ]
+    },
+    {
+        "id": "359031c7637e26a8",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Stocker État Grid",
+        "func": "const connected = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('grid_connected', connected === 1);\n\nif (connected === 1) {\n    node.status({fill:\"green\",shape:\"dot\",text:\"Grid Connecté\"});\n} else {\n    node.status({fill:\"orange\",shape:\"dot\",text:\"Grid Déconnecté\"});\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "974ddf12c7af6ef1"
+            ]
+        ]
+    },
+    {
+        "id": "974ddf12c7af6ef1",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Logique Anti-Oscillation 52Hz 50.3Hz",
+        "func": "const freq = flow.get('frequency') || 50.0;\nconst gridConnected = flow.get('grid_connected');\n\n// ⚠️ CONDITION CRITIQUE : Ne couper QUE si déconnecté du grid\nif (gridConnected === true) {\n    // Grid connecté → Forcer ON\n    let currentState = context.get('shelly_state') || 'ON';\n    if (currentState !== 'ON') {\n        context.set('shelly_state', 'ON');\n        context.set('last_off_time', null); // Reset timer OFF\n        msg.payload = { action: 'ON', freq: freq, reason: 'Grid connecté → DEYE ON forcé' };\n        node.status({fill:\"green\",shape:\"dot\",text:`🟢 ON (Grid connecté)`});\n        return msg;\n    }\n    node.status({fill:\"green\",shape:\"ring\",text:`ON (Grid - ${freq}Hz)`});\n    return null;\n}\n\n// === MODE OFF-GRID : Gestion avec protection anti-oscillation ===\n\n// PARAMÈTRES CRITIQUES\nconst FREQ_HIGH = 52.0;       // Seuil haut pour couper (Hz)\nconst FREQ_LOW = 50.3;        // Seuil bas pour rallumer (Hz) - LARGE HYSTÉRÉSIS\nconst DELAY_OFF = 15;         // Délai avant coupure (secondes)\nconst DELAY_ON = 45;          // Délai avant rallumage (secondes)\nconst MIN_OFF_DURATION = 120; // Minimum 2 minutes OFF (secondes)\n\n// État actuel\nlet currentState = context.get('shelly_state') || 'ON';\nlet timerHigh = context.get('timer_high') || null;\nlet timerLow = context.get('timer_low') || null;\nlet lastOffTime = context.get('last_off_time') || null;\n\n// === PROTECTION : Vérifier durée minimum OFF ===\nif (currentState === 'OFF' && lastOffTime !== null) {\n    const timeSinceOff = (Date.now() - lastOffTime) / 1000;\n    const remainingTime = MIN_OFF_DURATION - timeSinceOff;\n    \n    if (remainingTime > 0) {\n        // Encore dans la période minimum OFF → Bloquer tout rallumage\n        context.set('timer_low', null); // Reset timer rallumage\n        node.status({\n            fill:\"red\",\n            shape:\"ring\",\n            text:`🔴 OFF verrouillé ${remainingTime.toFixed(0)}s (${freq}Hz)`\n        });\n        return null;\n    }\n}\n\n// === Machine à états avec hystérésis ===\n\nif (freq >= FREQ_HIGH) {\n    // Fréquence haute détectée → Demande de coupure\n    if (!timerHigh) {\n        timerHigh = Date.now();\n        context.set('timer_high', timerHigh);\n    }\n    \n    const elapsedHigh = (Date.now() - timerHigh) / 1000;\n    \n    if (elapsedHigh >= DELAY_OFF && currentState === 'ON') {\n        // Condition remplie → Couper DEYE\n        currentState = 'OFF';\n        const now = Date.now();\n        context.set('shelly_state', 'OFF');\n        context.set('last_off_time', now); // Enregistrer l'heure de coupure\n        context.set('timer_low', null);\n        \n        msg.payload = { \n            action: 'OFF', \n            freq: freq, \n            reason: `OFF-GRID: Freq ${freq}Hz > ${FREQ_HIGH}Hz pendant ${DELAY_OFF}s` \n        };\n        node.status({fill:\"red\",shape:\"dot\",text:`🔴 OFF (${freq}Hz)`});\n        return msg;\n        \n    } else if (currentState === 'OFF') {\n        const timeSinceOff = lastOffTime ? (Date.now() - lastOffTime) / 1000 : 0;\n        node.status({\n            fill:\"red\",\n            shape:\"ring\",\n            text:`OFF maintenu ${timeSinceOff.toFixed(0)}s (${freq}Hz)`\n        });\n    } else {\n        node.status({\n            fill:\"yellow\",\n            shape:\"ring\",\n            text:`${freq}Hz - Attente ${elapsedHigh.toFixed(0)}/${DELAY_OFF}s`\n        });\n    }\n    \n    context.set('timer_low', null);\n    \n} else if (freq <= FREQ_LOW) {\n    // Fréquence basse détectée → Demande de rallumage\n    \n    // Vérifier si on peut rallumer (durée minimum OFF écoulée)\n    if (currentState === 'OFF' && lastOffTime !== null) {\n        const timeSinceOff = (Date.now() - lastOffTime) / 1000;\n        if (timeSinceOff < MIN_OFF_DURATION) {\n            // Pas encore 2 minutes OFF → Bloquer\n            node.status({\n                fill:\"red\",\n                shape:\"ring\",\n                text:`🔒 OFF verrouillé ${(MIN_OFF_DURATION - timeSinceOff).toFixed(0)}s`\n            });\n            return null;\n        }\n    }\n    \n    // Durée minimum OK → Démarrer timer rallumage\n    if (!timerLow) {\n        timerLow = Date.now();\n        context.set('timer_low', timerLow);\n    }\n    \n    const elapsedLow = (Date.now() - timerLow) / 1000;\n    \n    if (elapsedLow >= DELAY_ON && currentState === 'OFF') {\n        // Condition remplie → Rallumer DEYE\n        currentState = 'ON';\n        context.set('shelly_state', 'ON');\n        context.set('last_off_time', null); // Reset compteur OFF\n        context.set('timer_high', null);\n        \n        msg.payload = { \n            action: 'ON', \n            freq: freq, \n            reason: `OFF-GRID: Freq ${freq}Hz < ${FREQ_LOW}Hz pendant ${DELAY_ON}s (après 2min OFF)` \n        };\n        node.status({fill:\"green\",shape:\"dot\",text:`🟢 ON (${freq}Hz)`});\n        return msg;\n        \n    } else if (currentState === 'ON') {\n        node.status({fill:\"green\",shape:\"ring\",text:`ON stable (${freq}Hz)`});\n    } else {\n        node.status({\n            fill:\"yellow\",\n            shape:\"ring\",\n            text:`${freq}Hz - Attente ${elapsedLow.toFixed(0)}/${DELAY_ON}s`\n        });\n    }\n    \n    context.set('timer_high', null);\n    \n} else {\n    // Zone d'hystérésis (entre FREQ_LOW et FREQ_HIGH)\n    context.set('timer_high', null);\n    context.set('timer_low', null);\n    \n    if (currentState === 'ON') {\n        node.status({fill:\"green\",shape:\"ring\",text:`ON stable (${freq}Hz)`});\n    } else {\n        const timeSinceOff = lastOffTime ? (Date.now() - lastOffTime) / 1000 : 0;\n        node.status({\n            fill:\"red\",\n            shape:\"ring\",\n            text:`OFF stable ${timeSinceOff.toFixed(0)}s (${freq}Hz)`\n        });\n    }\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 210,
+        "y": 160,
+        "wires": [
+            [
+                "6333a87030ca5780",
+                "242d976f58c98ec1"
+            ]
+        ]
+    },
+    {
+        "id": "6333a87030ca5780",
+        "type": "switch",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Routage",
+        "property": "payload.action",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "OFF",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "ON",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 480,
+        "y": 160,
+        "wires": [
+            [
+                "ec286aa6516351c2"
+            ],
+            [
+                "4176dc0bd6b19937"
+            ]
+        ]
+    },
+    {
+        "id": "ec286aa6516351c2",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Switch 0 OFF",
+        "func": "msg.payload = JSON.stringify({\n    \"id\": 2,\n    \"src\": \"nodered\",\n    \"method\": \"Switch.Set\",\n    \"params\": {\n        \"id\": 0,\n        \"on\": false\n    }\n});\nmsg.topic = \"shellypro2pm-ec62608840a4/rpc\";\nnode.status({fill:\"red\",shape:\"dot\",text:\"Commande OFF\"});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 100,
+        "wires": [
+            [
+                "b119b9e8f44eb13c"
+            ]
+        ]
+    },
+    {
+        "id": "4176dc0bd6b19937",
+        "type": "function",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Switch 0 ON",
+        "func": "msg.payload = JSON.stringify({\n    \"id\": 1,\n    \"src\": \"nodered\",\n    \"method\": \"Switch.Set\",\n    \"params\": {\n        \"id\": 0,\n        \"on\": true\n    }\n});\nmsg.topic = \"shellypro2pm-ec62608840a4/rpc\";\nnode.status({fill:\"green\",shape:\"dot\",text:\"Commande ON\"});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 220,
+        "wires": [
+            [
+                "b119b9e8f44eb13c"
+            ]
+        ]
+    },
+    {
+        "id": "b119b9e8f44eb13c",
+        "type": "mqtt out",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Shelly Command DEYE",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "broker": "victron_mqtt",
+        "x": 730,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "242d976f58c98ec1",
+        "type": "debug",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "Debug Décision",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 400,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "4dbaa5208e3ad638",
+        "type": "victron-input-custom",
+        "z": "66a9fe8bcf4c06a4",
+        "service": "com.victronenergy.vebus/275",
+        "path": "/Ac/Out/L1/F",
+        "serviceObj": {
+            "service": "com.victronenergy.vebus/275",
+            "name": "MultiPlus-II 48/5000/70-50 (275)"
+        },
+        "pathObj": {
+            "path": "/Ac/Out/L1/F",
+            "name": "/Ac/Out/L1/F",
+            "type": "number",
+            "value": 49.948848724365234
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "2",
+        "outputs": 1,
+        "x": 210,
+        "y": 300,
+        "wires": [
+            [
+                "9ab315f950ad97af"
+            ]
+        ]
+    },
+    {
+        "id": "47f624e50d43dded",
+        "type": "victron-input-custom",
+        "z": "66a9fe8bcf4c06a4",
+        "service": "com.victronenergy.vebus/275",
+        "path": "/Ac/ActiveIn/Connected",
+        "serviceObj": {
+            "service": "com.victronenergy.vebus/275",
+            "name": "MultiPlus-II 48/5000/70-50 (275)"
+        },
+        "pathObj": {
+            "path": "/Ac/ActiveIn/Connected",
+            "name": "/Ac/ActiveIn/Connected",
+            "type": "number",
+            "value": 0
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 250,
+        "y": 40,
+        "wires": [
+            [
+                "359031c7637e26a8"
+            ]
+        ]
+    },
+    {
+        "id": "de719af38af0f0c3",
+        "type": "victron-input-vebus",
+        "z": "66a9fe8bcf4c06a4",
+        "service": "com.victronenergy.vebus/275",
+        "path": "/Ac/State/IgnoreAcIn1",
+        "serviceObj": {
+            "service": "com.victronenergy.vebus/275",
+            "name": "MultiPlus-II 48/5000/70-50"
+        },
+        "pathObj": {
+            "path": "/Ac/State/IgnoreAcIn1",
+            "type": "enum",
+            "name": "AC input 1 ignored",
+            "enum": {
+                "0": "AC input not ignored",
+                "1": "AC input ignored"
+            }
+        },
+        "name": "",
+        "onlyChanges": false,
+        "outputs": 1,
+        "x": 210,
+        "y": 360,
+        "wires": [
+            [
+                "b8d5d7042431f1f0"
+            ]
+        ]
+    },
+    {
+        "id": "b8d5d7042431f1f0",
+        "type": "debug",
+        "z": "66a9fe8bcf4c06a4",
+        "name": "debug 7",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 480,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "victron_mqtt",
+        "type": "mqtt-broker",
+        "name": "Victron MQTT",
+        "broker": "192.168.1.120",
+        "port": "1883",
+        "clientid": "nodered_shelly",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "47bf3c7fb962c974",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@victronenergy/node-red-contrib-victron": "1.6.60"
+        }
+    }
+]

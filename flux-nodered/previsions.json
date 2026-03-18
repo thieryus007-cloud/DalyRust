@@ -1,0 +1,339 @@
+[
+    {
+        "id": "weather_flow",
+        "type": "tab",
+        "label": "Prévisions Météo Solaire",
+        "disabled": true,
+        "info": ""
+    },
+    {
+        "id": "daily_trigger",
+        "type": "inject",
+        "z": "weather_flow",
+        "name": "Exécution quotidienne 7h",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 07 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 120,
+        "wires": [
+            [
+                "get_weather"
+            ]
+        ]
+    },
+    {
+        "id": "manual_trigger",
+        "type": "inject",
+        "z": "weather_flow",
+        "name": "Test manuel",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 110,
+        "y": 260,
+        "wires": [
+            [
+                "get_weather"
+            ]
+        ]
+    },
+    {
+        "id": "get_weather",
+        "type": "http request",
+        "z": "weather_flow",
+        "name": "One Call API 3.0",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/3.0/onecall?lat=43.9151&lon=7.8452&exclude=minutely,alerts&appid=d759c8b8a2d56a671810e0eef605f8b6&units=metric&lang=fr",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 260,
+        "y": 180,
+        "wires": [
+            [
+                "check_response"
+            ]
+        ]
+    },
+    {
+        "id": "check_response",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Vérification réponse",
+        "func": "if (!msg.payload) {\n    node.error(\"Pas de réponse de l'API\");\n    msg.payload = { error: \"No response\" };\n    return [null, msg];\n}\n\nif (msg.statusCode === 401) {\n    node.error(\"Clé API invalide\");\n    msg.payload = { error: \"API Key invalid\" };\n    return [null, msg];\n}\n\nif (msg.payload.cod && msg.payload.cod !== \"200\" && msg.payload.cod !== 200) {\n    node.error(\"Erreur API: \" + (msg.payload.message || msg.payload.cod));\n    msg.payload = { error: msg.payload.message || \"API Error\", details: msg.payload };\n    return [null, msg];\n}\n\nif (!msg.payload.daily || !Array.isArray(msg.payload.daily)) {\n    node.error(\"Structure de données invalide\");\n    msg.payload = { error: \"Invalid data structure\", received: msg.payload };\n    return [null, msg];\n}\n\nif (!msg.payload.hourly || !Array.isArray(msg.payload.hourly)) {\n    node.error(\"Structure de données invalide\");\n    msg.payload = { error: \"Invalid data structure\", received: msg.payload };\n    return [null, msg];\n}\n\nreturn [msg, null];",
+        "outputs": 2,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 260,
+        "wires": [
+            [
+                "parse_weather"
+            ],
+            [
+                "debug_error"
+            ]
+        ]
+    },
+    {
+        "id": "parse_weather",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Analyse prévisions solaires",
+        "func": "const dailyData = msg.payload.daily;\nconst hourlyData = msg.payload.hourly;\n\nconst tomorrow = dailyData[1];\nconst now = new Date();\nconst tomorrowDate = new Date(now);\ntomorrowDate.setDate(tomorrowDate.getDate() + 1);\ntomorrowDate.setHours(0, 0, 0, 0);\n\nconst tomorrowEnd = new Date(tomorrowDate);\ntomorrowEnd.setHours(23, 59, 59, 999);\n\nconst tomorrowHourly = hourlyData.filter(h => {\n    const hourDate = new Date(h.dt * 1000);\n    return hourDate >= tomorrowDate && hourDate <= tomorrowEnd;\n});\n\nlet sunHours = 0;\nlet totalCloudCover = 0;\nlet totalUVI = 0;\nlet count = 0;\nlet avgTemp = 0;\n\ntomorrowHourly.forEach(hour => {\n    const hourTime = new Date(hour.dt * 1000).getHours();\n    if (hourTime >= 10 && hourTime <= 15) {\n        const clouds = hour.clouds || 0;\n        const sunPercent = 100 - clouds;\n        sunHours += (sunPercent / 100);\n        totalCloudCover += clouds;\n        totalUVI += hour.uvi || 0;\n        avgTemp += hour.temp;\n        count++;\n    }\n});\n\nconst avgCloudCover = count > 0 ? totalCloudCover / count : 100;\nconst sunshinePercent = 100 - avgCloudCover;\navgTemp = count > 0 ? avgTemp / count : 0;\nconst avgUVI = count > 0 ? totalUVI / count : 0;\n\nconst sunrise = new Date(tomorrow.sunrise * 1000);\nconst sunset = new Date(tomorrow.sunset * 1000);\nconst daylightHours = (sunset - sunrise) / 3600000;\n\nconst installedPower = 9.3;\nconst efficiencyFactor = 0.65;\nconst uviBonus = Math.min(avgUVI / 10, 0.15);\nconst adjustedEfficiency = efficiencyFactor * (1 + uviBonus);\nconst estimatedProduction = (sunHours * installedPower * adjustedEfficiency).toFixed(2);\n\nlet recommendation = \"\";\nlet chargeStrategy = \"\";\n\nif (sunshinePercent > 70 && avgUVI > 3) {\n    recommendation = \"☀️ Excellentes conditions solaires\";\n    chargeStrategy = \"Ne pas charger ce soir - Production max demain\";\n} else if (sunshinePercent > 50) {\n    recommendation = \"🌤️ Bonnes conditions\";\n    chargeStrategy = \"Charge légère si batteries < 50%\";\n} else if (sunshinePercent > 30) {\n    recommendation = \"⛅ Conditions moyennes\";\n    chargeStrategy = \"Charge modérée recommandée\";\n} else {\n    recommendation = \"☁️ Conditions faibles\";\n    chargeStrategy = \"⚠️ CHARGER BATTERIES À FOND CE SOIR\";\n}\n\nconst result = {\n    date: tomorrowDate.toLocaleDateString('fr-FR'),\n    sunshinePercent: Math.round(sunshinePercent),\n    sunHours: sunHours.toFixed(1),\n    daylightHours: daylightHours.toFixed(1),\n    estimatedProduction: estimatedProduction,\n    avgTemperature: avgTemp.toFixed(1),\n    avgUVI: avgUVI.toFixed(1),\n    maxUVI: tomorrow.uvi.toFixed(1),\n    sunrise: sunrise.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),\n    sunset: sunset.toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}),\n    recommendation: recommendation,\n    chargeStrategy: chargeStrategy,\n    dataPoints: count,\n    humidity: tomorrow.humidity,\n    windSpeed: tomorrow.wind_speed.toFixed(1)\n};\n\nglobal.set('weather_forecast', result);\n\nmsg.payload = result;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 180,
+        "wires": [
+            [
+                "format_output",
+                "save_history"
+            ]
+        ]
+    },
+    {
+        "id": "format_output",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Formatage message",
+        "func": "const d = msg.payload;\n\nconst message = `☀️ PRÉVISIONS SOLAIRES - ${d.date}\n\n${d.recommendation}\n🌤️ Ensoleillement: ${d.sunshinePercent}%\n⏱️ Heures production: ${d.sunHours}h / ${d.daylightHours}h jour\n⚡ Production estimée: ${d.estimatedProduction} kWh\n\n🌡️ Température: ${d.avgTemperature}°C\n☀️ UV Index: ${d.avgUVI} (max: ${d.maxUVI})\n💧 Humidité: ${d.humidity}%\n💨 Vent: ${d.windSpeed} m/s\n🌅 Lever: ${d.sunrise} | Coucher: ${d.sunset}\n\n🔋 STRATÉGIE BATTERIE:\n${d.chargeStrategy}`;\n\nmsg.payload = message;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 260,
+        "wires": [
+            [
+                "debug_output"
+            ]
+        ]
+    },
+    {
+        "id": "debug_output",
+        "type": "debug",
+        "z": "weather_flow",
+        "name": "Résultat",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "debug_error",
+        "type": "debug",
+        "z": "weather_flow",
+        "name": "Erreur API",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 540,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "save_history",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Historique 7 jours",
+        "func": "let history = global.get('weather_history') || [];\n\nhistory.unshift({\n    timestamp: new Date(),\n    forecast: msg.payload\n});\n\nif (history.length > 7) {\n    history = history.slice(0, 7);\n}\n\nglobal.set('weather_history', history);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 340,
+        "wires": [
+            [
+                "debug_output"
+            ]
+        ]
+    },
+    {
+        "id": "get_forecast",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Récupération prévision",
+        "func": "const forecast = global.get('weather_forecast') || null;\n\nif (forecast) {\n    msg.payload = forecast;\n    return msg;\n} else {\n    node.error(\"Aucune prévision disponible\");\n    return null;\n}",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 480,
+        "wires": [
+            [
+                "output_forecast"
+            ]
+        ]
+    },
+    {
+        "id": "trigger_get",
+        "type": "inject",
+        "z": "weather_flow",
+        "name": "Lire dernière prévision",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 480,
+        "wires": [
+            [
+                "get_forecast"
+            ]
+        ]
+    },
+    {
+        "id": "output_forecast",
+        "type": "debug",
+        "z": "weather_flow",
+        "name": "Prévision stockée",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 610,
+        "y": 480,
+        "wires": []
+    },
+    {
+        "id": "1a155184e95b8020",
+        "type": "inject",
+        "z": "weather_flow",
+        "name": "Test clé NODE-RED",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 40,
+        "wires": [
+            [
+                "283501e9d27b4847"
+            ]
+        ]
+    },
+    {
+        "id": "283501e9d27b4847",
+        "type": "http request",
+        "z": "weather_flow",
+        "name": "OpenWeatherMap Node-red API key",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/3.0/onecall?lat=43.9151&lon=7.8452&appid=d759c8b8a2d56a671810e0eef605f8b6&units=metric",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 410,
+        "y": 40,
+        "wires": [
+            [
+                "b77988c9dd6c9620"
+            ]
+        ]
+    },
+    {
+        "id": "b77988c9dd6c9620",
+        "type": "debug",
+        "z": "weather_flow",
+        "name": "Résultat test",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 670,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "f84df7ba427532aa",
+        "type": "comment",
+        "z": "weather_flow",
+        "name": "Calcul prévision kWh",
+        "info": "Voici la formule utilisée dans le flux météo :\n\n**Formule de calcul :**\n\n```\nProduction (kWh) = Heures_Soleil × Puissance_Installée × Efficacité_Ajustée\n```\n\n**Détail du calcul :**\n\n1. **Bonus UV :**\n   ```\n   uviBonus = min(UV_moyen / 10, 0.15)\n   ```\n   - Si UV = 3 → uviBonus = 0.03 (3%)\n   - Si UV = 5 → uviBonus = 0.05 (5%)\n   - Si UV = 10 → uviBonus = 0.10 (10%)\n   - Si UV = 20 → uviBonus = 0.15 (plafonné à 15%)\n\n2. **Efficacité ajustée :**\n   ```\n   Efficacité_Ajustée = 0.65 × (1 + uviBonus)\n   ```\n   - Efficacité de base = 0.65 (65%)\n   - Exemple : Si UV = 5, Efficacité = 0.65 × 1.05 = 0.6825\n\n3. **Production finale :**\n   ```\n   Production = 5.9h × 9.3kWc × 0.6825 = 37.4 kWh\n   ```\n\n**Paramètres actuels :**\n- Puissance installée : **9.3 kWc** (15 panneaux × 620W)\n- Efficacité de base : **0.65** (65%)\n- Fenêtre production : **10H-15H** (5h maximum)\n- Bonus UV : **0 à 15%** selon conditions\n\nL'UV index booste l'efficacité car un UV élevé indique généralement un ciel très clair avec peu d'atténuation atmosphérique, donc plus d'énergie solaire directe reçue par les panneaux.",
+        "x": 160,
+        "y": 380,
+        "wires": []
+    }
+]

@@ -1,0 +1,692 @@
+[
+    {
+        "id": "b6e8da280e925b95",
+        "type": "tab",
+        "label": "Flux 3",
+        "disabled": true,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "comment-header",
+        "type": "comment",
+        "z": "b6e8da280e925b95",
+        "name": "=== SHELLY SWITCH CONTROL via VenusOS MQTT ===\nportalId: c0619ab9929a | instances: 50 (sw1) et 51 (sw2)\nService type: 'switch' (sans EM) ou 'acload' (avec EM)\nPath Victron: /SwitchableOutput/0/State  →  0=OFF  1=ON",
+        "info": "",
+        "x": 710,
+        "y": 20,
+        "wires": []
+    },
+    {
+        "id": "init-request",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "Lire état initial (R)",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 470,
+        "y": 100,
+        "wires": [
+            [
+                "fn-request-sw50",
+                "fn-request-sw51"
+            ]
+        ]
+    },
+    {
+        "id": "fn-request-sw50",
+        "type": "function",
+        "z": "b6e8da280e925b95",
+        "name": "Request SW50",
+        "func": "msg.topic = 'R/c0619ab9929a/switch/50/SwitchableOutput/0/State';\nmsg.payload = '';\nreturn msg;",
+        "outputs": 1,
+        "x": 710,
+        "y": 80,
+        "wires": [
+            [
+                "mqtt-out-cmd"
+            ]
+        ]
+    },
+    {
+        "id": "fn-request-sw51",
+        "type": "function",
+        "z": "b6e8da280e925b95",
+        "name": "Request SW51",
+        "func": "msg.topic = 'R/c0619ab9929a/switch/51/SwitchableOutput/0/State';\nmsg.payload = '';\nreturn msg;",
+        "outputs": 1,
+        "x": 710,
+        "y": 120,
+        "wires": [
+            [
+                "mqtt-out-cmd"
+            ]
+        ]
+    },
+    {
+        "id": "sw50-on",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "SW50 → ON",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "W/c0619ab9929a/switch/50/SwitchableOutput/0/State",
+        "payload": "{\"value\":1}",
+        "payloadType": "json",
+        "x": 470,
+        "y": 200,
+        "wires": [
+            [
+                "mqtt-out-cmd"
+            ]
+        ]
+    },
+    {
+        "id": "sw50-off",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "SW50 → OFF",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "W/c0619ab9929a/switch/50/SwitchableOutput/0/State",
+        "payload": "{\"value\":0}",
+        "payloadType": "json",
+        "x": 470,
+        "y": 240,
+        "wires": [
+            [
+                "mqtt-out-cmd"
+            ]
+        ]
+    },
+    {
+        "id": "sw51-on",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "SW51 → ON",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "W/c0619ab9929a/switch/51/SwitchableOutput/0/State",
+        "payload": "{\"value\":1}",
+        "payloadType": "json",
+        "x": 470,
+        "y": 300,
+        "wires": [
+            [
+                "mqtt-out-cmd"
+            ]
+        ]
+    },
+    {
+        "id": "sw51-off",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "SW51 → OFF",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "W/c0619ab9929a/switch/51/SwitchableOutput/0/State",
+        "payload": "{\"value\":0}",
+        "payloadType": "json",
+        "x": 470,
+        "y": 340,
+        "wires": [
+            [
+                "mqtt-out-cmd"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-out-cmd",
+        "type": "mqtt out",
+        "z": "b6e8da280e925b95",
+        "name": "Victron MQTT OUT",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "broker": "broker-victron",
+        "x": 950,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "mqtt-in-sw50",
+        "type": "mqtt in",
+        "z": "b6e8da280e925b95",
+        "name": "État SW50",
+        "topic": "N/c0619ab9929a/switch/50/SwitchableOutput/0/State",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "broker-victron",
+        "nl": false,
+        "rap": false,
+        "rh": 0,
+        "inputs": 0,
+        "x": 470,
+        "y": 440,
+        "wires": [
+            [
+                "fn-parse-state-50"
+            ]
+        ]
+    },
+    {
+        "id": "fn-parse-state-50",
+        "type": "function",
+        "z": "b6e8da280e925b95",
+        "name": "Parser état SW50",
+        "func": "var raw = msg.payload;\nvar val = (raw && raw.value !== undefined) ? raw.value : raw;\nvar label = (val == 1) ? 'ON ✅' : (val == 0) ? 'OFF ❌' : 'INCONNU (?)';\nflow.set('sw50_state', val);\nmsg.payload = { instance: 50, etat: label, valeur: val, raw: raw };\nmsg.topic = 'SW50';\nreturn msg;",
+        "outputs": 1,
+        "x": 710,
+        "y": 440,
+        "wires": [
+            [
+                "debug-sw50",
+                "fn-log-state"
+            ]
+        ]
+    },
+    {
+        "id": "debug-sw50",
+        "type": "debug",
+        "z": "b6e8da280e925b95",
+        "name": "DEBUG SW50",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.etat",
+        "statusType": "auto",
+        "x": 950,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "mqtt-in-sw51",
+        "type": "mqtt in",
+        "z": "b6e8da280e925b95",
+        "name": "État SW51",
+        "topic": "N/c0619ab9929a/switch/51/SwitchableOutput/0/State",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "broker-victron",
+        "nl": false,
+        "rap": false,
+        "rh": 0,
+        "inputs": 0,
+        "x": 470,
+        "y": 520,
+        "wires": [
+            [
+                "fn-parse-state-51"
+            ]
+        ]
+    },
+    {
+        "id": "fn-parse-state-51",
+        "type": "function",
+        "z": "b6e8da280e925b95",
+        "name": "Parser état SW51",
+        "func": "var raw = msg.payload;\nvar val = (raw && raw.value !== undefined) ? raw.value : raw;\nvar label = (val == 1) ? 'ON ✅' : (val == 0) ? 'OFF ❌' : 'INCONNU (?)';\nflow.set('sw51_state', val);\nmsg.payload = { instance: 51, etat: label, valeur: val, raw: raw };\nmsg.topic = 'SW51';\nreturn msg;",
+        "outputs": 1,
+        "x": 710,
+        "y": 520,
+        "wires": [
+            [
+                "debug-sw51",
+                "fn-log-state"
+            ]
+        ]
+    },
+    {
+        "id": "debug-sw51",
+        "type": "debug",
+        "z": "b6e8da280e925b95",
+        "name": "DEBUG SW51",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.etat",
+        "statusType": "auto",
+        "x": 950,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "fn-log-state",
+        "type": "function",
+        "z": "b6e8da280e925b95",
+        "name": "Log combiné SW50+SW51",
+        "func": "var sw50 = flow.get('sw50_state');\nvar sw51 = flow.get('sw51_state');\nvar fmt = function(v) { return (v == 1) ? 'ON' : (v == 0) ? 'OFF' : '?'; };\nmsg.payload = 'SW50=' + fmt(sw50) + '  |  SW51=' + fmt(sw51);\nreturn msg;",
+        "outputs": 1,
+        "x": 950,
+        "y": 580,
+        "wires": [
+            [
+                "debug-combined"
+            ]
+        ]
+    },
+    {
+        "id": "debug-combined",
+        "type": "debug",
+        "z": "b6e8da280e925b95",
+        "name": "État combiné",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "x": 1150,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "comment-acload",
+        "type": "comment",
+        "z": "b6e8da280e925b95",
+        "name": "⚠️  Si ton Shelly a de la mesure d'énergie (acload) :\nRemplacer 'switch' par 'acload' dans TOUS les topics MQTT.\nEx: N/c0619ab9929a/acload/50/SwitchableOutput/0/State",
+        "info": "",
+        "x": 710,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "78e81dbddc80e043",
+        "type": "debug",
+        "z": "b6e8da280e925b95",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 830,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "c764b9814a47c786",
+        "type": "victron-input-custom",
+        "z": "b6e8da280e925b95",
+        "service": "com.victronenergy.acload/50",
+        "path": "/SwitchableOutput/0/Status",
+        "serviceObj": {
+            "service": "com.victronenergy.acload/50",
+            "name": "Shelly A4 (50)"
+        },
+        "pathObj": {
+            "path": "/SwitchableOutput/0/Status",
+            "name": "/SwitchableOutput/0/Status",
+            "type": "number",
+            "value": 0
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "3",
+        "rateLimit": "0.2",
+        "outputs": 1,
+        "conditionalMode": false,
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "debounce": "2000",
+        "x": 530,
+        "y": 700,
+        "wires": [
+            [
+                "78e81dbddc80e043"
+            ]
+        ]
+    },
+    {
+        "id": "e57e2254598506a4",
+        "type": "victron-output-custom",
+        "z": "b6e8da280e925b95",
+        "service": "com.victronenergy.acload/50",
+        "path": "/SwitchableOutput/0/State",
+        "serviceObj": {
+            "service": "com.victronenergy.acload/50",
+            "name": "Shelly A4 (50)"
+        },
+        "pathObj": {
+            "path": "/SwitchableOutput/0/State",
+            "name": "/SwitchableOutput/0/State",
+            "type": "number",
+            "value": 0
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 0,
+        "conditionalMode": false,
+        "condition1Operator": ">",
+        "condition2Enabled": false,
+        "condition2Service": "",
+        "condition2Path": "",
+        "condition2Operator": ">",
+        "logicOperator": "AND",
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "outputOnChange": false,
+        "debounce": 2000,
+        "x": 650,
+        "y": 800,
+        "wires": []
+    },
+    {
+        "id": "6892efc6c8413ba3",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "SW50 → ON",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "1",
+        "payloadType": "num",
+        "x": 340,
+        "y": 780,
+        "wires": [
+            [
+                "e57e2254598506a4"
+            ]
+        ]
+    },
+    {
+        "id": "5bc99c45c44a92ae",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "SW50 → OFF",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 340,
+        "y": 840,
+        "wires": [
+            [
+                "e57e2254598506a4"
+            ]
+        ]
+    },
+    {
+        "id": "7a52f9e51615e277",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "Chauffe-eau",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "\"Chauffe-eau\"",
+        "payloadType": "json",
+        "x": 340,
+        "y": 920,
+        "wires": [
+            [
+                "de745191085cd541"
+            ]
+        ]
+    },
+    {
+        "id": "de745191085cd541",
+        "type": "victron-output-custom",
+        "z": "b6e8da280e925b95",
+        "service": "com.victronenergy.acload/50",
+        "path": "/SwitchableOutput/0/Settings/CustomName",
+        "serviceObj": {
+            "service": "com.victronenergy.acload/50",
+            "name": "Shelly A4 (50)"
+        },
+        "pathObj": {
+            "path": "/SwitchableOutput/0/Settings/CustomName",
+            "name": "/SwitchableOutput/0/Settings/CustomName",
+            "type": "string",
+            "value": "Channel 1"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 0,
+        "conditionalMode": false,
+        "condition1Operator": ">",
+        "condition2Enabled": false,
+        "condition2Service": "",
+        "condition2Path": "",
+        "condition2Operator": ">",
+        "logicOperator": "AND",
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "outputOnChange": false,
+        "debounce": 2000,
+        "x": 770,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "2bf3984caec6b06c",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "Eclairage",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "\"Eclairage\"",
+        "payloadType": "json",
+        "x": 350,
+        "y": 1140,
+        "wires": [
+            [
+                "9ca7c7b27d420722"
+            ]
+        ]
+    },
+    {
+        "id": "9ca7c7b27d420722",
+        "type": "victron-output-custom",
+        "z": "b6e8da280e925b95",
+        "service": "com.victronenergy.acload/51",
+        "path": "/SwitchableOutput/1/Settings/CustomName",
+        "serviceObj": {
+            "service": "com.victronenergy.acload/51",
+            "name": "Shelly A4 (51)"
+        },
+        "pathObj": {
+            "path": "/SwitchableOutput/1/Settings/CustomName",
+            "name": "/SwitchableOutput/1/Settings/CustomName",
+            "type": "string",
+            "value": "Channel 2"
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 0,
+        "conditionalMode": false,
+        "condition1Operator": ">",
+        "condition2Enabled": false,
+        "condition2Service": "",
+        "condition2Path": "",
+        "condition2Operator": ">",
+        "logicOperator": "AND",
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "outputOnChange": false,
+        "debounce": 2000,
+        "x": 790,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "617a944ac56a4c7d",
+        "type": "inject",
+        "z": "b6e8da280e925b95",
+        "name": "Shelly 50",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "",
+        "topic": "",
+        "payload": "1",
+        "payloadType": "num",
+        "x": 330,
+        "y": 980,
+        "wires": [
+            [
+                "cd38d3d2887747ad"
+            ]
+        ]
+    },
+    {
+        "id": "cd38d3d2887747ad",
+        "type": "victron-output-custom",
+        "z": "b6e8da280e925b95",
+        "service": "com.victronenergy.acload/50",
+        "path": "/SwitchableOutput/0/Settings/ShowUIControl",
+        "serviceObj": {
+            "service": "com.victronenergy.acload/50",
+            "name": "Shelly A4 (50)"
+        },
+        "pathObj": {
+            "path": "/SwitchableOutput/0/Settings/ShowUIControl",
+            "name": "/SwitchableOutput/0/Settings/ShowUIControl",
+            "type": "number",
+            "value": 1
+        },
+        "name": "",
+        "onlyChanges": false,
+        "roundValues": "no",
+        "rateLimit": 0,
+        "outputs": 0,
+        "conditionalMode": false,
+        "condition1Operator": ">",
+        "condition2Enabled": false,
+        "condition2Service": "",
+        "condition2Path": "",
+        "condition2Operator": ">",
+        "logicOperator": "AND",
+        "outputTrue": "true",
+        "outputFalse": "false",
+        "outputOnChange": false,
+        "debounce": 2000,
+        "x": 730,
+        "y": 980,
+        "wires": []
+    },
+    {
+        "id": "broker-victron",
+        "type": "mqtt-broker",
+        "name": "Victron MQTT (local)",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "nodered-shelly-ctrl",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true
+    },
+    {
+        "id": "1bfc03882ca9493f",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@victronenergy/node-red-contrib-victron": "1.6.60"
+        }
+    }
+]

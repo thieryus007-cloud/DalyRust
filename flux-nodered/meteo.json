@@ -1,0 +1,155 @@
+[
+    {
+        "id": "e6e3a16384301f83",
+        "type": "tab",
+        "label": "Meteo & ET112",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "5f73eb6239a06311",
+        "type": "victron-virtual",
+        "z": "e6e3a16384301f83",
+        "name": "Outdoor temp",
+        "outputs": 1,
+        "device": "temperature",
+        "default_values": false,
+        "battery_capacity": 25,
+        "include_battery_temperature": false,
+        "grid_nrofphases": 1,
+        "include_motor_temp": false,
+        "include_controller_temp": false,
+        "include_coolant_temp": false,
+        "include_motor_rpm": true,
+        "include_motor_direction": true,
+        "position": 0,
+        "pvinverter_nrofphases": 1,
+        "fluid_type": 0,
+        "include_tank_battery": false,
+        "include_tank_temperature": false,
+        "tank_battery_voltage": 3.3,
+        "tank_capacity": 0.2,
+        "temperature_type": "4",
+        "include_humidity": false,
+        "include_pressure": false,
+        "include_temp_battery": false,
+        "temp_battery_voltage": 3.3,
+        "x": 130,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e8ba731c3af093d3",
+        "type": "inject",
+        "z": "e6e3a16384301f83",
+        "name": "Récupération température (toutes les 15 min)",
+        "props": [],
+        "repeat": "900",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 240,
+        "y": 60,
+        "wires": [
+            [
+                "18ade779417faa1a"
+            ]
+        ]
+    },
+    {
+        "id": "18ade779417faa1a",
+        "type": "http request",
+        "z": "e6e3a16384301f83",
+        "name": "Open-Meteo API - Badalucco",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=43.8833&longitude=7.8667&current=temperature_2m,relative_humidity_2m&timezone=Europe%2FRome",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 610,
+        "y": 60,
+        "wires": [
+            [
+                "e7a4e51e485d047b"
+            ]
+        ]
+    },
+    {
+        "id": "e7a4e51e485d047b",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Extraire température",
+        "func": "const temp = msg.payload.current.temperature_2m;\nconst humidity = msg.payload.current.relative_humidity_2m;\n\n// Stocker dans contexte global\ncontext.global.set('outdoor_temp', temp);\n\n// Envoyer température\nmsg.payload = temp;\n\nnode.warn(`Température extérieure: ${temp}°C, Humidité: ${humidity}%`);\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 120,
+        "wires": [
+            [
+                "temp_display",
+                "d65816bfa4e7b8c4"
+            ]
+        ]
+    },
+    {
+        "id": "temp_display",
+        "type": "victron-output-custom",
+        "z": "e6e3a16384301f83",
+        "service": "com.victronenergy.temperature/100",
+        "path": "/Temperature",
+        "serviceObj": {
+            "service": "com.victronenergy.temperature/100",
+            "name": "meteo (100)"
+        },
+        "pathObj": {
+            "path": "/Temperature",
+            "name": "/Temperature",
+            "type": "number",
+            "value": 2.2
+        },
+        "name": "Affichage Température",
+        "onlyChanges": true,
+        "outputs": 0,
+        "x": 680,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "d65816bfa4e7b8c4",
+        "type": "debug",
+        "z": "e6e3a16384301f83",
+        "name": "debug 2",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 680,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "21d7ba1f9564916b",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "@victronenergy/node-red-contrib-victron": "1.6.60"
+        }
+    }
+]
