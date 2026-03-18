@@ -55,7 +55,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Extraire température",
-        "func": "const temp = msg.payload.current.temperature_2m;\nconst humidity = msg.payload.current.relative_humidity_2m;\n\n// Stocker dans contexte global\ncontext.global.set('outdoor_temp', temp);\n\n// Payload Venus MQTT format\nmsg.payload = {\"value\": temp};\nmsg.topic = \"W/c0619ab9929a/temperature/100/Temperature\";\n\nnode.warn(`Température extérieure: ${temp}°C, Humidité: ${humidity}%`);\n\nreturn msg;",
+        "func": "const temp = msg.payload.current.temperature_2m;\nconst humidity = msg.payload.current.relative_humidity_2m;\n\n// Stocker dans contexte global\ncontext.global.set('outdoor_temp', temp);\n\n// Payload Venus MQTT format\nmsg.payload = {\"value\": temp};\nmsg.topic = \"W/c0619ab9929a/temperature/100/Temperature\";\n\nnode.status({fill: 'green', shape: 'dot', text: `${temp}°C — Humidité: ${humidity}%`});\n\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
