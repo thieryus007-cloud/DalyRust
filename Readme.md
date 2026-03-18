@@ -26,7 +26,7 @@ Remplacement total de la stack Python/FastAPI par **Rust** (workspace multi-crat
 │  RS485 Bus 1 ── BMS Pack B (0x02, 320Ah)  ──► daly-bms-server     │
 │  RS485 Bus 2 ── [TODO] Irradiance / Météo  ──► daly-bms-solar      │
 │  RS485 Bus 3 ── [TODO] ATS (bascule réseau/Victron/grid)           │
-│  API LG Cloud ─ [TODO] PAC chauffe-eau     ──► daly-bms-heatpump   │
+│  API LG Cloud ─ FAIT PAC chauffe-eau     ──► daly-bms-heatpump   │
 │  API LG Cloud ─ [TODO] PAC climatisation   ──► daly-bms-heatpump   │
 │                                │                                    │
 │                         Mosquitto :1883                             │
@@ -51,7 +51,7 @@ Remplacement total de la stack Python/FastAPI par **Rust** (workspace multi-crat
 │                ▼  D-Bus (zbus / pur Rust)                          │
 │   com.victronenergy.battery.*        (BMS × 2)                    │
 │   com.victronenergy.meteo.*          [TODO]                        │
-│   com.victronenergy.temperature.*   [TODO]                        │
+│   com.victronenergy.temperature.*   Fait                        │
 │   com.victronenergy.grid.*          [TODO] ATS                    │
 │                │                                                   │
 │                ▼                                                   │
@@ -71,7 +71,7 @@ Remplacement total de la stack Python/FastAPI par **Rust** (workspace multi-crat
 | `santuario/bms/{n}/venus` | `daly-bms-server` ✅ | `santuario-venus-bridge` ✅ | `com.victronenergy.battery.{n}` |
 | `santuario/solar/{n}/venus` | `santuario-solar` 🔜 | `santuario-venus-bridge` 🔜 | `com.victronenergy.meteo.{n}` |
 | `santuario/meteo/venus` | `santuario-solar` 🔜 | `santuario-venus-bridge` 🔜 | `com.victronenergy.meteo` |
-| `santuario/heat/{n}/venus` | `santuario-heatpump` 🔜 | `santuario-venus-bridge` 🔜 | `com.victronenergy.temperature.{n}` |
+| `santuario/heat/{n}/venus` | `santuario-heatpump` ✅ | `santuario-venus-bridge` ✅ | `com.victronenergy.temperature.{n}` |
 | `santuario/ats/venus` | `santuario-ats` 🔜 | `santuario-venus-bridge` 🔜 | `com.victronenergy.grid` |
 
 > `santuario-venus-bridge` est le **seul binaire sur le NanoPi** — il souscrit à tous les topics
@@ -171,7 +171,7 @@ RS485 Bus 3 ──► [TODO] daly-bms-ats::poll_loop()
 | `daly-bms-probe` | Pi5 | ✅ Stable | Outil diagnostic bas niveau — trames brutes, test 3 variantes d'adressage |
 | `santuario-core` | — | 🔜 TODO | Lib : traits partagés `DevicePoller`, `VenusPayload`, `MqttPublisher` |
 | `santuario-solar` | Pi5 | 🔜 TODO | Binaire Pi5 : polling RS485 irradiance + météo → MQTT |
-| `santuario-heatpump` | Pi5 | 🔜 TODO | Binaire Pi5 : API LG ThinQ (PAC chauffe-eau + clim) → MQTT |
+| `santuario-heatpump` | Pi5 |✅ | Binaire Pi5 : API LG ThinQ (PAC chauffe-eau + clim) → MQTT |
 | `santuario-ats` | Pi5 | 🔜 TODO | Binaire Pi5 : ATS RS485 (bascule maison/grid/Victron) → MQTT |
 
 ---
@@ -734,9 +734,9 @@ docker compose -f docker-compose.infra.yml restart dalybms-influxdb
 
 | Service | URL | Identifiants par défaut |
 |---------|-----|------------------------|
-| InfluxDB | `http://<ip>:8086` | admin / voir `.env` |
-| Grafana | `http://<ip>:3001` | admin / voir `.env` |
-| Node-RED | `http://<ip>:1880` | aucun (à sécuriser si exposé) |
+| InfluxDB | `http://RPi5:8086` | admin / voir `.env` |
+| Grafana | `http://RPi5:3001` | admin / voir `.env` |
+| Node-RED | `http://RPi5:1880` | aucun (à sécuriser si exposé) |
 
 > **Après un `make reset`** : utiliser l'URL de base sans chemin (ex. `http://192.168.1.141:8086`).
 > L'ancien org ID dans l'URL bookmarkée devient invalide — se reconnecter depuis la page d'accueil.
@@ -821,7 +821,7 @@ Il affiche pour chaque BMS :
 - [ ] Dashboard Grafana : irradiance vs production Victron (corrélation)
 - [ ] Alertes : nuages / ombrage détecté (irradiance < seuil)
 
-### Phase 6 — Pompe à Chaleur Chauffe-Eau LG 🔜
+### Phase 6 — Pompe à Chaleur Chauffe-Eau LG ✅
 
 > Objectif : optimiser le chauffe-eau via surplus PV + monitoring consommation
 
