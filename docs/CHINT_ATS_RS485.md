@@ -1,6 +1,7 @@
-MANUEL_ATS_RS485.md
+MANUEL_ATSE_RS485.md
 
-# Manuel d'utilisation  
+# CHINT ATSE model NXZBN-63S/2DT 32A 
+
 **Protocole de communication des interrupteurs automatiques de transfert série (ATS)**
 
 **Éditeur :** Zhejiang CHINT Electric Co., Ltd.  
