@@ -229,7 +229,9 @@ chemin individuel échoue avec "Unknown object" si l'objet feuille n'est pas enr
 ## Procédure de déploiement (compilation ARMv7 → NanoPi)
 
 Le NanoPi est en architecture **ARMv7 32-bit** (`armv7-unknown-linux-gnueabihf`).
-La compilation cross-platform se fait sur la machine de développement.
+La compilation cross-platform se fait sur le Pi5.
+
+**Flux complet : GitHub → Pi5 (git pull + compile) → NanoPi (scp)**
 
 ### Prérequis (une seule fois)
 
@@ -241,7 +243,14 @@ apt-get install -y gcc-arm-linux-gnueabihf
 rustup target add armv7-unknown-linux-gnueabihf
 ```
 
-### Compilation
+### Étape 1 — Récupérer les dernières modifications (Pi5)
+
+```bash
+cd ~/Daly-BMS-Rust
+git pull origin claude/migrate-nodered-pi5-91idx
+```
+
+### Étape 2 — Compiler pour ARMv7 (Pi5)
 
 ```bash
 CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
@@ -252,57 +261,51 @@ CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
 
 Binaire produit : `target/armv7-unknown-linux-gnueabihf/release/daly-bms-venus`
 
-### Déploiement sur NanoPi
+### Étape 3 — Déployer le binaire sur NanoPi
 
-**Ordre obligatoire : arrêter avant de copier.**
+**Ordre obligatoire : arrêter avant de copier** (sinon erreur "Failure" scp).
 
 ```bash
+# 3a. Arrêter le service sur NanoPi
+ssh root@192.168.1.120 "svc -d /data/etc/sv/daly-bms-venus"
 
-Apres commit sur Github
-
-Sur Pi5
-git pull origin claude/migrate-nodered-pi5-91idx
-
-# 1. Sur NanoPi — arrêter le service
-svc -d /data/etc/sv/daly-bms-venus
-
-# 2. Sur Pi5 — copier le binaire (depuis ~/Daly-BMS-Rust)
+# 3b. Copier le binaire depuis Pi5
 scp target/armv7-unknown-linux-gnueabihf/release/daly-bms-venus \
     root@192.168.1.120:/data/daly-bms/daly-bms-venus
 
-# 3. Sur NanoPi — redémarrer le service
-svc -u /data/etc/sv/daly-bms-venus
+# 3c. Redémarrer le service sur NanoPi
+ssh root@192.168.1.120 "svc -u /data/etc/sv/daly-bms-venus"
 ```
 
-Si le service est actif pendant le `scp`, l'erreur suivante apparaît :
-```
-scp: dest open "/data/daly-bms/daly-bms-venus": Failure
-```
-
-### Déploiement de la configuration
+### Étape 4 — Déployer la configuration si modifiée (Pi5 → NanoPi)
 
 Le fichier `Config.toml` est partagé par `daly-bms-server` et `daly-bms-venus`.
 
 ```bash
-# Depuis Pi5
 scp Config.toml root@192.168.1.120:/data/daly-bms/config.toml
+
+# Redémarrer les deux services
+ssh root@192.168.1.120 "svc -d /data/etc/sv/daly-bms-venus && \
+                        svc -d /data/etc/sv/daly-bms-server && \
+                        svc -u /data/etc/sv/daly-bms-server && \
+                        svc -u /data/etc/sv/daly-bms-venus"
 ```
 
-Redémarrer les deux services après changement de config :
-```bash
-svc -d /data/etc/sv/daly-bms-venus
-svc -d /data/etc/sv/daly-bms-server
-svc -u /data/etc/sv/daly-bms-server
-svc -u /data/etc/sv/daly-bms-venus
-```
-
-### Déploiement de mosquitto.conf (Pi5)
+### Étape 5 — Déployer mosquitto.conf si modifié (Pi5 Docker)
 
 ```bash
-# Sur Pi5
 cd ~/Daly-BMS-Rust
 git pull origin claude/migrate-nodered-pi5-91idx
 docker compose restart mosquitto
+```
+
+### Étape 6 — Mettre à jour les flux Node-RED si modifiés
+
+```bash
+# Sur Pi5 — récupérer les derniers JSON de flux
+cd ~/Daly-BMS-Rust
+git pull origin claude/migrate-nodered-pi5-91idx
+# Puis importer manuellement dans Node-RED (voir section ci-dessous)
 ```
 
 ---
