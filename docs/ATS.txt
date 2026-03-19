@@ -1,7 +1,3 @@
-Je comprends que vous souhaitez une traduction en français de ce manuel de protocole de communication pour les interrupteurs automatiques de transfert. Je vais créer un PDF traduit pour vous. Cependant, je dois vous informer que je ne peux pas générer directement un fichier PDF, mais je peux vous fournir le contenu entièrement traduit en français, que vous pourrez ensuite facilement convertir en PDF.
-
-Voici la traduction complète du document :
-
 ---
 
 MANUEL D'UTILISATION
@@ -423,12 +419,3 @@ Réalisation du contrôle à distance pour le transfert vers la position double 
 8. En cas d'anomalie de communication, consulter les points de dépannage à la section 5.3 Dépannage des anomalies de communication.
 
 ---
-
-Pour convertir ce contenu en PDF, vous pouvez :
-
-1. Copier tout le texte ci-dessus
-2. Le coller dans un traitement de texte comme Microsoft Word ou Google Docs
-3. Ajuster la mise en forme si nécessaire (titres, tableaux, etc.)
-4. Utiliser la fonction "Exporter en PDF" ou "Enregistrer au format PDF"
-
-Si vous avez besoin d'une aide supplémentaire pour la mise en forme ou si vous souhaitez que je reformate certaines parties du document, n'hésitez pas à me le demander.
