@@ -11,6 +11,8 @@ https://github.com/victronenergy/venus/wiki/dbus
 
 https://github.com/sebdehne/dbus-mqtt-services
 
+https://www.waveshare.com/wiki/RS485_CAN_HAT_(B)
+
 ## A implementer:
 
 - com.victronenergy.battery             360Ah & 320Ah & 628Ah
