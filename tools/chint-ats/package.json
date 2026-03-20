@@ -1,0 +1,18 @@
+{
+  "name": "chint-ats-monitor",
+  "version": "1.0.0",
+  "description": "CHINT NXZBN-63S/2DT ATS — Dashboard Modbus RTU pour intégration Pi5",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "serialport": "^12.0.0",
+    "ws": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

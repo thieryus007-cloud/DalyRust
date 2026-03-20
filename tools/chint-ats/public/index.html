@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHINT NXZBN-63S/2DT — Dashboard ATS</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #1a1d27;
+    --border: #2a2d3a;
+    --accent: #4f8ef7;
+    --green: #22c55e;
+    --orange: #f97316;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --card: #1e2130;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 { font-size: 16px; font-weight: 600; letter-spacing: .5px; }
+  header .subtitle { color: var(--muted); font-size: 12px; }
+  #ws-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); margin-left: auto; flex-shrink: 0; }
+  #ws-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  #ws-dot.err { background: var(--red); }
+
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 51px); overflow: hidden; }
+
+  .sidebar { background: var(--panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .main { overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+  .card h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 12px; }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .form-grid.single { grid-template-columns: 1fr; }
+  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+  input, select {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 4px; padding: 6px 8px; font-size: 13px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 4px;
+    padding: 7px 14px; font-size: 13px; cursor: pointer; transition: opacity .15s;
+  }
+  button:hover { opacity: .85; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.secondary { background: var(--border); color: var(--text); }
+  button.danger { background: var(--red); }
+  button.warn { background: var(--orange); }
+  button.green { background: var(--green); color: #000; }
+  button.full { width: 100%; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Status badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;
+  }
+  .badge.green { background: #14532d44; color: var(--green); border: 1px solid #22c55e44; }
+  .badge.red   { background: #7f1d1d44; color: var(--red);   border: 1px solid #ef444444; }
+  .badge.orange{ background: #431407aa; color: var(--orange); border: 1px solid #f9731644; }
+  .badge.blue  { background: #1e3a5f44; color: #60a5fa;      border: 1px solid #3b82f644; }
+  .badge.gray  { background: #1e293b;   color: var(--muted);  border: 1px solid var(--border); }
+
+  /* Metrics */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .metric { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+  .metric .val { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .metric .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .metric.hi .val { color: var(--green); }
+  .metric.warn .val { color: var(--orange); }
+  .metric.err .val { color: var(--red); }
+
+  /* Switch state */
+  #switch-display {
+    display: flex; align-items: center; justify-content: center; gap: 24px; padding: 16px 0;
+  }
+  .pwr-block {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 90px;
+  }
+  .pwr-block .name { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .pwr-block .circle {
+    width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700;
+    transition: all .3s;
+  }
+  .pwr-block .circle.active { border-color: var(--green); color: var(--green); box-shadow: 0 0 16px #22c55e44; }
+  .pwr-block .circle.fault  { border-color: var(--red);   color: var(--red);   box-shadow: 0 0 16px #ef444444; }
+  .pwr-block .circle.off    { border-color: var(--muted); color: var(--muted); }
+  .switch-arrow { font-size: 24px; color: var(--muted); }
+  .switch-arrow.pos-I  { color: var(--green); }
+  .switch-arrow.pos-II { color: var(--blue); }
+  .switch-label { font-size: 12px; color: var(--muted); text-align: center; margin-top: -4px; }
+
+  /* Log */
+  #log {
+    background: #0a0c12; border: 1px solid var(--border); border-radius: 6px;
+    height: 260px; overflow-y: auto; padding: 8px; font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 12px; line-height: 1.6;
+  }
+  .log-tx   { color: #60a5fa; }
+  .log-rx   { color: #34d399; }
+  .log-info { color: var(--muted); }
+  .log-err  { color: var(--red); }
+  .log-warn { color: var(--orange); }
+  .log-cmd  { color: #c084fc; }
+
+  /* Scan */
+  #scan-results { max-height: 240px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 4px 8px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); }
+  td { padding: 4px 8px; border-bottom: 1px solid #1a1d27; font-variant-numeric: tabular-nums; }
+  tr:hover td { background: #ffffff08; }
+
+  /* Progress */
+  progress { width: 100%; height: 6px; border-radius: 3px; accent-color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; height: auto; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>CHINT NXZBN-63S/2DT</h1>
+    <div class="subtitle">ATS Dashboard — Modbus RTU RS485</div>
+  </div>
+  <span id="conn-badge" class="badge gray">Déconnecté</span>
+  <span id="poll-badge" class="badge gray" style="display:none">Polling</span>
+  <div id="ws-dot" title="WebSocket"></div>
+</header>
+
+<div class="layout">
+  <!-- ═══════════════════════════ SIDEBAR ═══════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- Connexion -->
+    <div class="card">
+      <h2>Connexion série</h2>
+      <div class="form-grid single" style="margin-bottom:8px">
+        <div>
+          <label>Port</label>
+          <div style="display:flex;gap:6px">
+            <input id="cfg-port" type="text" value="/dev/ttyUSB0" style="flex:1">
+            <button class="secondary" onclick="listPorts()" title="Lister les ports">↻</button>
+          </div>
+          <select id="port-select" style="margin-top:4px;display:none" onchange="document.getElementById('cfg-port').value=this.value"></select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div><label>Baud rate</label>
+          <select id="cfg-baud">
+            <option value="4800">4800</option>
+            <option value="9600" selected>9600</option>
+            <option value="19200">19200</option>
+            <option value="38400">38400</option>
+          </select>
+        </div>
+        <div><label>Parité</label>
+          <select id="cfg-parity">
+            <option value="even" selected>Even</option>
+            <option value="none">None</option>
+            <option value="odd">Odd</option>
+          </select>
+        </div>
+        <div><label>Data bits</label>
+          <select id="cfg-databits"><option value="8" selected>8</option><option value="7">7</option></select>
+        </div>
+        <div><label>Stop bits</label>
+          <select id="cfg-stopbits"><option value="1" selected>1</option><option value="2">2</option></select>
+        </div>
+        <div><label>Adresse esclave</label>
+          <input id="cfg-slave" type="number" value="3" min="1" max="247">
+        </div>
+        <div><label>Polling (ms)</label>
+          <input id="cfg-poll" type="number" value="1000" min="200" step="100">
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="btn-connect" class="green full" onclick="doConnect()">Connecter</button>
+        <button id="btn-disconnect" class="secondary full" onclick="doDisconnect()" disabled>Déconnecter</button>
+      </div>
+    </div>
+
+    <!-- Polling -->
+    <div class="card">
+      <h2>Polling automatique</h2>
+      <div class="btn-row">
+        <button onclick="startPolling()">▶ Start</button>
+        <button class="secondary" onclick="stopPolling()">■ Stop</button>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">
+        Cycles : <span id="poll-count">0</span>
+      </div>
+    </div>
+
+    <!-- Commandes rapides -->
+    <div class="card">
+      <h2>Commandes</h2>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button onclick="sendCommand('enterRemote')">Mode télécommande ON</button>
+        <button class="secondary" onclick="sendCommand('exitRemote')">Mode télécommande OFF</button>
+        <button class="green" onclick="sendCommand('forceAlim1')">Forcer → Alim I</button>
+        <button class="blue" style="background:var(--blue)" onclick="sendCommand('forceAlim2')">Forcer → Alim II</button>
+        <button class="warn" onclick="sendCommand('forceOpen')">Double ouverture</button>
+        <button class="danger" onclick="sendCommand('clearHistory')">Effacer historique</button>
+        <button class="danger" onclick="if(confirm('Restaurer les valeurs d\'usine ?')) sendCommand('restoreDefaults')">Restore usine</button>
+      </div>
+    </div>
+
+    <!-- Lecture / Écriture manuelle -->
+    <div class="card">
+      <h2>Lecture registre</h2>
+      <div class="form-grid">
+        <div><label>Adresse (hex)</label><input id="rd-addr" type="text" value="0x004F" placeholder="0x004F"></div>
+        <div><label>Nb registres</label><input id="rd-count" type="number" value="1" min="1" max="125"></div>
+      </div>
+      <button class="full" style="margin-top:8px" onclick="doRead()">Lire</button>
+      <div id="rd-result" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+    </div>
+
+    <div class="card">
+      <h2>Écriture registre</h2>
+      <div class="form-grid">
+        <div><label>Adresse (hex)</label><input id="wr-addr" type="text" value="0x2800" placeholder="0x2800"></div>
+        <div><label>Valeur (dec)</label><input id="wr-val" type="number" value="0"></div>
+      </div>
+      <button class="full danger" style="margin-top:8px" onclick="doWrite()">Écrire</button>
+    </div>
+
+    <!-- Trame brute -->
+    <div class="card">
+      <h2>Trame hexadécimale brute</h2>
+      <div><label>Trame TX (hex séparés par espaces)</label>
+        <input id="raw-hex" type="text" value="03 03 00 06 00 08" placeholder="03 03 00 06 00 08">
+      </div>
+      <div style="margin-top:6px"><label>Longueur réponse attendue</label>
+        <input id="raw-len" type="number" value="8">
+      </div>
+      <button class="full" style="margin-top:8px" onclick="doRawFrame()">Envoyer</button>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════════════════ MAIN ═══════════════════════════ -->
+  <main class="main">
+
+    <!-- État commutateur -->
+    <div class="card">
+      <h2>État du commutateur ATS</h2>
+      <div id="switch-display">
+        <div class="pwr-block">
+          <div class="name">Alim I</div>
+          <div id="circle-I" class="circle off">I</div>
+          <div id="status-I" class="badge gray">—</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div id="switch-arrow" class="switch-arrow">⟷</div>
+          <div id="switch-label" class="switch-label">—</div>
+        </div>
+        <div class="pwr-block">
+          <div class="name">Alim II</div>
+          <div id="circle-II" class="circle off">II</div>
+          <div id="status-II" class="badge gray">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mesures -->
+    <div class="card">
+      <h2>Mesures électriques</h2>
+      <div class="metrics-grid">
+        <div class="metric" id="m-ua1"><div class="val" id="v-ua1">—</div><div class="lbl">UA Alim I (V)</div></div>
+        <div class="metric" id="m-ub1"><div class="val" id="v-ub1">—</div><div class="lbl">UB Alim I (V)</div></div>
+        <div class="metric" id="m-uc1"><div class="val" id="v-uc1">—</div><div class="lbl">UC Alim I (V)</div></div>
+        <div class="metric" id="m-ua2"><div class="val" id="v-ua2">—</div><div class="lbl">UA Alim II (V)</div></div>
+        <div class="metric" id="m-ub2"><div class="val" id="v-ub2">—</div><div class="lbl">UB Alim II (V)</div></div>
+        <div class="metric" id="m-uc2"><div class="val" id="v-uc2">—</div><div class="lbl">UC Alim II (V)</div></div>
+        <div class="metric" id="m-f1"><div class="val" id="v-f1">—</div><div class="lbl">Fréq Alim I (Hz)</div></div>
+        <div class="metric" id="m-f2"><div class="val" id="v-f2">—</div><div class="lbl">Fréq Alim II (Hz)</div></div>
+      </div>
+    </div>
+
+    <!-- Scan de registres -->
+    <div class="card">
+      <h2>Scan de registres</h2>
+      <div class="form-grid" style="margin-bottom:8px">
+        <div><label>Adresse début (hex)</label><input id="sc-from" type="text" value="0x0000"></div>
+        <div><label>Adresse fin (hex)</label><input id="sc-to" type="text" value="0x0060"></div>
+        <div><label>Pas</label><input id="sc-step" type="number" value="8" min="1" max="125"></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:8px">
+        <button onclick="doScan()">▶ Scanner</button>
+        <button class="secondary" onclick="clearScan()">Effacer</button>
+      </div>
+      <progress id="scan-progress" value="0" max="100" style="display:none;margin-bottom:8px"></progress>
+      <div id="scan-results">
+        <table>
+          <thead><tr><th>Adresse</th><th>Dec</th><th>Hex</th></tr></thead>
+          <tbody id="scan-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Journal Modbus -->
+    <div class="card">
+      <h2>Journal Modbus (trames)</h2>
+      <div class="btn-row" style="margin-bottom:8px">
+        <button class="secondary" onclick="clearLog()">Vider</button>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;color:var(--text)">
+          <input type="checkbox" id="log-autoscroll" checked> Auto-scroll
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin:0;color:var(--text)">
+          <input type="checkbox" id="log-show-frames" checked> Trames TX/RX
+        </label>
+      </div>
+      <div id="log"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+'use strict';
+
+// ─── WebSocket ────────────────────────────────────────────────────────────────
+const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+let ws = null;
+let wsReconnectTimer = null;
+
+function wsConnect() {
+  ws = new WebSocket(`${wsProto}://${location.host}`);
+  ws.onopen  = () => { setWsDot(true);  log('WebSocket connecté', 'info'); };
+  ws.onclose = () => {
+    setWsDot(false);
+    log('WebSocket déconnecté — reconnexion dans 3 s…', 'warn');
+    wsReconnectTimer = setTimeout(wsConnect, 3000);
+  };
+  ws.onerror = () => setWsDot(false);
+  ws.onmessage = e => {
+    try { handleMsg(JSON.parse(e.data)); } catch(_) {}
+  };
+}
+
+function setWsDot(ok) {
+  const d = document.getElementById('ws-dot');
+  d.className = ok ? 'ok' : 'err';
+}
+
+function handleMsg(msg) {
+  switch (msg.type) {
+    case 'state':  updateState(msg.data); break;
+    case 'status': updateStatus(msg.data); break;
+    case 'frame':  if (showFrames()) logFrame(msg.data); break;
+    case 'error':  log('ERREUR : ' + msg.data.message, 'err'); break;
+    case 'command':
+      log(`Commande ${msg.data.name} : ${msg.data.ok ? 'OK' : 'ERREUR ' + msg.data.error}`, msg.data.ok ? 'cmd' : 'err');
+      break;
+    case 'scanProgress':
+      updateScanProgress(msg.data.addr, msg.data.to); break;
+  }
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function showFrames() { return document.getElementById('log-show-frames').checked; }
+
+function log(text, cls = 'info') {
+  const el = document.getElementById('log');
+  const ts = new Date().toLocaleTimeString('fr-FR', { hour12: false });
+  const line = document.createElement('div');
+  line.className = 'log-' + cls;
+  line.textContent = `[${ts}] ${text}`;
+  el.appendChild(line);
+  if (el.children.length > 500) el.removeChild(el.firstChild);
+  if (document.getElementById('log-autoscroll').checked)
+    el.scrollTop = el.scrollHeight;
+}
+
+function logFrame(f) {
+  const dir = f.direction === 'TX' ? 'tx' : 'rx';
+  log(`${f.direction}  ${f.hex}`, dir);
+}
+
+function clearLog() { document.getElementById('log').innerHTML = ''; }
+
+// ─── State updates ─────────────────────────────────────────────────────────────
+function updateStatus(s) {
+  const badge = document.getElementById('conn-badge');
+  const btnConn = document.getElementById('btn-connect');
+  const btnDisc = document.getElementById('btn-disconnect');
+
+  if (s.connected !== undefined) {
+    if (s.connected) {
+      badge.textContent = 'Connecté';
+      badge.className = 'badge green';
+      btnConn.disabled = true;
+      btnDisc.disabled = false;
+      log('Port série ouvert', 'info');
+    } else {
+      badge.textContent = 'Déconnecté';
+      badge.className = 'badge gray';
+      btnConn.disabled = false;
+      btnDisc.disabled = true;
+    }
+  }
+  if (s.polling !== undefined) {
+    const pb = document.getElementById('poll-badge');
+    pb.style.display = s.polling ? '' : 'none';
+    if (s.polling) {
+      pb.textContent = `Polling ${s.intervalMs || ''}ms`;
+      pb.className = 'badge green';
+    }
+  }
+}
+
+function updateState(s) {
+  if (s.pollCount !== undefined)
+    document.getElementById('poll-count').textContent = s.pollCount;
+
+  if (s.measures) updateMeasures(s.measures);
+  if (s.powerState)  updatePowerState(s.powerState);
+  if (s.switchState) updateSwitchState(s.switchState);
+}
+
+function updateMeasures(m) {
+  const set = (id, val, unit) => {
+    document.getElementById('v-' + id).textContent = val !== undefined ? val : '—';
+    const card = document.getElementById('m-' + id);
+    card.className = 'metric' + (val > 0 ? ' hi' : '');
+  };
+  set('ua1', m.ua1); set('ub1', m.ub1); set('uc1', m.uc1);
+  set('ua2', m.ua2); set('ub2', m.ub2); set('uc2', m.uc2);
+  document.getElementById('v-f1').textContent = m.freq1 !== undefined ? m.freq1.toFixed(2) : '—';
+  document.getElementById('v-f2').textContent = m.freq2 !== undefined ? m.freq2.toFixed(2) : '—';
+}
+
+function updatePowerState(ps) {
+  const setCircle = (id, state, statusId) => {
+    const el = document.getElementById('circle-' + id);
+    const sb = document.getElementById('status-' + id);
+    if (state.ok) {
+      el.className = 'circle active';
+      sb.textContent = 'OK'; sb.className = 'badge green';
+    } else if (!state.present) {
+      el.className = 'circle off';
+      sb.textContent = 'Absent'; sb.className = 'badge gray';
+    } else {
+      el.className = 'circle fault';
+      const faults = [];
+      if (state.undervoltage) faults.push('Sous-tension');
+      if (state.overvoltage)  faults.push('Surtension');
+      if (state.freqFault)    faults.push('Fréq.');
+      sb.textContent = faults.join(', ') || 'Défaut';
+      sb.className = 'badge red';
+    }
+  };
+  if (ps.alim1) setCircle('I', ps.alim1, 'status-I');
+  if (ps.alim2) setCircle('II', ps.alim2, 'status-II');
+}
+
+function updateSwitchState(sw) {
+  const arrow = document.getElementById('switch-arrow');
+  const label = document.getElementById('switch-label');
+  label.textContent = sw.label || '—';
+  arrow.className = 'switch-arrow';
+  if (sw.pos === 'I')  { arrow.textContent = '←'; arrow.classList.add('pos-I'); }
+  else if (sw.pos === 'II') { arrow.textContent = '→'; arrow.classList.add('pos-II'); }
+  else { arrow.textContent = '⟷'; }
+}
+
+// ─── REST helpers ──────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  return r.json();
+}
+
+async function listPorts() {
+  try {
+    const ports = await api('GET', '/ports');
+    const sel = document.getElementById('port-select');
+    sel.innerHTML = '';
+    if (!ports.length) { log('Aucun port détecté', 'warn'); return; }
+    ports.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.path;
+      o.textContent = `${p.path}${p.manufacturer ? ' — ' + p.manufacturer : ''}`;
+      sel.appendChild(o);
+    });
+    sel.style.display = '';
+    document.getElementById('cfg-port').value = ports[0].path;
+    log(`Ports détectés : ${ports.map(p => p.path).join(', ')}`, 'info');
+  } catch (e) { log('Erreur liste ports : ' + e.message, 'err'); }
+}
+
+async function doConnect() {
+  const cfg = {
+    port:           document.getElementById('cfg-port').value,
+    baudRate:       parseInt(document.getElementById('cfg-baud').value),
+    parity:         document.getElementById('cfg-parity').value,
+    dataBits:       parseInt(document.getElementById('cfg-databits').value),
+    stopBits:       parseInt(document.getElementById('cfg-stopbits').value),
+    slaveAddr:      parseInt(document.getElementById('cfg-slave').value),
+    pollIntervalMs: parseInt(document.getElementById('cfg-poll').value),
+    autoPolling:    true,
+  };
+  try {
+    const r = await api('POST', '/connect', cfg);
+    if (r.error) log('Connexion échouée : ' + r.error, 'err');
+  } catch (e) { log('Erreur connexion : ' + e.message, 'err'); }
+}
+
+async function doDisconnect() {
+  try { await api('POST', '/disconnect'); } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+async function startPolling() {
+  const ms = parseInt(document.getElementById('cfg-poll').value);
+  try { await api('POST', '/polling/start', { intervalMs: ms }); } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+async function stopPolling() {
+  try { await api('POST', '/polling/stop'); } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+async function sendCommand(name) {
+  log(`Envoi commande : ${name}`, 'cmd');
+  try {
+    const r = await api('POST', '/command', { name });
+    if (r.error) log(`Commande ${name} ERREUR : ${r.error}`, 'err');
+  } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+async function doRead() {
+  const addr = document.getElementById('rd-addr').value;
+  const count = parseInt(document.getElementById('rd-count').value);
+  try {
+    const r = await api('POST', '/read', { address: parseInt(addr, 16), count });
+    if (r.error) { log('Lecture ERREUR : ' + r.error, 'err'); return; }
+    const el = document.getElementById('rd-result');
+    el.innerHTML = r.registers.map(reg =>
+      `<div><b>${reg.address}</b> : ${reg.dec} (${reg.hex}) <span style="color:var(--muted)">${reg.bin}</span></div>`
+    ).join('');
+    r.registers.forEach(reg => log(`Lecture ${reg.address} = ${reg.dec} (${reg.hex})`, 'rx'));
+  } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+async function doWrite() {
+  const addr = document.getElementById('wr-addr').value;
+  const val = parseInt(document.getElementById('wr-val').value);
+  if (!confirm(`Écrire 0x${val.toString(16).toUpperCase()} dans ${addr} ?`)) return;
+  try {
+    const r = await api('POST', '/write', { address: parseInt(addr, 16), value: val });
+    if (r.error) { log('Écriture ERREUR : ' + r.error, 'err'); return; }
+    log(`Écriture ${addr} = ${val} OK`, 'cmd');
+  } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+async function doRawFrame() {
+  const hex = document.getElementById('raw-hex').value;
+  const len = parseInt(document.getElementById('raw-len').value);
+  log('TX raw : ' + hex, 'tx');
+  try {
+    const r = await api('POST', '/frame', { hex, expectedLen: len });
+    if (r.error) { log('Trame ERREUR : ' + r.error, 'err'); return; }
+    log(`RX raw : ${r.responseHex} (CRC ${r.crcOk ? 'OK' : 'INVALIDE'})`, r.crcOk ? 'rx' : 'err');
+  } catch (e) { log('Erreur : ' + e.message, 'err'); }
+}
+
+// ─── Scan ──────────────────────────────────────────────────────────────────────
+let scanFrom = 0, scanTo = 0;
+
+function updateScanProgress(addr, to) {
+  if (to === 0) return;
+  const pct = Math.min(100, Math.round(((addr - scanFrom) / (to - scanFrom)) * 100));
+  const prog = document.getElementById('scan-progress');
+  prog.value = pct;
+}
+
+async function doScan() {
+  const from = parseInt(document.getElementById('sc-from').value, 16);
+  const to   = parseInt(document.getElementById('sc-to').value, 16);
+  const step = parseInt(document.getElementById('sc-step').value);
+  scanFrom = from; scanTo = to;
+  const tbody = document.getElementById('scan-tbody');
+  tbody.innerHTML = '';
+  const prog = document.getElementById('scan-progress');
+  prog.style.display = '';
+  prog.value = 0;
+  log(`Scan registres 0x${from.toString(16).toUpperCase()} → 0x${to.toString(16).toUpperCase()}`, 'info');
+  try {
+    const r = await api('POST', '/scan', { from, to, step });
+    prog.style.display = 'none';
+    if (r.error) { log('Scan ERREUR : ' + r.error, 'err'); return; }
+    r.results.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${row.address}</td><td>${row.dec}</td><td>${row.hex}</td>`;
+      tbody.appendChild(tr);
+    });
+    log(`Scan terminé — ${r.results.length} registres`, 'info');
+  } catch (e) {
+    prog.style.display = 'none';
+    log('Erreur scan : ' + e.message, 'err');
+  }
+}
+
+function clearScan() {
+  document.getElementById('scan-tbody').innerHTML = '';
+  document.getElementById('scan-progress').style.display = 'none';
+}
+
+// ─── Init ──────────────────────────────────────────────────────────────────────
+wsConnect();
+
+// Charger l'état initial
+fetch('/api/status').then(r => r.json()).then(s => {
+  updateStatus({ connected: s.connected, polling: s.polling, intervalMs: s.config && s.config.pollIntervalMs });
+  updateState({ measures: s.measures, powerState: s.powerState, switchState: s.switchState });
+  if (s.config) {
+    document.getElementById('cfg-port').value   = s.config.port || '';
+    document.getElementById('cfg-baud').value   = s.config.baudRate || 9600;
+    document.getElementById('cfg-parity').value = s.config.parity || 'even';
+    document.getElementById('cfg-slave').value  = s.config.slaveAddr || 3;
+    document.getElementById('cfg-poll').value   = s.config.pollIntervalMs || 1000;
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>
