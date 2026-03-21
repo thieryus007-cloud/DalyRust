@@ -91,10 +91,21 @@ echo "6. Installation du run script daemontools..."
 scp ${SCP_OPTS} "nanoPi/sv/dbus-mqtt-venus/run" "${GX_SSH}:${SERVICE_DIR}/dbus-mqtt-venus/run"
 ssh ${SSH_OPTS} "${GX_SSH}" "chmod +x ${SERVICE_DIR}/dbus-mqtt-venus/run"
 
-echo "7. Activation / redémarrage du service..."
+echo "7. Nettoyage ancien service daly-bms-venus (ancien nom)..."
+ssh ${SSH_OPTS} "${GX_SSH}" "
+    # Supprimer l'ancien symlink dangling daly-bms-venus
+    if [ -L ${ACTIVE_DIR}/daly-bms-venus ]; then
+        svc -d ${ACTIVE_DIR}/daly-bms-venus 2>/dev/null || true
+        rm -f ${ACTIVE_DIR}/daly-bms-venus
+        echo '   symlink daly-bms-venus supprimé'
+    fi
+    rm -rf ${SERVICE_DIR}/daly-bms-venus
+"
+
+echo "8. Activation / redémarrage du service..."
 ssh ${SSH_OPTS} "${GX_SSH}" "
     if [ ! -L ${ACTIVE_DIR}/dbus-mqtt-venus ] && [ ! -d ${ACTIVE_DIR}/dbus-mqtt-venus ]; then
-        ln -s ${SERVICE_DIR}/dbus-mqtt-venus ${ACTIVE_DIR}/dbus-mqtt-venus
+        ln -sf ${SERVICE_DIR}/dbus-mqtt-venus ${ACTIVE_DIR}/dbus-mqtt-venus
         echo '   dbus-mqtt-venus activé'
     else
         svc -u ${ACTIVE_DIR}/dbus-mqtt-venus
@@ -102,6 +113,28 @@ ssh ${SSH_OPTS} "${GX_SSH}" "
     fi
     sleep 2
     svstat ${ACTIVE_DIR}/dbus-mqtt-venus
+"
+
+echo "9. Persistance boot via /data/rc.local..."
+ssh ${SSH_OPTS} "${GX_SSH}" "
+    RC_LOCAL='/data/rc.local'
+    RC_LINE='ln -sf /data/etc/sv/dbus-mqtt-venus /service/dbus-mqtt-venus'
+
+    # Créer rc.local s'il n'existe pas
+    if [ ! -f \"\${RC_LOCAL}\" ]; then
+        echo '#!/bin/sh' > \"\${RC_LOCAL}\"
+        chmod +x \"\${RC_LOCAL}\"
+        echo '   /data/rc.local créé'
+    fi
+
+    # Retirer toute ancienne entrée daly-bms-venus ou dbus-mqtt-venus
+    sed -i '/daly-bms-venus/d' \"\${RC_LOCAL}\"
+    sed -i '/dbus-mqtt-venus/d' \"\${RC_LOCAL}\"
+
+    # Ajouter la ligne de persistance
+    echo \"\${RC_LINE}\" >> \"\${RC_LOCAL}\"
+    echo '   entrée ajoutée dans /data/rc.local :'
+    cat \"\${RC_LOCAL}\"
 "
 
 echo ""
