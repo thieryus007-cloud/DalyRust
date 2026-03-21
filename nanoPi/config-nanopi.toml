@@ -1,0 +1,144 @@
+# =============================================================================
+# config.toml — dbus-mqtt-venus (NanoPi Venus OS)
+# Chemin sur le NanoPi : /data/daly-bms/config.toml
+#
+# Déploiement :
+#   scp nanoPi/config-nanopi.toml root@192.168.1.120:/data/daly-bms/config.toml
+#   ssh root@192.168.1.120 "svc -t /service/dbus-mqtt-venus"
+#
+# Vérification :
+#   ssh root@192.168.1.120 "dbus -y | grep victronenergy"
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# MQTT broker — NanoPi est le broker (mosquitto sur 127.0.0.1)
+# -----------------------------------------------------------------------------
+[mqtt]
+host         = "127.0.0.1"
+port         = 1883
+topic_prefix = "santuario"
+
+# -----------------------------------------------------------------------------
+# Venus OS D-Bus
+# dbus_bus = "system"  → production Venus OS (bus système)
+# dbus_bus = "session" → dev/test (bus session)
+# -----------------------------------------------------------------------------
+[venus]
+enabled         = true
+dbus_bus        = "system"
+service_prefix  = "mqtt"       # → mqtt_1, mqtt_2, etc.
+watchdog_sec    = 30           # timeout déconnexion (s)
+republish_sec   = 25           # republication forcée (s)
+
+# -----------------------------------------------------------------------------
+# BMS Daly — batteries
+# Topics : santuario/bms/{mqtt_index}/venus
+# Services D-Bus : com.victronenergy.battery.mqtt_{mqtt_index}
+# -----------------------------------------------------------------------------
+[[bms]]
+address         = "0x01"
+name            = "BMS-360Ah"
+mqtt_index      = 1
+device_instance = 141
+capacity_ah     = 360.0
+
+[[bms]]
+address         = "0x02"
+name            = "BMS-320Ah"
+mqtt_index      = 2
+device_instance = 142
+capacity_ah     = 320.0
+
+# -----------------------------------------------------------------------------
+# Capteurs de température
+# Topics : santuario/heat/{mqtt_index}/venus
+# Services D-Bus : com.victronenergy.temperature.mqtt_{mqtt_index}
+#
+# temperature_type :
+#   0=battery  1=fridge  2=generic  3=room  4=outdoor
+#   5=waterheater  6=freezer
+# -----------------------------------------------------------------------------
+[heat]
+topic_prefix = "santuario/heat"
+
+[[sensors]]
+mqtt_index       = 1
+name             = "Température batterie"
+temperature_type = 0            # battery
+device_instance  = 101
+
+# Ajouter d'autres capteurs selon les besoins :
+# [[sensors]]
+# mqtt_index       = 2
+# name             = "Eau chaude sanitaire"
+# temperature_type = 5           # waterheater
+# device_instance  = 102
+
+# -----------------------------------------------------------------------------
+# Pompes à chaleur / chauffe-eau
+# Topics : santuario/heatpump/{mqtt_index}/venus
+# Services D-Bus : com.victronenergy.heatpump.mqtt_{mqtt_index}
+# -----------------------------------------------------------------------------
+[heatpump]
+topic_prefix = "santuario/heatpump"
+
+[[heatpumps]]
+mqtt_index      = 1
+name            = "Chauffe-eau"
+device_instance = 201
+
+# -----------------------------------------------------------------------------
+# Switches / ATS
+# Topics : santuario/switch/{mqtt_index}/venus
+# Services D-Bus : com.victronenergy.switch.mqtt_{mqtt_index}
+#
+# Position : 0=AC1 (réseau)  1=AC2 (générateur/onduleur)
+# State    : 0=inactive  1=active  2=alerted
+# -----------------------------------------------------------------------------
+[switch]
+topic_prefix = "santuario/switch"
+
+[[switches]]
+mqtt_index      = 1
+name            = "ATS CHINT"
+device_instance = 301
+
+# -----------------------------------------------------------------------------
+# Compteurs réseau / consommation AC
+# Topics : santuario/grid/{mqtt_index}/venus
+# Services D-Bus : com.victronenergy.grid.mqtt_{mqtt_index}
+#                  com.victronenergy.acload.mqtt_{mqtt_index} (si service_type="acload")
+# -----------------------------------------------------------------------------
+[grid]
+topic_prefix = "santuario/grid"
+
+# Décommenter quand un compteur réseau sera connecté :
+# [[grids]]
+# mqtt_index      = 1
+# name            = "Compteur réseau"
+# device_instance = 401
+# service_type    = "grid"     # "grid" ou "acload"
+
+# -----------------------------------------------------------------------------
+# Capteur météo / irradiance (singleton — un seul capteur)
+# Topic fixe : santuario/meteo/venus
+# Service D-Bus : com.victronenergy.meteo
+# -----------------------------------------------------------------------------
+[meteo]
+topic           = "santuario/meteo/venus"
+product_name    = "Irradiance Sensor"
+device_instance = 30
+
+# -----------------------------------------------------------------------------
+# Platform Pi5 — état backup/restore (singleton)
+# Topic fixe : santuario/platform/venus
+# Service D-Bus : com.victronenergy.platform
+#
+# Backup.Status  : 0=idle  1=running  2=OK  3=error
+# Restore.Status : 0=idle  1=running  2=OK  3=error
+# -----------------------------------------------------------------------------
+[platform]
+topic           = "santuario/platform/venus"
+product_name    = "Pi5 Platform"
+device_instance = 50
+enabled         = true
