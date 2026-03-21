@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat /home/user/Daly-BMS-Rust/CLAUDE.md",
+            "statusMessage": "Chargement de la référence projet Daly-BMS-Rust..."
+          }
+        ]
+      }
+    ]
+  }
+}
