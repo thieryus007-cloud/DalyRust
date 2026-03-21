@@ -3,12 +3,13 @@
 # install-venus.sh — Déploiement de daly-bms-venus sur Venus OS (NanoPi/GX)
 # =============================================================================
 #
-# Ce script installe les binaires Rust sur un Victron GX tournant Venus OS.
-# Les fichiers sont placés dans /data/ qui est PERSISTANT après mise à jour firmware.
+# Ce script installe UNIQUEMENT le bridge D-Bus sur le NanoPi.
+# Le service daly-bms-server (polling RS485 + dashboard HTTP) tourne sur le Pi5,
+# pas sur le NanoPi.
 #
 # Prérequis :
 #   - Accès SSH au GX (ssh root@<gx-ip>)
-#   - Binaires cross-compilés pour ARM64 (aarch64-unknown-linux-gnu)
+#   - Binaire cross-compilé pour ARM64 (aarch64-unknown-linux-gnu)
 #     Commande : make build-venus
 #
 # Usage :
@@ -36,25 +37,33 @@ RELEASE_DIR="target/${TARGET}/release"
 
 echo "=== Déploiement daly-bms-venus sur Venus OS ${GX_IP} ==="
 
-# Vérifier que les binaires existent
-for bin in daly-bms-server daly-bms-venus; do
-    if [ ! -f "${RELEASE_DIR}/${bin}" ]; then
-        echo "ERREUR: ${RELEASE_DIR}/${bin} introuvable."
-        echo "Lancer d'abord: make build-venus"
-        exit 1
-    fi
-done
+# Vérifier que le binaire existe
+if [ ! -f "${RELEASE_DIR}/daly-bms-venus" ]; then
+    echo "ERREUR: ${RELEASE_DIR}/daly-bms-venus introuvable."
+    echo "Lancer d'abord: make build-venus"
+    exit 1
+fi
 
 echo "1. Création des répertoires sur le GX..."
-ssh "${GX_SSH}" "mkdir -p ${INSTALL_DIR} ${SERVICE_DIR}/daly-bms-server ${SERVICE_DIR}/daly-bms-venus"
+ssh "${GX_SSH}" "mkdir -p ${INSTALL_DIR} ${SERVICE_DIR}/daly-bms-venus"
 
-echo "2. Copie des binaires..."
-scp "${RELEASE_DIR}/daly-bms-server" "${GX_SSH}:${INSTALL_DIR}/"
-scp "${RELEASE_DIR}/daly-bms-venus"  "${GX_SSH}:${INSTALL_DIR}/"
-ssh "${GX_SSH}" "chmod +x ${INSTALL_DIR}/daly-bms-server ${INSTALL_DIR}/daly-bms-venus"
+echo "2. Suppression de daly-bms-server s'il est présent (ne doit pas tourner sur le NanoPi)..."
+ssh "${GX_SSH}" "
+    if [ -L ${ACTIVE_DIR}/daly-bms-server ]; then
+        sv -d ${ACTIVE_DIR}/daly-bms-server 2>/dev/null || true
+        rm -f ${ACTIVE_DIR}/daly-bms-server
+        echo '   symlink /service/daly-bms-server supprimé'
+    fi
+    rm -f ${INSTALL_DIR}/daly-bms-server
+    rm -rf ${SERVICE_DIR}/daly-bms-server
+    echo '   daly-bms-server retiré du NanoPi'
+"
 
-echo "3. Copie de la configuration..."
-# Utiliser Config.toml local si pas déjà présent sur le GX
+echo "3. Copie du binaire daly-bms-venus..."
+scp "${RELEASE_DIR}/daly-bms-venus" "${GX_SSH}:${INSTALL_DIR}/"
+ssh "${GX_SSH}" "chmod +x ${INSTALL_DIR}/daly-bms-venus"
+
+echo "4. Copie de la configuration..."
 if ! ssh "${GX_SSH}" "test -f ${INSTALL_DIR}/config.toml" 2>/dev/null; then
     scp "Config.toml" "${GX_SSH}:${INSTALL_DIR}/config.toml"
     echo "   config.toml copié (éditer ${INSTALL_DIR}/config.toml si nécessaire)"
@@ -62,35 +71,25 @@ else
     echo "   config.toml existant conservé"
 fi
 
-echo "4. Installation des services runit..."
-scp "nanoPi/sv/daly-bms-server/run" "${GX_SSH}:${SERVICE_DIR}/daly-bms-server/run"
-scp "nanoPi/sv/daly-bms-venus/run"  "${GX_SSH}:${SERVICE_DIR}/daly-bms-venus/run"
-ssh "${GX_SSH}" "chmod +x ${SERVICE_DIR}/daly-bms-server/run ${SERVICE_DIR}/daly-bms-venus/run"
+echo "5. Installation du service runit daly-bms-venus..."
+scp "nanoPi/sv/daly-bms-venus/run" "${GX_SSH}:${SERVICE_DIR}/daly-bms-venus/run"
+ssh "${GX_SSH}" "chmod +x ${SERVICE_DIR}/daly-bms-venus/run"
 
-echo "5. Activation des services (symlinks dans /service/)..."
+echo "6. Activation du service (symlink dans /service/)..."
 ssh "${GX_SSH}" "
-    # Activer daly-bms-server
-    if [ ! -L ${ACTIVE_DIR}/daly-bms-server ]; then
-        ln -s ${SERVICE_DIR}/daly-bms-server ${ACTIVE_DIR}/daly-bms-server
-        echo '   daly-bms-server activé'
-    else
-        echo '   daly-bms-server déjà actif'
-    fi
-
-    # Activer daly-bms-venus
     if [ ! -L ${ACTIVE_DIR}/daly-bms-venus ]; then
         ln -s ${SERVICE_DIR}/daly-bms-venus ${ACTIVE_DIR}/daly-bms-venus
         echo '   daly-bms-venus activé'
     else
-        echo '   daly-bms-venus déjà actif'
+        sv restart ${ACTIVE_DIR}/daly-bms-venus
+        echo '   daly-bms-venus redémarré'
     fi
 "
 
 echo ""
 echo "=== Installation terminée ! ==="
 echo ""
-echo "Vérification des services :"
-echo "  ssh ${GX_SSH} 'sv status ${ACTIVE_DIR}/daly-bms-server'"
+echo "Vérification du service :"
 echo "  ssh ${GX_SSH} 'sv status ${ACTIVE_DIR}/daly-bms-venus'"
 echo ""
 echo "Vérification D-Bus :"
@@ -101,5 +100,4 @@ echo "Logs :"
 echo "  ssh ${GX_SSH} 'logread | grep daly'"
 echo ""
 echo "Redémarrage si nécessaire :"
-echo "  ssh ${GX_SSH} 'sv restart ${ACTIVE_DIR}/daly-bms-server'"
 echo "  ssh ${GX_SSH} 'sv restart ${ACTIVE_DIR}/daly-bms-venus'"
