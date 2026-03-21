@@ -41,11 +41,13 @@
 │                                                                  │
 │  dbus-mqtt-venus (runit service /service/dbus-mqtt-venus)          │
 │    ├── Subscribe MQTT → bridge D-Bus                             │
-│    ├── com.victronenergy.battery.mqtt_bms1 (instance 141)        │
-│    ├── com.victronenergy.battery.mqtt_bms2 (instance 142)        │
-│    ├── com.victronenergy.temperature.*                           │
-│    ├── com.victronenergy.heatpump.*                              │
-│    └── com.victronenergy.meteo                                   │
+│    ├── com.victronenergy.battery.mqtt_1 (instance 141)           │
+│    ├── com.victronenergy.battery.mqtt_2 (instance 142)           │
+│    ├── com.victronenergy.temperature.mqtt_1                      │
+│    ├── com.victronenergy.heatpump.mqtt_1                         │
+│    ├── com.victronenergy.switch.*                                │
+│    ├── com.victronenergy.grid.* / acload.*                       │
+│    └── com.victronenergy.meteo (singleton)                       │
 │                                                                  │
 │  dbus-mqtt-battery (legacy, à terme à supprimer)                 │
 │    config-bms1.ini → /data/etc/dbus-mqtt-battery-41/config.ini  │
@@ -307,12 +309,15 @@ svc -d /service/dbus-mqtt-venus
 # Démarrer
 svc -u /service/dbus-mqtt-venus
 
-# Vérifier D-Bus
-dbus-send --system --print-reply --dest=com.victronenergy.battery.mqtt_bms1 \
-    / com.victronenergy.BusItem.GetValue
+# Vérifier D-Bus batteries (nommage réel : mqtt_1 / mqtt_2)
+dbus -y com.victronenergy.battery.mqtt_1 /Soc GetValue
+dbus -y com.victronenergy.battery.mqtt_2 /Soc GetValue
+
+# Lister tous les services Victron enregistrés
+dbus -y | grep victronenergy
 
 # Vérifier MQTT reçu
-mosquitto_sub -h 127.0.0.1 -p 1883 -t "santuario/bms/#" -v
+mosquitto_sub -h 127.0.0.1 -p 1883 -t "santuario/#" -v
 ```
 
 ---
@@ -389,8 +394,16 @@ sudo apt install -y gcc-arm-linux-gnueabihf
 **Cause** : Service non démarré ou nom de service incorrect.
 **Vérification** :
 ```bash
-dbus-spy  # ou
-dbus-monitor --system "type=signal,sender=com.victronenergy.battery.mqtt_bms1"
+# Lister tous les services Victron actifs
+dbus -y | grep victronenergy
+
+# Noms corrects des batteries :
+# com.victronenergy.battery.mqtt_1   (BMS-1)
+# com.victronenergy.battery.mqtt_2   (BMS-2)
+# NB : préfixe = "mqtt", index = n° du BMS (pas "mqtt_bms1")
+
+dbus -y com.victronenergy.battery.mqtt_1 / GetItems
+dbus-monitor --system "type=signal,sender=com.victronenergy.battery.mqtt_1"
 ```
 
 ---
@@ -434,13 +447,40 @@ POST /api/v1/bms/{id}/reset          ← reset BMS
 
 ---
 
-## 13. TOPICS MQTT
+## 13. TOPICS MQTT — TABLE COMPLÈTE
+
+### Topics publiés par daly-bms-server (Pi5 → MQTT broker NanoPi)
 
 ```
-santuario/bms/1/venus    ← payload Venus OS BMS-1 (JSON)
-santuario/bms/2/venus    ← payload Venus OS BMS-2 (JSON)
-santuario/bms/1/raw      ← données brutes BMS-1
-santuario/bms/2/raw      ← données brutes BMS-2
+santuario/bms/1/venus        ← payload Venus OS BMS-1 (JSON)
+santuario/bms/2/venus        ← payload Venus OS BMS-2 (JSON)
+santuario/bms/1/raw          ← données brutes BMS-1
+santuario/bms/2/raw          ← données brutes BMS-2
+```
+
+### Topics consommés par dbus-mqtt-venus (MQTT → D-Bus NanoPi)
+
+| Topic MQTT | Type device | Service D-Bus résultant |
+|---|---|---|
+| `santuario/bms/{n}/venus` | Batterie BMS | `com.victronenergy.battery.mqtt_{n}` |
+| `santuario/heat/{n}/venus` | Capteur température | `com.victronenergy.temperature.mqtt_{n}` |
+| `santuario/heatpump/{n}/venus` | PAC / chauffe-eau | `com.victronenergy.heatpump.mqtt_{n}` |
+| `santuario/switch/{n}/venus` | Switch / ATS | `com.victronenergy.switch.mqtt_{n}` |
+| `santuario/grid/{n}/venus` | Compteur réseau | `com.victronenergy.grid.mqtt_{n}` |
+| `santuario/meteo/venus` | Capteur irradiance | `com.victronenergy.meteo` (singleton) |
+| `santuario/platform/venus` | Platform Pi5 | `com.victronenergy.platform` (singleton) |
+
+> **Nommage D-Bus** : `{service_prefix}_{mqtt_index}` — le préfixe par défaut est `"mqtt"`.
+> Résultat : `mqtt_1`, `mqtt_2`, etc. (configurable via `venus.service_prefix` dans config.toml)
+
+### Topics publiés par Node-RED (Pi5 → MQTT → NanoPi D-Bus)
+
+```
+santuario/heat/{n}/venus     ← capteur température (Shelly, DS18B20, API cloud…)
+santuario/heatpump/{n}/venus ← PAC LG ThinQ
+santuario/switch/{n}/venus   ← ATS CHINT, relais Shelly
+santuario/grid/{n}/venus     ← compteur réseau ET112, Fronius
+santuario/meteo/venus        ← irradiance RS485
 ```
 
 ---
@@ -511,7 +551,187 @@ ln -sf /data/etc/sv/dbus-mqtt-venus /service/dbus-mqtt-venus
 
 ---
 
-## 16. RÈGLES DE TRAVAIL AVEC CLAUDE
+## 16. AJOUTER UN APPAREIL DEPUIS NODE-RED (PI5) → VENUS OS
+
+Le principe est simple : Node-RED publie un JSON sur un topic MQTT, et `dbus-mqtt-venus`
+sur le NanoPi le reçoit et crée/met à jour le service D-Bus correspondant.
+
+### Étape 1 — Déclarer l'appareil dans config.toml (NanoPi)
+
+Éditer `/data/daly-bms/config.toml` sur le NanoPi :
+
+**Capteur température** (ex: sonde DS18B20, Shelly TRV, API cloud…)
+```toml
+[[sensors]]
+mqtt_index      = 2           # → topic santuario/heat/2/venus
+name            = "Eau chaude"
+temperature_type = 5          # 0=battery 1=fridge 2=generic 3=room 4=outdoor 5=waterheater 6=freezer
+device_instance = 102         # n° unique dans VRM/Victron
+```
+
+**PAC / Chauffe-eau**
+```toml
+[[heatpumps]]
+mqtt_index      = 2
+name            = "PAC Climatisation"
+device_instance = 202
+```
+
+**Switch / ATS**
+```toml
+[[switches]]
+mqtt_index      = 2
+name            = "ATS Groupe"
+device_instance = 302
+```
+
+**Compteur réseau / acload**
+```toml
+[[grids]]
+mqtt_index      = 2
+name            = "Compteur Fronius"
+device_instance = 402
+service_type    = "grid"    # "grid" ou "acload"
+```
+
+Puis redémarrer le service : `svc -t /service/dbus-mqtt-venus`
+
+### Étape 2 — Publier depuis Node-RED (Pi5)
+
+Dans Node-RED (`http://192.168.1.141:1880`), utiliser un nœud **mqtt out** :
+
+- Serveur MQTT : `192.168.1.120:1883` (broker NanoPi — ou `192.168.1.141:1883` si bridge actif)
+- Topic : `santuario/heat/2/venus`
+- QoS : 0, Retain : true (pour que Venus OS retrouve la valeur après reboot)
+
+**Payload JSON capteur température** :
+```json
+{
+  "Temperature": 42.5,
+  "TemperatureType": 5,
+  "Status": 0,
+  "ProductName": "Eau chaude sanitaire",
+  "CustomName": "Ballon ECS"
+}
+```
+
+**Payload JSON switch/ATS** :
+```json
+{
+  "State": 1,
+  "Position": 2,
+  "ProductName": "ATS CHINT",
+  "CustomName": "Groupe électrogène"
+}
+```
+
+**Payload JSON compteur grid** :
+```json
+{
+  "Ac/L1/Power": 1250.0,
+  "Ac/L2/Power": 800.0,
+  "Ac/L3/Power": 430.0,
+  "Ac/L1/Voltage": 230.0,
+  "Ac/L1/Current": 5.43
+}
+```
+
+### Étape 3 — Vérifier l'arrivée sur D-Bus
+
+```bash
+ssh root@192.168.1.120
+dbus -y | grep victronenergy                          # service doit apparaître
+dbus -y com.victronenergy.temperature.mqtt_2 / GetItems
+```
+
+### Checklist ajout appareil
+
+- [ ] `[[sensors]]` / `[[heatpumps]]` / `[[switches]]` / `[[grids]]` ajouté dans config.toml
+- [ ] `device_instance` unique (pas de conflit avec autres appareils VRM)
+- [ ] `svc -t /service/dbus-mqtt-venus` exécuté après modif config
+- [ ] Flow Node-RED publiant en **retain:true** sur le bon topic
+- [ ] Vérifié avec `dbus -y | grep victronenergy` sur NanoPi
+
+---
+
+## 17. MAINTENANCE OPÉRATIONNELLE
+
+### Checklist quotidienne / hebdomadaire
+
+```bash
+# Sur Pi5 : état global
+systemctl status daly-bms
+journalctl -u daly-bms --since "1 hour ago" | grep -E "ERROR|WARN"
+
+# Docker
+docker compose ps
+docker compose logs --since 1h | grep -i error
+
+# Sur NanoPi : état Venus bridge
+ssh root@192.168.1.120 "svstat /service/dbus-mqtt-venus"
+ssh root@192.168.1.120 "tail -20 /var/log/dbus-mqtt-venus/current"
+```
+
+### Mise à jour dbus-mqtt-venus (flux complet)
+
+```bash
+# Sur Pi5 (dans ~/Daly-BMS-Rust)
+git pull origin <branche>          # récupérer les changements
+make build-venus-v7                # compiler armv7
+make install-venus-v7              # déployer (arrêt auto, copie, redémarrage)
+
+# Vérifier
+ssh root@192.168.1.120 "svstat /service/dbus-mqtt-venus"
+ssh root@192.168.1.120 "dbus -y | grep victronenergy"
+```
+
+### Mise à jour daly-bms-server (Pi5)
+
+```bash
+git pull origin <branche>
+make build-arm                     # aarch64 Pi5
+sudo systemctl stop daly-bms
+sudo cp target/aarch64-unknown-linux-gnu/release/daly-bms-server /usr/local/bin/
+sudo systemctl start daly-bms
+journalctl -u daly-bms -f
+```
+
+### Redémarrage propre de l'infrastructure
+
+```bash
+# Tout redémarrer sans perte de données
+make down && make up               # Docker (Mosquitto, InfluxDB, Grafana, Node-RED)
+sudo systemctl restart daly-bms   # BMS server
+ssh root@192.168.1.120 "svc -t /service/dbus-mqtt-venus"  # Venus bridge
+```
+
+### Services D-Bus présents en production (état nominal)
+
+```
+com.victronenergy.battery.mqtt_1      ← BMS-360Ah (instance 141)
+com.victronenergy.battery.mqtt_2      ← BMS-320Ah (instance 142)
+com.victronenergy.temperature.mqtt_1  ← capteur température
+com.victronenergy.heatpump.mqtt_1     ← PAC / chauffe-eau
+com.victronenergy.switch.*            ← ATS / relais (si configuré)
+com.victronenergy.grid.*              ← compteur réseau (si configuré)
+```
+
+Si un service manque : vérifier logs `dbus-mqtt-venus` ET que le topic MQTT est bien publié.
+
+### Sauvegarde config NanoPi
+
+La config `/data/daly-bms/config.toml` sur le NanoPi est **persistante** (volume `/data`
+survivre aux mises à jour Venus OS). Mais la copier dans le repo pour traçabilité :
+
+```bash
+scp root@192.168.1.120:/data/daly-bms/config.toml nanoPi/config-nanopi.toml
+git add nanoPi/config-nanopi.toml
+git commit -m "chore(nanopi): backup config.toml"
+```
+
+---
+
+## 18. RÈGLES DE TRAVAIL AVEC CLAUDE
 
 1. **Toujours lire ce fichier en début de session** avant toute action.
 2. **Git pull sur Pi5 avant déploiement** — ne jamais assumer que le Pi5 est à jour.
