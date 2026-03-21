@@ -44,6 +44,26 @@ pub struct VenusServiceConfig {
     /// Configuration du service météo (irradiance RS485)
     #[serde(default)]
     pub meteo: MeteoConfig,
+
+    /// Configuration MQTT switch (ATS, relais)
+    #[serde(default)]
+    pub switch: SwitchConfig,
+
+    /// Configurations par switch/ATS
+    #[serde(default)]
+    pub switches: Vec<SwitchRef>,
+
+    /// Configuration MQTT compteurs réseau (grid / acload)
+    #[serde(default)]
+    pub grid: GridConfig,
+
+    /// Configurations par compteur réseau/acload
+    #[serde(default)]
+    pub grids: Vec<GridRef>,
+
+    /// Configuration du service platform (backup/restore Pi5)
+    #[serde(default)]
+    pub platform: PlatformConfig,
 }
 
 /// Référence à la config MQTT du serveur principal.
@@ -231,6 +251,116 @@ pub struct BmsRef {
     pub device_instance: Option<u32>,
     /// Capacité nominale (Ah) — utilisée comme InstalledCapacity si absente du payload
     pub capacity_ah: Option<f32>,
+}
+
+// =============================================================================
+// Configuration switch / ATS (switch)
+// =============================================================================
+
+/// Préfixe MQTT pour les switches/ATS.
+///
+/// Topic abonné : `{topic_prefix}/{n}/venus`
+/// Exemple : `santuario/switch/1/venus`
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SwitchConfig {
+    /// Préfixe des topics switch (ex: "santuario/switch")
+    pub topic_prefix: String,
+}
+
+impl Default for SwitchConfig {
+    fn default() -> Self {
+        Self { topic_prefix: "santuario/switch".to_string() }
+    }
+}
+
+/// Configuration d'un switch/ATS individuel.
+///
+/// Une section `[[switches]]` par switch dans le TOML.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct SwitchRef {
+    /// Index dans le topic MQTT (ex: 1 → `santuario/switch/1/venus`).
+    pub mqtt_index: Option<u8>,
+
+    /// Nom affiché dans Venus OS (`/ProductName`).
+    pub name: Option<String>,
+
+    /// DeviceInstance Venus OS D-Bus.
+    pub device_instance: Option<u32>,
+}
+
+// =============================================================================
+// Configuration compteurs réseau / acload (grid)
+// =============================================================================
+
+/// Préfixe MQTT pour les compteurs réseau (grid/acload).
+///
+/// Topic abonné : `{topic_prefix}/{n}/venus`
+/// Exemple : `santuario/grid/1/venus`
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GridConfig {
+    /// Préfixe des topics grid/acload (ex: "santuario/grid")
+    pub topic_prefix: String,
+}
+
+impl Default for GridConfig {
+    fn default() -> Self {
+        Self { topic_prefix: "santuario/grid".to_string() }
+    }
+}
+
+/// Configuration d'un compteur réseau/acload individuel.
+///
+/// Une section `[[grids]]` par compteur dans le TOML.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct GridRef {
+    /// Index dans le topic MQTT (ex: 1 → `santuario/grid/1/venus`).
+    pub mqtt_index: Option<u8>,
+
+    /// Nom affiché dans Venus OS (`/ProductName`).
+    pub name: Option<String>,
+
+    /// DeviceInstance Venus OS D-Bus.
+    pub device_instance: Option<u32>,
+
+    /// Type D-Bus du service : "grid" ou "acload" (défaut: "grid").
+    /// "grid"   → `com.victronenergy.grid.{prefix}_{n}`
+    /// "acload" → `com.victronenergy.acload.{prefix}_{n}`
+    pub service_type: Option<String>,
+}
+
+// =============================================================================
+// Configuration platform / backup Pi5 (platform)
+// =============================================================================
+
+/// Configuration du service platform (backup/restore Pi5).
+///
+/// Topic MQTT fixe : `{topic}` (singleton, sans index).
+/// Exemple : `santuario/platform/venus`
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PlatformConfig {
+    /// Topic MQTT du service platform.
+    pub topic: String,
+
+    /// Nom affiché dans Venus OS.
+    pub product_name: String,
+
+    /// DeviceInstance Venus OS D-Bus.
+    pub device_instance: u32,
+
+    /// Activer ce service (false = désactivé).
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+impl Default for PlatformConfig {
+    fn default() -> Self {
+        Self {
+            topic:           "santuario/platform/venus".to_string(),
+            product_name:    "Pi5 Platform".to_string(),
+            device_instance: 50,
+            enabled:         true,
+        }
+    }
 }
 
 // =============================================================================

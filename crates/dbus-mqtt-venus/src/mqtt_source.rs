@@ -6,7 +6,7 @@
 //! - `{heat_prefix}/+/venus` → capteurs température → `SensorMqttEvent`
 
 use crate::config::MqttRef;
-use crate::types::{HeatPayload, HeatpumpPayload, MeteoPayload, VenusPayload};
+use crate::types::{GridPayload, HeatPayload, HeatpumpPayload, MeteoPayload, PlatformPayload, SwitchPayload, VenusPayload};
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -48,6 +48,31 @@ pub struct HeatpumpMqttEvent {
 pub struct MeteoMqttEvent {
     /// Payload irradiance/météo parsé
     pub payload: MeteoPayload,
+}
+
+/// Événement switch/ATS reçu depuis MQTT (topic switch).
+#[derive(Debug)]
+pub struct SwitchMqttEvent {
+    /// Index du switch (déduit du topic : `prefix/1/venus` → `1`)
+    pub mqtt_index: u8,
+    /// Payload switch parsé
+    pub payload: SwitchPayload,
+}
+
+/// Événement compteur réseau/acload reçu depuis MQTT (topic grid).
+#[derive(Debug)]
+pub struct GridMqttEvent {
+    /// Index du compteur (déduit du topic : `prefix/1/venus` → `1`)
+    pub mqtt_index: u8,
+    /// Payload grid/acload parsé
+    pub payload: GridPayload,
+}
+
+/// Événement platform reçu depuis MQTT (topic fixe `santuario/platform/venus`).
+#[derive(Debug)]
+pub struct PlatformMqttEvent {
+    /// Payload platform parsé
+    pub payload: PlatformPayload,
 }
 
 // =============================================================================
@@ -373,6 +398,204 @@ async fn meteo_connect_and_run(
                 }
             }
             Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT météo ConnAck reçu"),
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+// =============================================================================
+// Source MQTT pour switches/ATS (santuario/switch/{n}/venus)
+// =============================================================================
+
+/// Démarre la source MQTT pour les switches/ATS.
+///
+/// S'abonne sur `{switch_prefix}/+/venus`, parse le `SwitchPayload`
+/// et émet des `SwitchMqttEvent` vers le `SwitchManager`.
+pub async fn start_switch_mqtt_source(
+    cfg:           MqttRef,
+    switch_prefix: String,
+    tx:            mpsc::Sender<SwitchMqttEvent>,
+) {
+    let subscribe_topic = format!("{}/+/venus", switch_prefix);
+
+    info!(
+        broker = %format!("{}:{}", cfg.host, cfg.port),
+        topic  = %subscribe_topic,
+        "Démarrage source MQTT switches/ATS"
+    );
+
+    loop {
+        match switch_connect_and_run(&cfg, &subscribe_topic, &switch_prefix, &tx).await {
+            Ok(())  => warn!("MQTT source switch terminée de façon inattendue, reconnexion dans 5s"),
+            Err(e)  => error!("MQTT source switch erreur : {:#}, reconnexion dans 5s", e),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
+async fn switch_connect_and_run(
+    cfg:           &MqttRef,
+    subscribe_topic: &str,
+    switch_prefix: &str,
+    tx:            &mpsc::Sender<SwitchMqttEvent>,
+) -> anyhow::Result<()> {
+    let client_id = format!("dbus-mqtt-venus-switch-{}", uuid_short());
+    let mut opts = MqttOptions::new(client_id, &cfg.host, cfg.port);
+    opts.set_keep_alive(Duration::from_secs(30));
+    opts.set_clean_session(true);
+    if let (Some(u), Some(p)) = (&cfg.username, &cfg.password) { opts.set_credentials(u, p); }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 64);
+    client.subscribe(subscribe_topic, QoS::AtLeastOnce).await?;
+    info!("MQTT switch connecté, abonnement sur '{}'", subscribe_topic);
+
+    loop {
+        match eventloop.poll().await {
+            Ok(Event::Incoming(Packet::Publish(msg))) => {
+                let topic = &msg.topic;
+                debug!(topic = %topic, "MQTT switch message reçu");
+                if let Some(idx) = extract_mqtt_index(topic, switch_prefix) {
+                    match serde_json::from_slice::<SwitchPayload>(&msg.payload) {
+                        Ok(payload) => {
+                            let evt = SwitchMqttEvent { mqtt_index: idx, payload };
+                            if tx.send(evt).await.is_err() { return Ok(()); }
+                        }
+                        Err(e) => warn!(topic = %topic, "Échec parsing payload switch: {}", e),
+                    }
+                }
+            }
+            Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT switch ConnAck reçu"),
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+// =============================================================================
+// Source MQTT pour compteurs réseau/acload (santuario/grid/{n}/venus)
+// =============================================================================
+
+/// Démarre la source MQTT pour les compteurs réseau/acload.
+///
+/// S'abonne sur `{grid_prefix}/+/venus`, parse le `GridPayload`
+/// et émet des `GridMqttEvent` vers le `GridManager`.
+pub async fn start_grid_mqtt_source(
+    cfg:         MqttRef,
+    grid_prefix: String,
+    tx:          mpsc::Sender<GridMqttEvent>,
+) {
+    let subscribe_topic = format!("{}/+/venus", grid_prefix);
+
+    info!(
+        broker = %format!("{}:{}", cfg.host, cfg.port),
+        topic  = %subscribe_topic,
+        "Démarrage source MQTT compteurs réseau/acload"
+    );
+
+    loop {
+        match grid_connect_and_run(&cfg, &subscribe_topic, &grid_prefix, &tx).await {
+            Ok(())  => warn!("MQTT source grid terminée de façon inattendue, reconnexion dans 5s"),
+            Err(e)  => error!("MQTT source grid erreur : {:#}, reconnexion dans 5s", e),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
+async fn grid_connect_and_run(
+    cfg:         &MqttRef,
+    subscribe_topic: &str,
+    grid_prefix: &str,
+    tx:          &mpsc::Sender<GridMqttEvent>,
+) -> anyhow::Result<()> {
+    let client_id = format!("dbus-mqtt-venus-grid-{}", uuid_short());
+    let mut opts = MqttOptions::new(client_id, &cfg.host, cfg.port);
+    opts.set_keep_alive(Duration::from_secs(30));
+    opts.set_clean_session(true);
+    if let (Some(u), Some(p)) = (&cfg.username, &cfg.password) { opts.set_credentials(u, p); }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 64);
+    client.subscribe(subscribe_topic, QoS::AtLeastOnce).await?;
+    info!("MQTT grid connecté, abonnement sur '{}'", subscribe_topic);
+
+    loop {
+        match eventloop.poll().await {
+            Ok(Event::Incoming(Packet::Publish(msg))) => {
+                let topic = &msg.topic;
+                debug!(topic = %topic, "MQTT grid message reçu");
+                if let Some(idx) = extract_mqtt_index(topic, grid_prefix) {
+                    match serde_json::from_slice::<GridPayload>(&msg.payload) {
+                        Ok(payload) => {
+                            let evt = GridMqttEvent { mqtt_index: idx, payload };
+                            if tx.send(evt).await.is_err() { return Ok(()); }
+                        }
+                        Err(e) => warn!(topic = %topic, "Échec parsing payload grid: {}", e),
+                    }
+                }
+            }
+            Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT grid ConnAck reçu"),
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+// =============================================================================
+// Source MQTT pour platform (santuario/platform/venus — topic fixe)
+// =============================================================================
+
+/// Démarre la source MQTT pour le service platform/backup Pi5.
+///
+/// S'abonne sur le topic FIXE `{platform_topic}`, parse le `PlatformPayload`
+/// et émet des `PlatformMqttEvent` vers le `PlatformManager`.
+pub async fn start_platform_mqtt_source(
+    cfg:            MqttRef,
+    platform_topic: String,
+    tx:             mpsc::Sender<PlatformMqttEvent>,
+) {
+    info!(
+        broker = %format!("{}:{}", cfg.host, cfg.port),
+        topic  = %platform_topic,
+        "Démarrage source MQTT platform"
+    );
+
+    loop {
+        match platform_connect_and_run(&cfg, &platform_topic, &tx).await {
+            Ok(())  => warn!("MQTT source platform terminée de façon inattendue, reconnexion dans 5s"),
+            Err(e)  => error!("MQTT source platform erreur : {:#}, reconnexion dans 5s", e),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
+async fn platform_connect_and_run(
+    cfg:            &MqttRef,
+    platform_topic: &str,
+    tx:             &mpsc::Sender<PlatformMqttEvent>,
+) -> anyhow::Result<()> {
+    let client_id = format!("dbus-mqtt-venus-platform-{}", uuid_short());
+    let mut opts = MqttOptions::new(client_id, &cfg.host, cfg.port);
+    opts.set_keep_alive(Duration::from_secs(30));
+    opts.set_clean_session(true);
+    if let (Some(u), Some(p)) = (&cfg.username, &cfg.password) { opts.set_credentials(u, p); }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 64);
+    client.subscribe(platform_topic, QoS::AtLeastOnce).await?;
+    info!("MQTT platform connecté, abonnement sur '{}'", platform_topic);
+
+    loop {
+        match eventloop.poll().await {
+            Ok(Event::Incoming(Packet::Publish(msg))) => {
+                debug!(topic = %msg.topic, "MQTT platform message reçu");
+                match serde_json::from_slice::<PlatformPayload>(&msg.payload) {
+                    Ok(payload) => {
+                        let evt = PlatformMqttEvent { payload };
+                        if tx.send(evt).await.is_err() { return Ok(()); }
+                    }
+                    Err(e) => warn!(topic = %msg.topic, "Échec parsing payload platform: {}", e),
+                }
+            }
+            Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT platform ConnAck reçu"),
             Ok(_) => {}
             Err(e) => return Err(e.into()),
         }

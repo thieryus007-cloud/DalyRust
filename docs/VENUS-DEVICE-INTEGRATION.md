@@ -551,10 +551,241 @@ mosquitto_sub -h localhost -t "santuario/heatpump/1/venus" -v
 
 | Device | Service D-Bus | Topic MQTT | Index config |
 |---|---|---|---|
-| Batterie Daly | `com.victronenergy.battery.mqtt_{n}` | `santuario/bms/{n}/venus` | `[[bms]]` |
-| Température extérieure | `com.victronenergy.temperature.mqtt_{n}` | `santuario/heat/{n}/venus` | `[[sensors]]` |
+| Batterie Daly (360Ah, 320Ah, 628Ah) | `com.victronenergy.battery.mqtt_{n}` | `santuario/bms/{n}/venus` | `[[bms]]` |
+| Température / Humidité | `com.victronenergy.temperature.mqtt_{n}` | `santuario/heat/{n}/venus` | `[[sensors]]` |
 | Chauffe-eau (HeatPump) | `com.victronenergy.heatpump.mqtt_{n}` | `santuario/heatpump/{n}/venus` | `[[heatpumps]]` |
 | Irradiance (Meteo) | `com.victronenergy.meteo` | `santuario/meteo/venus` | `[meteo]` |
+| Switch / ATS CHINT | `com.victronenergy.switch.mqtt_{n}` | `santuario/switch/{n}/venus` | `[[switches]]` |
+| Compteur réseau (Grid) | `com.victronenergy.grid.mqtt_{n}` | `santuario/grid/{n}/venus` | `[[grids]]` |
+| Compteur consommation (ACload) | `com.victronenergy.acload.mqtt_{n}` | `santuario/grid/{n}/venus` | `[[grids]]` (service_type="acload") |
+| Backup/Restore Pi5 | `com.victronenergy.platform` | `santuario/platform/venus` | `[platform]` |
+
+---
+
+## Exemple : Switch / ATS CHINT
+
+### 1. Type D-Bus utilisé
+
+`com.victronenergy.switch` — wiki Victron :
+<https://github.com/victronenergy/venus/wiki/dbus#switches>
+
+Chemins exposés :
+- `/Position` — 0=AC1 (réseau), 1=AC2 (générateur/onduleur)
+- `/State` — 0=inactive, 1=active, 2=alerted
+- `/Connected`, `/ProductName`, `/DeviceInstance`
+
+### 2. Configuration Config.toml
+
+```toml
+[switch]
+topic_prefix = "santuario/switch"
+
+[[switches]]
+mqtt_index      = 1
+name            = "ATS CHINT"
+device_instance = 60
+```
+
+### 3. Topic MQTT
+
+```
+santuario/switch/1/venus
+```
+
+Payload JSON (publié par Node-RED) :
+```json
+{"Position": 0, "State": 1}
+```
+
+| Position | Signification |
+|---|---|
+| 0 | AC1 — réseau EDF |
+| 1 | AC2 — onduleur / groupe |
+
+### 4. Service D-Bus résultant
+
+```
+com.victronenergy.switch.mqtt_1
+```
+
+### 5. Vérification D-Bus
+
+```bash
+dbus -y com.victronenergy.switch.mqtt_1 / GetItems
+dbus -y com.victronenergy.switch.mqtt_1 /Position GetValue
+dbus -y com.victronenergy.switch.mqtt_1 /State    GetValue
+```
+
+---
+
+## Exemple : Compteur réseau (Grid / ACload)
+
+### 1. Type D-Bus utilisé
+
+`com.victronenergy.grid` ou `com.victronenergy.acload` :
+<https://github.com/victronenergy/venus/wiki/dbus#grid-and-acload-and-genset-meter>
+
+Chemins exposés (L1, L2, L3 — tous enregistrés dès le démarrage) :
+- `/Ac/L1/Voltage` — V AC
+- `/Ac/L1/Current` — A
+- `/Ac/L1/Power` — W (puissance réelle)
+- `/Ac/L1/Energy/Forward` — kWh consommés
+- `/Ac/L1/Energy/Reverse` — kWh injectés
+- `/Ac/L2/...` et `/Ac/L3/...` — même structure (0.0 si monophasé)
+- `/DeviceType` — 340 = generic energy meter
+- `/IsGenericEnergyMeter` — 1 si compteur générique masquerade
+
+### 2. Configuration Config.toml
+
+```toml
+[grid]
+topic_prefix = "santuario/grid"
+
+[[grids]]
+mqtt_index      = 1
+name            = "Compteur EDF"
+device_instance = 70
+service_type    = "grid"    # ou "acload"
+
+[[grids]]
+mqtt_index      = 2
+name            = "Consommation AC"
+device_instance = 71
+service_type    = "acload"
+```
+
+### 3. Topic MQTT
+
+```
+santuario/grid/1/venus
+```
+
+Payload JSON monophasé :
+```json
+{
+  "Ac": {
+    "L1": {
+      "Voltage": 230.0,
+      "Current": 5.2,
+      "Power": 1196.0,
+      "Energy": {"Forward": 1234.5, "Reverse": 0.0}
+    }
+  },
+  "DeviceType": 340,
+  "IsGenericEnergyMeter": 0
+}
+```
+
+Payload JSON triphasé :
+```json
+{
+  "Ac": {
+    "L1": {"Voltage": 230.0, "Current": 5.2, "Power": 1196.0, "Energy": {"Forward": 400.0}},
+    "L2": {"Voltage": 231.0, "Current": 4.8, "Power": 1108.8, "Energy": {"Forward": 380.0}},
+    "L3": {"Voltage": 229.0, "Current": 6.1, "Power": 1396.9, "Energy": {"Forward": 450.0}}
+  }
+}
+```
+
+### 4. Service D-Bus résultant
+
+```
+com.victronenergy.grid.mqtt_1     (si service_type = "grid")
+com.victronenergy.acload.mqtt_2   (si service_type = "acload")
+```
+
+### 5. Vérification D-Bus
+
+```bash
+dbus -y com.victronenergy.grid.mqtt_1 / GetItems
+dbus -y com.victronenergy.grid.mqtt_1 /Ac/L1/Power   GetValue
+dbus -y com.victronenergy.grid.mqtt_1 /Ac/L1/Voltage GetValue
+```
+
+---
+
+## Exemple : Platform Backup/Restore Pi5
+
+### 1. Service D-Bus utilisé
+
+`com.victronenergy.platform` (singleton — service custom)
+
+Chemins exposés :
+- `/Backup/Status` — 0=idle, 1=running, 2=OK, 3=error
+- `/Backup/LastRun` — timestamp Unix (secondes)
+- `/Restore/Status` — 0=idle, 1=running, 2=OK, 3=error
+- `/Restore/LastRun` — timestamp Unix (secondes)
+
+### 2. Configuration Config.toml
+
+```toml
+[platform]
+topic           = "santuario/platform/venus"
+product_name    = "Pi5 Platform"
+device_instance = 50
+enabled         = true
+```
+
+### 3. Topic MQTT
+
+```
+santuario/platform/venus
+```
+
+Payload JSON :
+```json
+{
+  "Backup":  {"Status": 2, "LastRun": 1710000000},
+  "Restore": {"Status": 0, "LastRun": 0}
+}
+```
+
+### 4. Flux Node-RED (exemple)
+
+```javascript
+// Déclencher un backup Pi5 via script SSH ou API
+// Puis publier le statut :
+return {
+  topic:   'santuario/platform/venus',
+  payload: JSON.stringify({
+    Backup:  { Status: 2, LastRun: Math.floor(Date.now() / 1000) },
+    Restore: { Status: 0, LastRun: 0 }
+  })
+};
+```
+
+### 5. Vérification D-Bus
+
+```bash
+dbus -y com.victronenergy.platform / GetItems
+dbus -y com.victronenergy.platform /Backup/Status  GetValue
+dbus -y com.victronenergy.platform /Backup/LastRun GetValue
+```
+
+---
+
+## Batterie agrégée 628Ah (BMS-3 virtuel)
+
+La batterie 628Ah est une batterie **virtuelle agrégée** calculée par Node-RED
+à partir des données BMS-1 (360Ah) et BMS-2 (268Ah) ou des deux BMS réels.
+
+Configuration dans Config.toml :
+
+```toml
+[[bms]]
+address         = "0x03"
+name            = "BMS-628Ah"
+capacity_ah     = 628.0
+mqtt_index      = 3
+device_instance = 143
+```
+
+Flux Node-RED — calcul agrégé et publication sur `santuario/bms/3/venus` :
+```javascript
+const bms1 = global.get('bms1_snapshot');
+const bms2 = global.get('bms2_snapshot');
+// Combiner les données et publier le payload VenusPayload agrégé
+```
 
 ---
 

@@ -128,6 +128,160 @@ pub struct MeteoPayload {
 }
 
 // =============================================================================
+// Payload switch / ATS (santuario/switch/{n}/venus)
+// =============================================================================
+
+/// Payload pour commutateurs automatiques (ATS CHINT, relais, etc.).
+///
+/// Publié par Node-RED sur `santuario/switch/{n}/venus`.
+/// Cible D-Bus : `com.victronenergy.switch.{n}`
+///
+/// Chemins D-Bus exposés (wiki Victron) :
+///   /Position  — 0=AC1/Réseau, 1=AC2/Générateur, 2=AC3
+///   /State     — 0=inactive, 1=active, 2=alerted
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SwitchPayload {
+    /// Position du commutateur : 0=AC1 (réseau), 1=AC2 (générateur/onduleur).
+    #[serde(rename = "Position", default)]
+    pub position: i32,
+
+    /// État : 0=inactif, 1=actif, 2=alerte.
+    #[serde(rename = "State", default)]
+    pub state: i32,
+}
+
+// =============================================================================
+// Payload compteur réseau / consommation AC (santuario/grid/{n}/venus)
+// =============================================================================
+
+/// Payload pour compteurs d'énergie AC (réseau, consommation).
+///
+/// Publié par Node-RED sur `santuario/grid/{n}/venus` ou `santuario/acload/{n}/venus`.
+/// Cible D-Bus : `com.victronenergy.grid.{n}` ou `com.victronenergy.acload.{n}`
+///
+/// Chemins D-Bus exposés (wiki Victron — Grid/ACload meter) :
+///   /Ac/L1/Current         — A AC
+///   /Ac/L1/Energy/Forward  — kWh consommés
+///   /Ac/L1/Energy/Reverse  — kWh injectés (optionnel)
+///   /Ac/L1/Power           — W (puissance réelle)
+///   /Ac/L1/Voltage         — V AC
+///   /Ac/L2/...             — Phase 2 (optionnel)
+///   /Ac/L3/...             — Phase 3 (optionnel)
+///   /DeviceType            — type de compteur
+///   /IsGenericEnergyMeter  — 1 si compteur générique masquerade en grid/acload
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GridPayload {
+    /// Données phase L1.
+    #[serde(rename = "Ac")]
+    pub ac: GridAcPayload,
+
+    /// Type de device (ex: 340 = generic energy meter).
+    #[serde(rename = "DeviceType", default)]
+    pub device_type: i32,
+
+    /// 1 si compteur générique masquerade en genset ou acload.
+    #[serde(rename = "IsGenericEnergyMeter", default)]
+    pub is_generic_energy_meter: i32,
+}
+
+/// Données AC triphasées (L1, L2, L3).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GridAcPayload {
+    /// Phase L1.
+    #[serde(rename = "L1", default)]
+    pub l1: Option<GridPhasePayload>,
+
+    /// Phase L2 (optionnelle — triphasé).
+    #[serde(rename = "L2", default)]
+    pub l2: Option<GridPhasePayload>,
+
+    /// Phase L3 (optionnelle — triphasé).
+    #[serde(rename = "L3", default)]
+    pub l3: Option<GridPhasePayload>,
+}
+
+/// Données d'une phase AC.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GridPhasePayload {
+    /// Tension en V AC.
+    #[serde(rename = "Voltage", default)]
+    pub voltage: f64,
+
+    /// Courant en A.
+    #[serde(rename = "Current", default)]
+    pub current: f64,
+
+    /// Puissance réelle en W.
+    #[serde(rename = "Power", default)]
+    pub power: f64,
+
+    /// Énergie consommée (Forward) en kWh.
+    #[serde(rename = "Energy", default)]
+    pub energy: Option<GridPhaseEnergyPayload>,
+}
+
+/// Sous-payload énergie par phase.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GridPhaseEnergyPayload {
+    /// Énergie consommée en kWh.
+    #[serde(rename = "Forward", default)]
+    pub forward: f64,
+
+    /// Énergie injectée (export) en kWh.
+    #[serde(rename = "Reverse", default)]
+    pub reverse: f64,
+}
+
+// =============================================================================
+// Payload platform / backup Pi5 (santuario/platform/venus)
+// =============================================================================
+
+/// Payload pour le service de backup/restore Pi5.
+///
+/// Publié par Node-RED sur `santuario/platform/venus` (topic fixe).
+/// Cible D-Bus : `com.victronenergy.platform` (singleton)
+///
+/// Chemins D-Bus exposés (service custom) :
+///   /Backup/Status   — 0=idle, 1=running, 2=OK, 3=error
+///   /Backup/LastRun  — timestamp Unix (secondes)
+///   /Restore/Status  — 0=idle, 1=running, 2=OK, 3=error
+///   /Restore/LastRun — timestamp Unix (secondes)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlatformPayload {
+    /// Sous-section backup.
+    #[serde(rename = "Backup", default)]
+    pub backup: Option<PlatformBackupPayload>,
+
+    /// Sous-section restore.
+    #[serde(rename = "Restore", default)]
+    pub restore: Option<PlatformRestorePayload>,
+}
+
+/// État du backup Pi5.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PlatformBackupPayload {
+    /// 0=idle, 1=running, 2=OK, 3=error.
+    #[serde(rename = "Status", default)]
+    pub status: i32,
+
+    /// Timestamp Unix du dernier backup terminé.
+    #[serde(rename = "LastRun", default)]
+    pub last_run: i64,
+}
+
+/// État du restore Pi5.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PlatformRestorePayload {
+    /// 0=idle, 1=running, 2=OK, 3=error.
+    #[serde(rename = "Status", default)]
+    pub status: i32,
+
+    /// Timestamp Unix du dernier restore terminé.
+    #[serde(rename = "LastRun", default)]
+    pub last_run: i64,
+}
+
+// =============================================================================
 // Payload batteries (santuario/bms/{n}/venus)
 // =============================================================================
 

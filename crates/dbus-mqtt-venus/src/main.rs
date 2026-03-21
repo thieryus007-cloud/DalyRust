@@ -26,27 +26,37 @@
 
 mod battery_service;
 mod config;
+mod grid_manager;
+mod grid_service;
 mod heatpump_manager;
 mod heatpump_service;
 mod manager;
 mod meteo_manager;
 mod meteo_service;
 mod mqtt_source;
+mod platform_manager;
+mod platform_service;
 mod sensor_manager;
+mod switch_manager;
+mod switch_service;
 mod temperature_service;
 mod types;
 
 use anyhow::Result;
 use clap::Parser;
 use config::VenusServiceConfig;
+use grid_manager::GridManager;
 use heatpump_manager::HeatpumpManager;
 use manager::BatteryManager;
 use meteo_manager::MeteoManager;
 use mqtt_source::{
-    start_heatpump_mqtt_source, start_meteo_mqtt_source, start_mqtt_source,
-    start_sensor_mqtt_source,
+    start_grid_mqtt_source, start_heatpump_mqtt_source, start_meteo_mqtt_source,
+    start_mqtt_source, start_platform_mqtt_source, start_sensor_mqtt_source,
+    start_switch_mqtt_source,
 };
+use platform_manager::PlatformManager;
 use sensor_manager::SensorManager;
+use switch_manager::SwitchManager;
 use std::path::PathBuf;
 use tokio::sync::mpsc;
 use tracing::{error, info};
@@ -108,9 +118,14 @@ async fn main() -> Result<()> {
         heat_prefix      = %cfg.heat.topic_prefix,
         heatpump_prefix  = %cfg.heatpump.topic_prefix,
         meteo_topic      = %cfg.meteo.topic,
+        switch_prefix    = %cfg.switch.topic_prefix,
+        grid_prefix      = %cfg.grid.topic_prefix,
+        platform_topic   = %cfg.platform.topic,
         bms_count        = cfg.bms.len(),
         sensor_count     = cfg.sensors.len(),
         heatpump_count   = cfg.heatpumps.len(),
+        switch_count     = cfg.switches.len(),
+        grid_count       = cfg.grids.len(),
         "dbus-mqtt-venus démarrage"
     );
 
@@ -179,10 +194,61 @@ async fn main() -> Result<()> {
         start_meteo_mqtt_source(mqtt_cfg4, meteo_topic, meteo_tx).await;
     });
 
-    // Le MeteoManager est le dernier et bloque le thread principal
-    let meteo_manager = MeteoManager::new(cfg.venus, cfg.meteo, meteo_rx);
-    if let Err(e) = meteo_manager.run().await {
-        error!("MeteoManager terminé avec erreur : {:#}", e);
+    let meteo_manager = MeteoManager::new(cfg.venus.clone(), cfg.meteo, meteo_rx);
+    tokio::spawn(async move {
+        if let Err(e) = meteo_manager.run().await {
+            error!("MeteoManager terminé avec erreur : {:#}", e);
+        }
+    });
+
+    // -------------------------------------------------------------------------
+    // Bridge switch/ATS : MQTT santuario/switch/{n}/venus → D-Bus com.victronenergy.switch.{n}
+    // -------------------------------------------------------------------------
+    let (switch_tx, switch_rx) = mpsc::channel(32);
+    let mqtt_cfg5      = cfg.mqtt.clone();
+    let switch_prefix  = cfg.switch.topic_prefix.clone();
+    tokio::spawn(async move {
+        start_switch_mqtt_source(mqtt_cfg5, switch_prefix, switch_tx).await;
+    });
+
+    let switch_manager = SwitchManager::new(cfg.venus.clone(), cfg.switches, switch_rx);
+    tokio::spawn(async move {
+        if let Err(e) = switch_manager.run().await {
+            error!("SwitchManager terminé avec erreur : {:#}", e);
+        }
+    });
+
+    // -------------------------------------------------------------------------
+    // Bridge grid/acload : MQTT santuario/grid/{n}/venus → D-Bus com.victronenergy.grid.{n}
+    // -------------------------------------------------------------------------
+    let (grid_tx, grid_rx) = mpsc::channel(32);
+    let mqtt_cfg6    = cfg.mqtt.clone();
+    let grid_prefix  = cfg.grid.topic_prefix.clone();
+    tokio::spawn(async move {
+        start_grid_mqtt_source(mqtt_cfg6, grid_prefix, grid_tx).await;
+    });
+
+    let grid_manager = GridManager::new(cfg.venus.clone(), cfg.grids, grid_rx);
+    tokio::spawn(async move {
+        if let Err(e) = grid_manager.run().await {
+            error!("GridManager terminé avec erreur : {:#}", e);
+        }
+    });
+
+    // -------------------------------------------------------------------------
+    // Bridge platform : MQTT santuario/platform/venus → D-Bus com.victronenergy.platform
+    // Le PlatformManager est le dernier et bloque le thread principal
+    // -------------------------------------------------------------------------
+    let (platform_tx, platform_rx) = mpsc::channel(16);
+    let mqtt_cfg7      = cfg.mqtt.clone();
+    let platform_topic = cfg.platform.topic.clone();
+    tokio::spawn(async move {
+        start_platform_mqtt_source(mqtt_cfg7, platform_topic, platform_tx).await;
+    });
+
+    let platform_manager = PlatformManager::new(cfg.venus, cfg.platform, platform_rx);
+    if let Err(e) = platform_manager.run().await {
+        error!("PlatformManager terminé avec erreur : {:#}", e);
         std::process::exit(1);
     }
 
