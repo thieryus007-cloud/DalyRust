@@ -57,7 +57,7 @@ ps:
 # Compilation
 # =============================================================================
 
-.PHONY: build build-arm build-arm-v7 build-cli build-venus build-venus-arm build-venus-armv7 install-venus install-venus-v7
+.PHONY: build build-arm build-arm-v7 build-cli build-venus build-venus-arm build-venus-armv7 build-venus-v7 install-venus install-venus-v7
 
 VENUS_BIN  := dbus-mqtt-venus
 
@@ -90,7 +90,7 @@ build-arm-v7:
 	  $(CARGO) build --release --target $(TARGET_ARMV7) --bin $(BINARY)
 	@echo "✓ Binaire ARMv7 : $(ARMV7_RELEASE_DIR)/$(BINARY)"
 
-build-venus-armv7:
+build-venus-armv7 build-venus-v7:
 	CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc \
 	  $(CARGO) build --release --target $(TARGET_ARMV7) --bin $(VENUS_BIN) --bin $(BINARY)
 	@echo "✓ Binaires ARMv7 Venus OS :"
