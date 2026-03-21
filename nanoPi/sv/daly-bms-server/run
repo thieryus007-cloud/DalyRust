@@ -1,9 +1,0 @@
-#!/bin/sh
-# Service runit pour daly-bms-server (polling RS485 + MQTT + API)
-#
-# Activé via :
-#   ln -s /data/etc/sv/daly-bms-server /service/
-
-exec /data/daly-bms/daly-bms-server \
-    --config /data/daly-bms/config.toml \
-    2>&1
