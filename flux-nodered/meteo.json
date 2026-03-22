@@ -153,7 +153,7 @@
         "type": "comment",
         "z": "e6e3a16384301f83",
         "name": "Production solaire du jour — MPPT History/Daily/0/Yield + PVInverter delta",
-        "info": "## Sources\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS reset cette valeur automatiquement à minuit.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/32/Ac/Energy/Forward\n  Valeur cumulée depuis installation → on calcule le delta journalier.\n\n## Reset minuit\n  L'inject cron à 00h00 remet à zéro la baseline du PVInverter.\n  Le MPPT est géré automatiquement par Venus OS.\n\n## Contexte global utilisé\n  mppt_yields        — dict {topic: kWh} par MPPT\n  mppt_yield_today   — somme MPPT kWh/jour\n  pvinv_baseline     — énergie PVInverter au début du jour\n  pvinv_yield_today  — delta PVInverter kWh/jour\n  total_yield_today  — somme totale publiée dans TodaysYield",
+        "info": "## Sources\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS reset cette valeur automatiquement à minuit.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward\n  Service D-Bus réel : com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2\n  Wildcard + utilisé car instance peut changer. Valeur cumulée → delta journalier.\n\n## Reset minuit\n  L'inject cron à 00h00 remet à zéro la baseline du PVInverter.\n  Le MPPT est géré automatiquement par Venus OS.\n\n## Contexte global utilisé\n  mppt_yields        — dict {topic: kWh} par MPPT\n  mppt_yield_today   — somme MPPT kWh/jour\n  pvinv_baseline     — énergie PVInverter au début du jour\n  pvinv_yield_today  — delta PVInverter kWh/jour\n  total_yield_today  — somme totale publiée dans TodaysYield\n\n## Vérification NanoPi\n  dbus -y | grep pvinverter\n  dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue",
         "x": 300,
         "y": 360,
         "wires": []
@@ -206,7 +206,7 @@
         "type": "mqtt in",
         "z": "e6e3a16384301f83",
         "name": "PVInverter énergie totale (kWh cumulé)",
-        "topic": "N/c0619ab9929a/pvinverter/32/Ac/Energy/Forward",
+        "topic": "N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward",
         "qos": "0",
         "datatype": "json",
         "broker": "pi5_mqtt_broker",
