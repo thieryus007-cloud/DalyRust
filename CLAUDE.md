@@ -388,6 +388,11 @@ rustup target add armv7-unknown-linux-gnueabihf
 sudo apt install -y gcc-arm-linux-gnueabihf
 ```
 
+### Problème : `pip3: command not found` lors de install.sh irradiance
+
+**Cause** : `pip3` n'est pas installé par défaut sur Raspberry Pi OS.
+**Solution** : `install.sh` utilise désormais `sudo apt-get install -y python3-serial python3-paho-mqtt`.
+
 ### Problème : D-Bus Venus non visible dans Victron GUI
 
 **Cause** : Service non démarré ou nom de service incorrect.
@@ -584,16 +589,20 @@ santuario/meteo/venus        ← irradiance RS485
 | 2 | `ExternalTemperature: -` dans widget météo | Retiré de `meteo_service.rs` | `939595f` |
 | 3 | Baseline PVInverter perdue après reset mid-journée | `fix-pvinv-baseline.json` (flow Node-RED) | `3ce46de` |
 | 4 | Documentation manquante | CLAUDE.md inventaire D-Bus + procédures | `b8087d2` |
+| 5 | Capteur irradiance RS485 (PRALRAN) non intégré | Service systemd + flow Node-RED + fix apt | `bbb5ef8` |
 
-### État final widget météo Victron (Capteur [40])
+### État final widget météo Victron (Capteur [40]) — vérifié 2026-03-22 ✅
 
 ```
-Irradiance       : 0 W/m²           ← correct (nuit/hors production)
-Production solaire: ☀ 7 kWh         ← TodaysYield correct
-Dernières 24h    : 6.6 kWh          ← hier correct
-Température      : (absent)          ← retiré intentionnellement
-Dernière màj     : 2 minutes ago     ← keepalive 25s actif
+Irradiance       : 334 W/m²         ← capteur RS485 PRALRAN actif
+Production solaire: ☀ 11 kWh        ← TodaysYield correct
+Dernières 24h    : 12.6 kWh         ← hier correct
+Température      : -                 ← limitation Venus OS (inévitable)
+Dernière màj     : 4 minutes ago    ← keepalive 25s actif
 ```
+
+**Capteur "Temperature Extérieure"** (widget séparé) : 9.0°C, humidité 66%, pression 1013 hPa
+→ via `com.victronenergy.temperature.mqtt_1` (type 4=Outdoor) ✅
 
 ### Node-RED — Production solaire (TodaysYield)
 
@@ -744,13 +753,15 @@ dbus -y com.victronenergy.temperature.mqtt_2 / GetItems
 
 ---
 
-## 16b. CAPTEUR IRRADIANCE RS485 (ajouté 2026-03-22)
+## 16b. CAPTEUR IRRADIANCE RS485 ✅ OPÉRATIONNEL (2026-03-22)
 
 **Matériel** : Solar Radiation Sensor PRALRAN, FTDI FT232 USB-RS485
 - Branché sur : `Bus 004 Device 002` Pi5 → `/dev/ttyUSB1`
 - Adresse Modbus RTU : `0x05` (configurée sur le capteur)
 - Registre : `0x0000` → irradiance W/m² (FC=0x04, uint16 big-endian)
 - Baud : 9600 8N1 (default usine)
+
+**État** : ✅ Fonctionnel — 334 W/m² visibles dans widget météo Victron
 
 **Architecture** :
 ```
@@ -776,14 +787,18 @@ flux-nodered/
 └── irradiance-rs485.json     ← flow Node-RED (MQTT subscriber → global)
 ```
 
-**Installation sur Pi5** :
+**Installation sur Pi5** (à refaire après un reinstall OS) :
 ```bash
 cd ~/Daly-BMS-Rust
 git pull origin claude/review-venus-integration-35qN7
 bash contrib/irradiance-rs485/install.sh
+# Dépendances installées via apt (python3-serial python3-paho-mqtt)
 # Puis importer flux-nodered/irradiance-rs485.json dans Node-RED
 # Et déployer le flow meteo.json mis à jour
 ```
+
+> **NOTE** : `install.sh` utilise `sudo apt-get install python3-serial python3-paho-mqtt`
+> (pas `pip3` — non disponible sur Raspberry Pi OS par défaut).
 
 **Diagnostic** :
 ```bash
