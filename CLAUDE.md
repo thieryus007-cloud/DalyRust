@@ -198,7 +198,6 @@ make check           # fmt + lint
 make install         # Installer service systemd sur Pi5
 make deploy          # SSH vers Pi5 (PI_HOST=pi5compute@192.168.1.141)
 make install-venus-v7  # Déployer dbus-mqtt-venus sur NanoPi (armv7)
-make install-venus     # Déployer dbus-mqtt-venus sur NanoPi (aarch64)
 ```
 
 ---
