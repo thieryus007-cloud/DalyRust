@@ -188,11 +188,15 @@ deploy: build-arm
 
 NODERED_URL ?= http://localhost:1880
 
-.PHONY: deploy-nodered
+.PHONY: deploy-nodered export-nodered
 
 deploy-nodered:
-	@echo "Déploiement des flows Node-RED depuis flux-nodered/ ..."
+	@echo "Déploiement des flows Node-RED depuis flux-nodered/ (git → Node-RED) ..."
 	NODERED_URL=$(NODERED_URL) python3 contrib/deploy-nodered-flows.py
+
+export-nodered:
+	@echo "Export des flows Node-RED vers flux-nodered/ (Node-RED → git) ..."
+	NODERED_URL=$(NODERED_URL) python3 contrib/export-nodered-flows.py
 
 # =============================================================================
 # Dashboard (React)
@@ -256,6 +260,7 @@ help:
 	@echo "  Déploiement :"
 	@echo "    make install       Installer le service systemd"
 	@echo "    make deploy        Déployer daly-bms-server sur pi5compute@192.168.1.141"
-	@echo "    make deploy-nodered  Pousser flows Node-RED depuis git vers Node-RED (port 1880)"
+	@echo "    make deploy-nodered  git → Node-RED : remplace les flows (source = git)"
+	@echo "    make export-nodered  Node-RED → git : exporte les flows vers flux-nodered/"
 	@echo "    make install-venus-v7  Déployer dbus-mqtt-venus sur NanoPi (armv7)"
 	@echo ""
