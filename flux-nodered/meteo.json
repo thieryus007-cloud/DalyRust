@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "Meteo & ET112",
         "disabled": false,
-        "info": "Open-Meteo (15 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT History/Daily/0/Yield + PVInverter delta journalier\n\nContexte persistant (store 'file') :\n  pvinv_baseline, pvinv_yield_today, mppt_yields, mppt_yield_today, total_yield_today\n  → survivent aux redémarrages Pi5/Docker (cf. docker/nodered/settings.js)",
+        "info": "Open-Meteo (5 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT History/Daily/0/Yield + PVInverter delta journalier\n\nPersistance pvinv_baseline :\n  Stockée en MQTT retained (santuario/persist/pvinv_baseline)\n  Mosquitto persistence=true → survit aux redémarrages Pi5 et NanoPi\n  Pas de modifications Docker ni de settings.js nécessaires.",
         "env": []
     },
 
@@ -12,9 +12,9 @@
         "id": "e8ba731c3af093d3",
         "type": "inject",
         "z": "e6e3a16384301f83",
-        "name": "Récupération météo (toutes les 15 min)",
+        "name": "Récupération météo (toutes les 5 min)",
         "props": [],
-        "repeat": "900",
+        "repeat": "300",
         "crontab": "",
         "once": true,
         "onceDelay": 0.1,
@@ -56,7 +56,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Extraire et publier météo",
-        "func": "const cur = msg.payload.current;\nconst temp      = cur.temperature_2m;\nconst humidity  = cur.relative_humidity_2m;\nconst pressure  = cur.pressure_msl;       // hPa niveau mer\nconst windSpeed = cur.wind_speed_10m;\nconst windDir   = cur.wind_direction_10m;\n\n// Stocker dans contexte mémoire (éphémère — republié par keepalive)\nglobal.set('outdoor_temp',      temp);\nglobal.set('outdoor_humidity',  humidity);\nglobal.set('outdoor_pressure',  pressure);\nglobal.set('outdoor_wind_speed', windSpeed);\nglobal.set('outdoor_wind_dir',  windDir);\n\n// Lire la production du jour depuis le store persistant (survit aux redémarrages)\nconst todaysYield = global.get('total_yield_today', 'file') || 0;\n\n// Irradiance depuis capteur RS485 (service systemd → MQTT → tab Irradiance RS485)\nconst irradiance = global.get('irradiance_wm2') || 0;\n\nnode.status({fill: 'green', shape: 'dot', text: `${temp}°C — ${irradiance} W/m² — ${todaysYield.toFixed(2)} kWh`});\n\n// Message 1 : capteur température/humidité/pression → com.victronenergy.temperature.mqtt_1 (instance 20)\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\n\n// Message 2 : capteur météo/irradiance → com.victronenergy.meteo (instance 40)\n// Note : ExternalTemperature intentionnellement absent (champ retiré du bridge Rust, cf. CLAUDE.md §19)\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\n\nreturn [[heatMsg, meteoMsg]];",
+        "func": "const cur = msg.payload.current;\nconst temp      = cur.temperature_2m;\nconst humidity  = cur.relative_humidity_2m;\nconst pressure  = cur.pressure_msl;\nconst windSpeed = cur.wind_speed_10m;\nconst windDir   = cur.wind_direction_10m;\n\nglobal.set('outdoor_temp',       temp);\nglobal.set('outdoor_humidity',   humidity);\nglobal.set('outdoor_pressure',   pressure);\nglobal.set('outdoor_wind_speed', windSpeed);\nglobal.set('outdoor_wind_dir',   windDir);\n\nconst todaysYield = global.get('total_yield_today') || 0;\nconst irradiance  = global.get('irradiance_wm2')    || 0;\n\nnode.status({fill:'green', shape:'dot', text:`${temp}°C — ${irradiance} W/m² — ${todaysYield.toFixed(2)} kWh`});\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -97,7 +97,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Republier depuis contexte",
-        "func": "const temp      = global.get('outdoor_temp');\nconst humidity  = global.get('outdoor_humidity');\nconst pressure  = global.get('outdoor_pressure');\nconst windSpeed = global.get('outdoor_wind_speed');\nconst windDir   = global.get('outdoor_wind_dir');\n\n// Attendre la première récupération Open-Meteo\nif (temp === undefined || temp === null) {\n    return null;\n}\n\n// Production du jour — lecture depuis store persistant (survit aux redémarrages)\nconst todaysYield = global.get('total_yield_today', 'file') || 0;\n\n// Irradiance depuis capteur RS485 (service systemd → MQTT → tab Irradiance RS485)\nconst irradiance = global.get('irradiance_wm2') || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\n\n// Note : ExternalTemperature intentionnellement absent (champ retiré du bridge Rust, cf. CLAUDE.md §19)\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\n\nreturn [[heatMsg, meteoMsg]];",
+        "func": "const temp      = global.get('outdoor_temp');\nconst humidity  = global.get('outdoor_humidity');\nconst pressure  = global.get('outdoor_pressure');\nconst windSpeed = global.get('outdoor_wind_speed');\nconst windDir   = global.get('outdoor_wind_dir');\n\n// Attendre la première récupération Open-Meteo (once:true → ~0.1s)\nif (temp === undefined || temp === null) return null;\n\nconst todaysYield = global.get('total_yield_today') || 0;\nconst irradiance  = global.get('irradiance_wm2')    || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -152,9 +152,9 @@
         "id": "meteo_comment_yield",
         "type": "comment",
         "z": "e6e3a16384301f83",
-        "name": "Production solaire du jour — MPPT History/Daily/0/Yield + PVInverter delta",
-        "info": "## Sources\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS reset cette valeur automatiquement à minuit.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward\n  Service D-Bus réel : com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2\n  Wildcard + utilisé car instance peut changer. Valeur cumulée → delta journalier.\n\n## Reset minuit\n  L'inject cron à 00h00 remet à zéro la baseline du PVInverter.\n  Le MPPT est géré automatiquement par Venus OS.\n\n## Contexte global utilisé\n  mppt_yields        — dict {topic: kWh} par MPPT           [store: file]\n  mppt_yield_today   — somme MPPT kWh/jour                  [store: file]\n  pvinv_baseline     — énergie PVInverter au début du jour  [store: file]\n  pvinv_yield_today  — delta PVInverter kWh/jour            [store: file]\n  total_yield_today  — somme totale publiée dans TodaysYield [store: file]\n\n## Persistance\n  Les variables [store: file] survivent aux redémarrages Pi5/Docker.\n  Requiert contextStorage.file dans docker/nodered/settings.js (monté via docker-compose).\n\n## Vérification NanoPi\n  dbus -y | grep pvinverter\n  dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue",
-        "x": 300,
+        "name": "Production solaire — MPPT + PVInverter delta — Persistance MQTT retained",
+        "info": "## Sources production solaire\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS remet à zéro à minuit automatiquement.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward\n  Valeur cumulée → delta journalier via baseline.\n\n## Persistance pvinv_baseline (survit aux redémarrages)\n  topic: santuario/persist/pvinv_baseline  (retain:true, qos:1)\n  Mosquitto persistence=true + volume Docker → persiste sur disque\n  Au démarrage Node-RED : mqtt-in (rap:true) reçoit immédiatement la baseline\n  Le bridge NanoPi reconnecte en ~30s → PVInverter arrive après baseline ✓\n\n## Reset minuit\n  L'inject cron 00:00 remet pvinv_baseline à null et publie payload vide\n  (supprime le retained dans Mosquitto).\n  Au premier message PVInverter du matin → nouvelle baseline posée.\n\n## Vérification NanoPi\n  dbus -y | grep pvinverter\n  dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n\n## Vérifier la baseline persistée\n  mosquitto_sub -h localhost -p 1883 -t santuario/persist/pvinv_baseline -C 1",
+        "x": 330,
         "y": 360,
         "wires": []
     },
@@ -185,7 +185,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Accumuler MPPT yields",
-        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\n// Stocker par topic (supporte plusieurs MPPT) — store persistant\nlet mpptYields = global.get('mppt_yields', 'file') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields, 'file');\n\n// Sommer tous les MPPT\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal, 'file');\n\n// Mettre à jour le total combiné\nconst pvinvYield = global.get('pvinv_yield_today', 'file') || 0;\nconst total = parseFloat((mpptTotal + pvinvYield).toFixed(3));\nglobal.set('total_yield_today', total, 'file');\n\nnode.status({fill: 'green', shape: 'dot', text: `MPPT: ${mpptTotal.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\nreturn msg;",
+        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\nconst pvinvYield = global.get('pvinv_yield_today') || 0;\nconst total = parseFloat((mpptTotal + pvinvYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'green', shape:'dot', text:`MPPT: ${mpptTotal.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -227,8 +227,8 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Delta journalier PVInverter",
-        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n\n// Lire la baseline depuis le store persistant (survit aux redémarrages Pi5/Docker)\nlet baseline = global.get('pvinv_baseline', 'file');\nif (baseline === null || baseline === undefined) {\n    // Premier message du jour (ou après reset minuit) : poser la baseline\n    global.set('pvinv_baseline', current, 'file');\n    baseline = current;\n}\n\n// Delta = énergie produite depuis le début du jour\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield, 'file');\n\n// Mettre à jour le total combiné\nconst mpptYield = global.get('mppt_yield_today', 'file') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total, 'file');\n\nnode.status({fill: 'blue', shape: 'dot', text: `PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\nreturn msg;",
-        "outputs": 1,
+        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    // Premier message du jour (ou après reset minuit) : poser la baseline\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'blue', shape:'dot', text:`PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n\n// Output 1 → debug_yield\n// Output 2 → persist baseline dans Mosquitto (retain)\nreturn [msg, {payload: baseline}];",
+        "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -239,6 +239,9 @@
         "wires": [
             [
                 "debug_yield"
+            ],
+            [
+                "pvinv_persist_out"
             ]
         ]
     },
@@ -267,8 +270,8 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Reset baseline PVInverter",
-        "func": "// Réinitialiser la baseline du PVInverter pour le nouveau jour\n// La prochaine valeur reçue de N/.../pvinverter/+/Ac/Energy/Forward\n// deviendra la nouvelle baseline (delta = 0 à minuit).\nglobal.set('pvinv_baseline', null, 'file');\nglobal.set('pvinv_yield_today', 0, 'file');\n// Les yields MPPT sont remis à zéro par Venus OS lui-même à minuit\nglobal.set('mppt_yields', {}, 'file');\nglobal.set('mppt_yield_today', 0, 'file');\nglobal.set('total_yield_today', 0, 'file');\nnode.status({fill: 'blue', shape: 'dot', text: 'Reset minuit OK'});\nreturn msg;",
-        "outputs": 1,
+        "func": "global.set('pvinv_baseline', null);\nglobal.set('pvinv_yield_today', 0);\nglobal.set('mppt_yields', {});\nglobal.set('mppt_yield_today', 0);\nglobal.set('total_yield_today', 0);\nnode.status({fill:'blue', shape:'dot', text:'Reset minuit OK'});\n// Output 1 → rien\n// Output 2 → effacer le retained Mosquitto (payload vide = suppression du retained)\nreturn [null, {payload: ''}];",
+        "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -277,7 +280,10 @@
         "x": 460,
         "y": 600,
         "wires": [
-            []
+            [],
+            [
+                "pvinv_persist_out"
+            ]
         ]
     },
 
@@ -295,6 +301,75 @@
         "statusType": "auto",
         "x": 720,
         "y": 480,
+        "wires": []
+    },
+
+    {
+        "id": "persist_comment",
+        "type": "comment",
+        "z": "e6e3a16384301f83",
+        "name": "PERSISTANCE pvinv_baseline — MQTT retained (Mosquitto persistence=true)",
+        "info": "## Principe\npvinv_baseline est publiée en retained sur santuario/persist/pvinv_baseline\nMosquitto stocke ce message sur disque (persistence=true + volume Docker).\n\nAu redémarrage Node-RED / Pi5 :\n1. pvinv_persist_in (rap:true) reçoit immédiatement la baseline depuis Mosquitto local\n2. restore_baseline_fn repose global.pvinv_baseline\n3. Bridge NanoPi reconnecte ~30s plus tard\n4. Premier PVInverter reçu → baseline déjà posée → delta correct ✓\n\n## Vérification\nmosquitto_sub -h localhost -p 1883 -t santuario/persist/pvinv_baseline -C 1\n# → doit afficher la baseline (ex: 587.2)\n\n## Reset manuel si baseline incorrecte\nSe référer à fix-pvinv-baseline.json (CLAUDE.md §10)",
+        "x": 280,
+        "y": 680,
+        "wires": []
+    },
+
+    {
+        "id": "pvinv_persist_in",
+        "type": "mqtt in",
+        "z": "e6e3a16384301f83",
+        "name": "Restore pvinv_baseline (au démarrage)",
+        "topic": "santuario/persist/pvinv_baseline",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 230,
+        "y": 760,
+        "wires": [
+            [
+                "restore_baseline_fn"
+            ]
+        ]
+    },
+    {
+        "id": "restore_baseline_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Restaurer pvinv_baseline",
+        "func": "const raw = msg.payload;\n\n// Payload vide = reset minuit (retained effacé), ou pas de baseline stockée\nif (raw === '' || raw === null || raw === undefined) {\n    global.set('pvinv_baseline', null);\n    node.status({fill:'grey', shape:'ring', text:'Pas de baseline (reset ou 1er jour)'});\n    return null;\n}\n\nconst baseline = parseFloat(raw);\nif (isNaN(baseline) || baseline <= 0) {\n    node.status({fill:'red', shape:'ring', text:'Baseline invalide: ' + raw});\n    return null;\n}\n\nglobal.set('pvinv_baseline', baseline);\nnode.status({fill:'yellow', shape:'dot', text:'Baseline restaurée: ' + baseline.toFixed(1) + ' kWh'});\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "pvinv_persist_out",
+        "type": "mqtt out",
+        "z": "e6e3a16384301f83",
+        "name": "Persist pvinv_baseline (retained)",
+        "topic": "santuario/persist/pvinv_baseline",
+        "qos": "1",
+        "retain": "true",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "pi5_mqtt_broker",
+        "x": 870,
+        "y": 560,
         "wires": []
     },
 
