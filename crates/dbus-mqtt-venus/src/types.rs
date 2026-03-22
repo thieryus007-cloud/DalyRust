@@ -36,7 +36,7 @@ pub struct HeatPayload {
     #[serde(rename = "Humidity", default)]
     pub humidity: Option<f64>,
 
-    /// Pression atmosphérique en kPa (optionnelle).
+    /// Pression atmosphérique en hPa (optionnelle).
     #[serde(rename = "Pressure", default)]
     pub pressure: Option<f64>,
 
