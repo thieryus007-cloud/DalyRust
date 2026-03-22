@@ -1,0 +1,21 @@
+[Unit]
+Description=Irradiance RS485 Modbus RTU → MQTT bridge
+Documentation=https://github.com/thieryus007-cloud/Daly-BMS-Rust
+After=network.target
+
+[Service]
+Type=simple
+User=pi5compute
+Group=dialout
+ExecStart=/usr/bin/python3 /home/pi5compute/Daly-BMS-Rust/contrib/irradiance-rs485/irradiance_reader.py
+Restart=always
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=irradiance-rs485
+
+# Donner accès au port série sans sudo
+SupplementaryGroups=dialout
+
+[Install]
+WantedBy=multi-user.target

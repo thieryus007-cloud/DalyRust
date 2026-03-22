@@ -744,6 +744,72 @@ dbus -y com.victronenergy.temperature.mqtt_2 / GetItems
 
 ---
 
+## 16b. CAPTEUR IRRADIANCE RS485 (ajouté 2026-03-22)
+
+**Matériel** : Solar Radiation Sensor PRALRAN, FTDI FT232 USB-RS485
+- Branché sur : `Bus 004 Device 002` Pi5 → `/dev/ttyUSB1`
+- Adresse Modbus RTU : `0x05` (configurée sur le capteur)
+- Registre : `0x0000` → irradiance W/m² (FC=0x04, uint16 big-endian)
+- Baud : 9600 8N1 (default usine)
+
+**Architecture** :
+```
+Capteur RS485 (/dev/ttyUSB1)
+  ↓ Modbus RTU (service systemd irradiance-rs485)
+irradiance_reader.py  →  MQTT santuario/irradiance/raw  →  localhost:1883
+  ↓ Node-RED (onglet "Irradiance RS485")
+global.irradiance_wm2
+  ↓ keepalive 25s (onglet "Meteo & ET112")
+santuario/meteo/venus  →  bridge Mosquitto  →  NanoPi
+  ↓ dbus-mqtt-venus
+com.victronenergy.meteo /Irradiance  →  VRM widget météo
+```
+
+**Fichiers** :
+```
+contrib/irradiance-rs485/
+├── irradiance_reader.py      ← bridge Python (Modbus RTU → MQTT)
+├── irradiance-rs485.service  ← unité systemd
+└── install.sh                ← script d'installation Pi5
+
+flux-nodered/
+└── irradiance-rs485.json     ← flow Node-RED (MQTT subscriber → global)
+```
+
+**Installation sur Pi5** :
+```bash
+cd ~/Daly-BMS-Rust
+git pull origin claude/review-venus-integration-35qN7
+bash contrib/irradiance-rs485/install.sh
+# Puis importer flux-nodered/irradiance-rs485.json dans Node-RED
+# Et déployer le flow meteo.json mis à jour
+```
+
+**Diagnostic** :
+```bash
+# Service systemd
+systemctl status irradiance-rs485
+journalctl -u irradiance-rs485 -f
+
+# Valeur MQTT brute W/m²
+mosquitto_sub -h localhost -p 1883 -t 'santuario/irradiance/raw' -v
+
+# D-Bus NanoPi
+ssh root@192.168.1.120 "dbus -y com.victronenergy.meteo /Irradiance GetValue"
+```
+
+**Identifier le bon port ttyUSB** :
+```bash
+# Comparer avec les identifiants USB physiques
+ls -la /dev/serial/by-id/
+# BMS (Bus 002) → ttyUSB0, Irradiance (Bus 004) → ttyUSB1
+# Si inversé : modifier SERIAL_PORT dans contrib/irradiance-rs485/irradiance_reader.py
+```
+
+**Note baud rate** : 9600 baud est le défaut usine (§4 PDF). Si le capteur ne répond pas, essayer 4800 baud.
+
+---
+
 ## 17. MAINTENANCE OPÉRATIONNELLE
 
 ### Checklist quotidienne / hebdomadaire

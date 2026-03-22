@@ -1,0 +1,121 @@
+[
+    {
+        "id": "irrad_tab",
+        "type": "tab",
+        "label": "Irradiance RS485",
+        "disabled": false,
+        "info": "Capteur irradiance solaire RS485 Modbus RTU\n\n## Architecture\n- Service systemd `irradiance-rs485` lit le capteur (Modbus RTU addr=0x05, FC=04, reg=0x0000)\n- Port /dev/ttyUSB1, 9600 baud 8N1\n- Publie sur MQTT `santuario/irradiance/raw` (payload = entier W/m²)\n- Ce flow souscrit, met à jour le contexte global `irradiance_wm2`\n- Le keepalive de l'onglet Meteo lit ce contexte et l'inclut dans `santuario/meteo/venus`\n\n## Fichiers Pi5\n  ~/Daly-BMS-Rust/contrib/irradiance-rs485/irradiance_reader.py\n  ~/Daly-BMS-Rust/contrib/irradiance-rs485/irradiance-rs485.service\n\n## Diagnostic Pi5\n  systemctl status irradiance-rs485\n  journalctl -u irradiance-rs485 -f\n  mosquitto_sub -h localhost -p 1883 -t 'santuario/irradiance/raw' -v\n\n## Diagnostic NanoPi\n  dbus -y com.victronenergy.meteo /Irradiance GetValue",
+        "env": []
+    },
+
+    {
+        "id": "irrad_comment",
+        "type": "comment",
+        "z": "irrad_tab",
+        "name": "Irradiance RS485 Modbus RTU — Capteur solaire addr=0x05",
+        "info": "Flow passif : souscrit uniquement MQTT.\nLa lecture RS485 est assurée par le service systemd `irradiance-rs485` sur le Pi5.\n\nSi le service est arrêté, `irradiance_wm2` conserve la dernière valeur connue\njusqu'au redémarrage de Node-RED (la valeur dans meteo restera à 0 si jamais reçue).",
+        "x": 250,
+        "y": 60,
+        "wires": []
+    },
+
+    {
+        "id": "irrad_mqtt_in",
+        "type": "mqtt in",
+        "z": "irrad_tab",
+        "name": "santuario/irradiance/raw",
+        "topic": "santuario/irradiance/raw",
+        "qos": "0",
+        "datatype": "str",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 1,
+        "inputs": 0,
+        "x": 180,
+        "y": 140,
+        "wires": [
+            ["irrad_update_ctx"]
+        ]
+    },
+
+    {
+        "id": "irrad_update_ctx",
+        "type": "function",
+        "z": "irrad_tab",
+        "name": "Mettre à jour global irradiance_wm2",
+        "func": "const raw = parseInt(msg.payload, 10);\n\n// Valider : 0–2000 W/m² (plage capteur)\nif (isNaN(raw) || raw < 0 || raw > 2000) {\n    node.warn('Valeur irradiance invalide : ' + msg.payload);\n    node.status({fill:'red', shape:'ring', text:'Valeur invalide : ' + msg.payload});\n    return null;\n}\n\nglobal.set('irradiance_wm2', raw);\n\n// Statut visuel selon intensité solaire\nlet fill = 'grey';\nif (raw === 0)        fill = 'grey';\nelse if (raw < 200)   fill = 'yellow';\nelse if (raw < 600)   fill = 'yellow';\nelse                  fill = 'green';\n\nnode.status({fill, shape: 'dot', text: raw + ' W/m²'});\n\nmsg.payload = raw;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "// Initialiser à 0 au démarrage (évite undefined dans meteo)\nglobal.set('irradiance_wm2', 0);",
+        "finalize": "",
+        "libs": [],
+        "x": 470,
+        "y": 140,
+        "wires": [
+            ["irrad_debug"]
+        ]
+    },
+
+    {
+        "id": "irrad_debug",
+        "type": "debug",
+        "z": "irrad_tab",
+        "name": "Irradiance W/m²",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 750,
+        "y": 140,
+        "wires": []
+    },
+
+    {
+        "id": "irrad_comment_status",
+        "type": "comment",
+        "z": "irrad_tab",
+        "name": "Diagnostic service Pi5",
+        "info": "```bash\n# État du service\nsystemctl status irradiance-rs485\njournalctl -u irradiance-rs485 -f\n\n# Vérifier MQTT reçu\nmosquitto_sub -h localhost -p 1883 -t 'santuario/irradiance/raw' -v\n\n# Vérifier D-Bus Venus\nssh root@192.168.1.120\ndbus -y com.victronenergy.meteo /Irradiance GetValue\n```",
+        "x": 220,
+        "y": 220,
+        "wires": []
+    },
+
+    {
+        "id": "pi5_mqtt_broker",
+        "type": "mqtt-broker",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]
