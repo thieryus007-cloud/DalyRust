@@ -4,9 +4,10 @@
         "type": "tab",
         "label": "Meteo & ET112",
         "disabled": false,
-        "info": "",
+        "info": "Open-Meteo (15 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT Yield/User + PVInverter delta journalier",
         "env": []
     },
+
     {
         "id": "e8ba731c3af093d3",
         "type": "inject",
@@ -55,7 +56,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Extraire et publier météo",
-        "func": "const cur = msg.payload.current;\nconst temp      = cur.temperature_2m;\nconst humidity  = cur.relative_humidity_2m;\nconst pressure  = cur.pressure_msl;       // hPa niveau mer — identique à OpenWeather\nconst windSpeed = cur.wind_speed_10m;\nconst windDir   = cur.wind_direction_10m;\n\n// Stocker dans contexte global pour le keepalive\nglobal.set('outdoor_temp',      temp);\nglobal.set('outdoor_humidity',  humidity);\nglobal.set('outdoor_pressure',  pressure);\nglobal.set('outdoor_wind_speed', windSpeed);\nglobal.set('outdoor_wind_dir',  windDir);\n\nnode.status({fill: 'green', shape: 'dot', text: `${temp}°C — ${humidity}% — ${pressure}hPa`});\n\n// Message 1 : capteur température/humidité/pression (instance 20)\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\n\n// Message 2 : capteur météo/irradiance (instance 40)\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:          0,\n        TodaysYield:         0,\n        ExternalTemperature: temp,\n        WindSpeed:           windSpeed,\n        WindDirection:       windDir\n    })\n};\n\n// Double tableau = 2 messages sur la sortie 1 (pas 2 sorties distinctes)\nreturn [[heatMsg, meteoMsg]];",
+        "func": "const cur = msg.payload.current;\nconst temp      = cur.temperature_2m;\nconst humidity  = cur.relative_humidity_2m;\nconst pressure  = cur.pressure_msl;       // hPa niveau mer\nconst windSpeed = cur.wind_speed_10m;\nconst windDir   = cur.wind_direction_10m;\n\n// Stocker dans contexte global pour le keepalive\nglobal.set('outdoor_temp',      temp);\nglobal.set('outdoor_humidity',  humidity);\nglobal.set('outdoor_pressure',  pressure);\nglobal.set('outdoor_wind_speed', windSpeed);\nglobal.set('outdoor_wind_dir',  windDir);\n\n// Lire la production du jour calculée par les nodes MPPT/PVInverter\nconst todaysYield = global.get('total_yield_today') || 0;\n\nnode.status({fill: 'green', shape: 'dot', text: `${temp}°C — ${humidity}% — ${todaysYield.toFixed(2)} kWh`});\n\n// Message 1 : capteur température/humidité/pression → com.victronenergy.temperature.mqtt_1 (instance 20)\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\n\n// Message 2 : capteur météo/irradiance → com.victronenergy.meteo (instance 40)\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:          0,\n        TodaysYield:         todaysYield,\n        ExternalTemperature: temp,\n        WindSpeed:           windSpeed,\n        WindDirection:       windDir\n    })\n};\n\nreturn [[heatMsg, meteoMsg]];",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -71,6 +72,7 @@
             ]
         ]
     },
+
     {
         "id": "temp_keepalive_inject",
         "type": "inject",
@@ -95,7 +97,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Republier depuis contexte",
-        "func": "const temp      = global.get('outdoor_temp');\nconst humidity  = global.get('outdoor_humidity');\nconst pressure  = global.get('outdoor_pressure');\nconst windSpeed = global.get('outdoor_wind_speed');\nconst windDir   = global.get('outdoor_wind_dir');\n\n// Attendre la première récupération Open-Meteo\nif (temp === undefined || temp === null) {\n    return null;\n}\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\n\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:          0,\n        TodaysYield:         0,\n        ExternalTemperature: temp,\n        WindSpeed:           windSpeed,\n        WindDirection:       windDir\n    })\n};\n\n// Double tableau = 2 messages sur la sortie 1\nreturn [[heatMsg, meteoMsg]];",
+        "func": "const temp      = global.get('outdoor_temp');\nconst humidity  = global.get('outdoor_humidity');\nconst pressure  = global.get('outdoor_pressure');\nconst windSpeed = global.get('outdoor_wind_speed');\nconst windDir   = global.get('outdoor_wind_dir');\n\n// Attendre la première récupération Open-Meteo\nif (temp === undefined || temp === null) {\n    return null;\n}\n\n// Production du jour (mise à jour par MPPT/PVInverter)\nconst todaysYield = global.get('total_yield_today') || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\n\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:          0,\n        TodaysYield:         todaysYield,\n        ExternalTemperature: temp,\n        WindSpeed:           windSpeed,\n        WindDirection:       windDir\n    })\n};\n\nreturn [[heatMsg, meteoMsg]];",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
@@ -110,6 +112,7 @@
             ]
         ]
     },
+
     {
         "id": "meteo_mqtt_out",
         "type": "mqtt out",
@@ -144,6 +147,157 @@
         "y": 220,
         "wires": []
     },
+
+    {
+        "id": "meteo_comment_yield",
+        "type": "comment",
+        "z": "e6e3a16384301f83",
+        "name": "Production solaire du jour — MPPT Yield/User + PVInverter delta",
+        "info": "## Sources\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/Yield/User\n  Venus OS reset cette valeur automatiquement à minuit.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/32/Ac/Energy/Forward\n  Valeur cumulée depuis installation → on calcule le delta journalier.\n\n## Reset minuit\n  L'inject cron à 00h00 remet à zéro la baseline du PVInverter.\n  Le MPPT est géré automatiquement par Venus OS.\n\n## Contexte global utilisé\n  mppt_yields        — dict {topic: kWh} par MPPT\n  mppt_yield_today   — somme MPPT kWh/jour\n  pvinv_baseline     — énergie PVInverter au début du jour\n  pvinv_yield_today  — delta PVInverter kWh/jour\n  total_yield_today  — somme totale publiée dans TodaysYield",
+        "x": 300,
+        "y": 360,
+        "wires": []
+    },
+
+    {
+        "id": "mppt_yield_in",
+        "type": "mqtt in",
+        "z": "e6e3a16384301f83",
+        "name": "MPPT Yield/User (kWh/jour)",
+        "topic": "N/c0619ab9929a/solarcharger/+/Yield/User",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 200,
+        "y": 440,
+        "wires": [
+            [
+                "mppt_yield_fn"
+            ]
+        ]
+    },
+    {
+        "id": "mppt_yield_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Accumuler MPPT yields",
+        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\n// Stocker par topic (supporte plusieurs MPPT)\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\n// Sommer tous les MPPT\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\n// Mettre à jour le total combiné\nconst pvinvYield = global.get('pvinv_yield_today') || 0;\nconst total = parseFloat((mpptTotal + pvinvYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill: 'green', shape: 'dot', text: `MPPT: ${mpptTotal.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 440,
+        "wires": [
+            [
+                "debug_yield"
+            ]
+        ]
+    },
+
+    {
+        "id": "pvinv_energy_in",
+        "type": "mqtt in",
+        "z": "e6e3a16384301f83",
+        "name": "PVInverter énergie totale (kWh cumulé)",
+        "topic": "N/c0619ab9929a/pvinverter/32/Ac/Energy/Forward",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 520,
+        "wires": [
+            [
+                "pvinv_daily_fn"
+            ]
+        ]
+    },
+    {
+        "id": "pvinv_daily_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Delta journalier PVInverter",
+        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n\n// Initialiser la baseline au premier message (ou après reset minuit)\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\n// Delta = énergie produite depuis le début du jour\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\n// Mettre à jour le total combiné\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill: 'blue', shape: 'dot', text: `PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 510,
+        "y": 520,
+        "wires": [
+            [
+                "debug_yield"
+            ]
+        ]
+    },
+
+    {
+        "id": "midnight_reset_inject",
+        "type": "inject",
+        "z": "e6e3a16384301f83",
+        "name": "Reset minuit (00:00)",
+        "props": [],
+        "repeat": "",
+        "crontab": "0 0 * * *",
+        "once": false,
+        "onceDelay": 0,
+        "topic": "",
+        "x": 190,
+        "y": 600,
+        "wires": [
+            [
+                "midnight_reset_fn"
+            ]
+        ]
+    },
+    {
+        "id": "midnight_reset_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Reset baseline PVInverter",
+        "func": "// Réinitialiser la baseline du PVInverter pour le nouveau jour\n// La prochaine valeur reçue depuis N/.../pvinverter/32/Ac/Energy/Forward\n// deviendra la nouvelle baseline (delta = 0 à minuit).\nglobal.set('pvinv_baseline', null);\nglobal.set('pvinv_yield_today', 0);\n// Les yields MPPT sont remis à zéro par Venus OS lui-même à minuit\nglobal.set('mppt_yields', {});\nglobal.set('mppt_yield_today', 0);\nglobal.set('total_yield_today', 0);\nnode.status({fill: 'blue', shape: 'dot', text: 'Reset minuit OK'});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 600,
+        "wires": [
+            []
+        ]
+    },
+
+    {
+        "id": "debug_yield",
+        "type": "debug",
+        "z": "e6e3a16384301f83",
+        "name": "debug yield",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 720,
+        "y": 480,
+        "wires": []
+    },
+
     {
         "id": "pi5_mqtt_broker",
         "type": "mqtt-broker",
