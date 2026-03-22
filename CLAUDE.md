@@ -102,7 +102,7 @@ ssh-copy-id -i ~/.ssh/id_nanopi.pub root@192.168.1.120
 
 - **GitHub** : https://github.com/thieryus007-cloud/Daly-BMS-Rust
 - **Branche principale** : `master`
-- **Branche de travail courante** : `claude/migrate-nodered-pi5-91idx`
+- **Branche de travail courante** : `claude/review-venus-integration-35qN7`
 - **Convention branches Claude** : `claude/<description>-<session-id>`
 
 ### Workflow standard
@@ -570,6 +570,39 @@ santuario/meteo/venus        ← irradiance RS485
 
 **État** : ✅ COMPLET — Branch `claude/migrate-nodered-pi5-91idx`
 
+---
+
+## 15d. INTÉGRATION VENUS OS — CORRECTIONS (2026-03-22) ✅
+
+**Branche** : `claude/review-venus-integration-35qN7`
+
+### Corrections appliquées
+
+| # | Problème | Fix | Commit |
+|---|---|---|---|
+| 1 | `TodaysYield` affichait cumul brut (1002 kWh) | Topic pvinverter `32` → wildcard `+` | `1597872` |
+| 2 | `ExternalTemperature: -` dans widget météo | Retiré de `meteo_service.rs` | `939595f` |
+| 3 | Baseline PVInverter perdue après reset mid-journée | `fix-pvinv-baseline.json` (flow Node-RED) | `3ce46de` |
+| 4 | Documentation manquante | CLAUDE.md inventaire D-Bus + procédures | `b8087d2` |
+
+### État final widget météo Victron (Capteur [40])
+
+```
+Irradiance       : 0 W/m²           ← correct (nuit/hors production)
+Production solaire: ☀ 7 kWh         ← TodaysYield correct
+Dernières 24h    : 6.6 kWh          ← hier correct
+Température      : (absent)          ← retiré intentionnellement
+Dernière màj     : 2 minutes ago     ← keepalive 25s actif
+```
+
+### Node-RED — Production solaire (TodaysYield)
+
+- **MPPT** : abonnement `N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield` → `mppt_yield_today`
+- **PVInverter** : abonnement `N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward` → delta journalier
+  - Service D-Bus réel : `com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2`
+  - Reset automatique à 00:00 via inject cron
+- **Total** : `total_yield_today = mppt + pvinv` → publié dans `TodaysYield` toutes les 25s
+
 **Réalisé** :
 1. ✅ Flows importés dans Node-RED Docker (Pi5:1880)
 2. ✅ Connectivité MQTT vérifiée (broker 192.168.1.120:1883)
@@ -829,18 +862,24 @@ dbus -y | grep victronenergy
 
 # Vérifier les valeurs clés
 dbus -y com.victronenergy.meteo /TodaysYield GetValue
-dbus -y com.victronenergy.meteo /ExternalTemperature GetValue
+dbus -y com.victronenergy.temperature.mqtt_1 /Temperature GetValue
+dbus -y com.victronenergy.temperature.mqtt_1 /Connected GetValue
 dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue
 dbus -y com.victronenergy.battery.mqtt_1 /Soc GetValue
 dbus -y com.victronenergy.battery.mqtt_2 /Soc GetValue
 ```
 
-### Limitations connues Venus OS (NE PAS chercher à corriger)
+### Architecture température (décision 2026-03-22)
 
-- **Température "-" dans widget météo Capteur [40]** : bug d'affichage Venus OS confirmé.
-  - `com.victronenergy.meteo /ExternalTemperature` = 8.4°C ✅ (D-Bus correct)
-  - `com.victronenergy.temperature.mqtt_1 /Temperature` = 8.8°C, Connected=1 ✅
-  - Venus OS n'affiche pas la température dans le widget météo → limitation firmware.
-  - La valeur est accessible via D-Bus et via le service temperature séparé.
-- **"Dernières 24h" dans widget météo** : valeur correcte depuis la correction baseline PVInverter (6.6 kWh). Était erronée (671.1 kWh) car `TodaysYield` retenait l'ancienne valeur cumulative.
+La température extérieure est publiée **uniquement** via `com.victronenergy.temperature.mqtt_1` (type 4=Outdoor).
+
+- `/ExternalTemperature` a été **retiré** de `com.victronenergy.meteo` (commit `939595f`).
+  - Cause : Venus OS affichait "Température: -" dans le widget météo sans pouvoir corriger (limitation firmware).
+  - Solution : supprimer le chemin D-Bus → le champ disparaît du widget.
+- La température reste accessible dans la liste des capteurs Victron via `temperature.mqtt_1`.
+- **NE PAS réajouter** `/ExternalTemperature` dans `meteo_service.rs`.
+
+### Limitations connues Venus OS
+
+- **"Dernières 24h" dans widget météo** : valeur correcte depuis la correction baseline PVInverter (6.6 kWh). Était erronée (671.1 kWh) car `TodaysYield` retenait l'ancienne valeur cumulative brute.
 - **MPPT SmartSolar VE.CAN** : race condition au boot (cf. §15c).
