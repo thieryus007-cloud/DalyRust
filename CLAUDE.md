@@ -869,15 +869,14 @@ dbus -y com.victronenergy.battery.mqtt_1 /Soc GetValue
 dbus -y com.victronenergy.battery.mqtt_2 /Soc GetValue
 ```
 
-### Architecture température (décision 2026-03-22)
+### Architecture température (décision définitive 2026-03-22)
 
 La température extérieure est publiée **uniquement** via `com.victronenergy.temperature.mqtt_1` (type 4=Outdoor).
 
-- `/ExternalTemperature` a été **retiré** de `com.victronenergy.meteo` (commit `939595f`).
-  - Cause : Venus OS affichait "Température: -" dans le widget météo sans pouvoir corriger (limitation firmware).
-  - Solution : supprimer le chemin D-Bus → le champ disparaît du widget.
-- La température reste accessible dans la liste des capteurs Victron via `temperature.mqtt_1`.
-- **NE PAS réajouter** `/ExternalTemperature` dans `meteo_service.rs`.
+- `/ExternalTemperature` est **absent** de `com.victronenergy.meteo` et du struct `MeteoValues`.
+- **"Température: -"** dans le widget météo Venus OS est **inévitable** : le champ est codé en dur dans le QML Venus OS et s'affiche toujours, que le chemin D-Bus existe ou non. Aucun contournement possible depuis notre code.
+- La température réelle est accessible via `com.victronenergy.temperature.mqtt_1` (Connected=1, ~8.8°C).
+- **NE PAS réajouter** `external_temperature` dans `MeteoValues` ni `meteo_service.rs`.
 
 ### Limitations connues Venus OS
 

@@ -104,7 +104,6 @@ pub struct MeteoValues {
     pub connected:            i32,
     pub irradiance:           f64,
     pub todays_yield:         f64,
-    pub external_temperature: Option<f64>,
     pub wind_direction:       Option<f64>,
     pub wind_speed:           Option<f64>,
     pub product_name:         String,
@@ -115,15 +114,14 @@ pub struct MeteoValues {
 impl MeteoValues {
     pub fn disconnected(device_instance: u32, product_name: String) -> Self {
         Self {
-            connected:            0,
-            irradiance:           0.0,
-            todays_yield:         0.0,
-            external_temperature: None,
-            wind_direction:       None,
-            wind_speed:           None,
+            connected:       0,
+            irradiance:      0.0,
+            todays_yield:    0.0,
+            wind_direction:  None,
+            wind_speed:      None,
             product_name,
             device_instance,
-            last_update:          Instant::now(),
+            last_update:     Instant::now(),
         }
     }
 
@@ -133,15 +131,14 @@ impl MeteoValues {
         product_name:    String,
     ) -> Self {
         Self {
-            connected:            1,
-            irradiance:           payload.irradiance,
-            todays_yield:         payload.todays_yield,
-            external_temperature: payload.external_temperature,
-            wind_direction:       payload.wind_direction,
-            wind_speed:           payload.wind_speed,
+            connected:      1,
+            irradiance:     payload.irradiance,
+            todays_yield:   payload.todays_yield,
+            wind_direction: payload.wind_direction,
+            wind_speed:     payload.wind_speed,
             product_name,
             device_instance,
-            last_update:          Instant::now(),
+            last_update:    Instant::now(),
         }
     }
 
