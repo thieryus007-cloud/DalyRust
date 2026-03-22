@@ -84,13 +84,13 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig, addr_map: HashMap
         // ── ET112 snapshots → topic pvinverter/{mqtt_index}/venus ────────────
         let et112_snaps = state.et112_latest_all().await;
         for snap in &et112_snaps {
-            // Résoudre le mqtt_index depuis la config
-            let idx = state.config.et112.devices
+            // Résoudre le mqtt_index et la position depuis la config
+            let dev_cfg = state.config.et112.devices
                 .iter()
-                .find(|d| d.parsed_address() == snap.address)
-                .and_then(|d| d.mqtt_index)
-                .unwrap_or(snap.address);
-            if let Err(e) = publish_et112_snapshot(&client, &cfg, snap, idx).await {
+                .find(|d| d.parsed_address() == snap.address);
+            let idx      = dev_cfg.and_then(|d| d.mqtt_index).unwrap_or(snap.address);
+            let position = dev_cfg.map(|d| d.position).unwrap_or(1);
+            if let Err(e) = publish_et112_snapshot(&client, &cfg, snap, idx, position).await {
                 error!("MQTT publish ET112 erreur : {:?}", e);
             }
         }
@@ -105,6 +105,7 @@ async fn publish_et112_snapshot(
     cfg: &MqttConfig,
     snap: &Et112Snapshot,
     mqtt_index: u8,
+    position: u8,
 ) -> anyhow::Result<()> {
     // Dériver le topic prefix pvinverter depuis le topic prefix BMS
     // "santuario/bms" → "santuario/pvinverter"
@@ -133,9 +134,9 @@ async fn publish_et112_snapshot(
         },
         "StatusCode":           7,   // Running
         "ErrorCode":            0,   // No Error
-        "Position":             1,   // AC output (micro-inverseurs sur AC output)
+        "Position":             position,  // 0=AC Input, 1=AC Output (configurable)
         "IsGenericEnergyMeter": 1,   // ET112 = generic energy meter
-        "ProductName":          format!("ET112 addr={:#04x}", snap.address),
+        "ProductName":          snap.name,
         "CustomName":           snap.name,
     });
 
