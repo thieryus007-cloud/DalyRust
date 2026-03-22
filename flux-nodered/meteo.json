@@ -230,7 +230,7 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Delta journalier PVInverter",
-        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    // Premier message du jour (ou après reset minuit) : poser la baseline\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'blue', shape:'dot', text:`PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n\n// Output 1 → debug_yield\n// Output 2 → persist baseline dans Mosquitto (retain)\nreturn [msg, {payload: baseline}];",
+        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n// Stocker le cumul courant → utilisé par vrm_restore_result_fn pour recalculer la baseline\nglobal.set('_last_pvinv_cumul', current);\n\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    // Vérifier si la restauration VRM a déjà eu lieu avant ce premier message\n    const vrmSolarAtRestore = global.get('_vrm_solar_today_at_restore');\n    if (vrmSolarAtRestore !== null && vrmSolarAtRestore !== undefined) {\n        // VRM restore connaît déjà le total solaire du jour\n        const mpptYieldForBaseline = global.get('mppt_yield_today') || 0;\n        const pvinvYieldFromVrm = Math.max(0, parseFloat((vrmSolarAtRestore - mpptYieldForBaseline).toFixed(3)));\n        baseline = parseFloat((current - pvinvYieldFromVrm).toFixed(3));\n        global.set('pvinv_baseline', baseline);\n        global.set('_vrm_solar_today_at_restore', null); // consommé\n    } else {\n        // Pas encore de restauration — poser la baseline (delta = 0 jusqu'à restauration)\n        global.set('pvinv_baseline', current);\n        baseline = current;\n    }\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'blue', shape:'dot', text:`PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n\n// Output 1 → debug_yield\n// Output 2 → persist baseline MQTT retained\n// Output 3 → InfluxDB persist\nreturn [msg, {payload: baseline}, {}];",
         "outputs": 3,
         "timeout": "",
         "noerr": 0,
@@ -377,6 +377,98 @@
         "x": 870,
         "y": 560,
         "wires": []
+    },
+
+    {
+        "id": "vrm_comment",
+        "type": "comment",
+        "z": "e6e3a16384301f83",
+        "name": "RESTAURATION VRM API — today.totals.kwh = Production solaire totale du jour",
+        "info": "## Principe\nL'API VRM Victron fournit directement la production solaire du jour (MPPT + PVInverter)\nvia l'endpoint /overallstats → today.totals.kwh\n\nAvantages vs InfluxDB :\n  - Fonctionne même si InfluxDB est vide (premier jour, après make reset)\n  - Source de vérité = VRM (même valeur que le dashboard VRM)\n  - Pas de dérive possible, données certifiées Victron\n  - Fonctionne après n'importe quel reboot\n\n## Variables d'environnement requises\n  VRM_TOKEN            → Personal Access Token (vrm.victronenergy.com → Profile → Tokens)\n  VRM_INSTALLATION_ID  → ID de l'installation (visible dans l'URL VRM : /installation/865936/)\n\n## Procédure création token\n  1. Se connecter à https://vrm.victronenergy.com\n  2. Cliquer sur l'icône profil en haut à droite → Personal Access Tokens\n  3. Créer un token avec nom descriptif (ex: 'pi5-nodered')\n  4. Copier le token dans .env : VRM_TOKEN=xxxx\n  5. Ajouter VRM_INSTALLATION_ID=865936 dans .env\n  6. make down && make up  (pour passer les env vars à Node-RED)\n  7. make deploy-nodered   (pour pousser les flows)\n\n## Séquence au démarrage Node-RED\n  +1-2s : MPPT MQTT retained arrive → mppt_yield_today mis à jour\n  +1-2s : PVInverter MQTT retained arrive → _last_pvinv_cumul stocké\n  +5s   : InfluxDB restore (baseline du jour si disponible)\n  +10s  : VRM restore (REMPLACE la baseline par la valeur authoritative VRM)\n    → pvinv_yield_today = vrm_solar - mppt_yield_today\n    → pvinv_baseline = _last_pvinv_cumul - pvinv_yield_today\n    → total_yield_today = vrm_solar ← CORRECT même après reboot\n\n## Note timezone UTC\n  L'endpoint today de VRM est en UTC. La production solaire ayant lieu\n  de ~06h00 à ~20h00, UTC et heure locale ne causent pas de différence\n  pour la production solaire (pas de production entre minuit local et minuit UTC).\n\n## Endpoint VRM utilisé\n  GET https://vrmapi.victronenergy.com/v2/installations/{id}/overallstats\n  Header: X-Authorization: Token {VRM_TOKEN}\n  Réponse : data.records.today.totals.kwh → kWh solaire du jour",
+        "x": 300,
+        "y": 1120,
+        "wires": []
+    },
+    {
+        "id": "vrm_startup_inject",
+        "type": "inject",
+        "z": "e6e3a16384301f83",
+        "name": "Restaurer depuis VRM API (démarrage +10s)",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 10,
+        "topic": "",
+        "x": 230,
+        "y": 1200,
+        "wires": [
+            [
+                "vrm_restore_fn"
+            ]
+        ]
+    },
+    {
+        "id": "vrm_restore_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Préparer requête VRM overallstats",
+        "func": "const token  = env.get('VRM_TOKEN');\nconst siteId = env.get('VRM_INSTALLATION_ID') || '865936';\n\nif (!token) {\n    node.status({fill:'grey', shape:'ring',\n        text:'VRM_TOKEN manquant → ajouter dans .env + make down && make up'});\n    return null;\n}\n\n// today.totals.kwh = production solaire du jour (MPPT + PVInverter)\nmsg.url    = `https://vrmapi.victronenergy.com/v2/installations/${siteId}/overallstats`;\nmsg.method = 'GET';\nmsg.headers = {\n    'X-Authorization': 'Token ' + token\n};\nnode.status({fill:'blue', shape:'dot', text:'Requête VRM API installation ' + siteId});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 1200,
+        "wires": [
+            [
+                "vrm_query_req"
+            ]
+        ]
+    },
+    {
+        "id": "vrm_query_req",
+        "type": "http request",
+        "z": "e6e3a16384301f83",
+        "name": "VRM API overallstats",
+        "method": "use",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 830,
+        "y": 1200,
+        "wires": [
+            [
+                "vrm_restore_result_fn"
+            ]
+        ]
+    },
+    {
+        "id": "vrm_restore_result_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Restaurer production depuis VRM today.totals.kwh",
+        "func": "// Vérifier erreur réseau / HTTP\nif (msg.statusCode && msg.statusCode >= 400) {\n    node.status({fill:'red', shape:'ring', text:'Erreur HTTP VRM: ' + msg.statusCode});\n    return null;\n}\n\nconst data = msg.payload;\nif (!data || !data.success) {\n    node.status({fill:'red', shape:'ring', text:'Réponse VRM invalide (success=false ou vide)'});\n    return null;\n}\n\n// today.totals.kwh = production solaire du jour (MPPT + AC-couplé PVInverter)\nconst todayTotals = data.records && data.records.today && data.records.today.totals;\nif (!todayTotals || todayTotals.kwh === undefined || todayTotals.kwh === null) {\n    node.status({fill:'yellow', shape:'ring',\n        text:'Pas de kwh dans today.totals VRM (vérifier attributeCodes ou installation_id)'});\n    return null;\n}\n\nconst vrmSolarToday = parseFloat(todayTotals.kwh);\nif (isNaN(vrmSolarToday) || vrmSolarToday < 0) {\n    node.status({fill:'red', text:'Valeur VRM invalide: ' + todayTotals.kwh});\n    return null;\n}\n\n// MPPT arrive via MQTT retained ~1-2s → disponible ici (+10s)\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst pvinvYield = Math.max(0, parseFloat((vrmSolarToday - mpptYield).toFixed(3)));\n\n// _last_pvinv_cumul stocké par pvinv_daily_fn au 1er message PVInverter retained (~1-2s)\nconst pvinvCumul = global.get('_last_pvinv_cumul');\n\nif (pvinvCumul !== null && pvinvCumul !== undefined) {\n    // Cas normal : PVInverter MQTT retained déjà arrivé avant VRM (+10s)\n    const newBaseline = parseFloat((pvinvCumul - pvinvYield).toFixed(3));\n    global.set('pvinv_baseline',     newBaseline);\n    global.set('pvinv_yield_today',  pvinvYield);\n    global.set('total_yield_today',  vrmSolarToday);\n    node.status({fill:'green', shape:'dot',\n        text: `VRM ✓ solaire=${vrmSolarToday.toFixed(2)} kWh | baseline=${newBaseline.toFixed(1)}`});\n} else {\n    // Cas rare : VRM arrive avant 1er message PVInverter\n    // → pvinv_daily_fn utilisera _vrm_solar_today_at_restore pour calculer la baseline\n    global.set('_vrm_solar_today_at_restore', vrmSolarToday);\n    global.set('total_yield_today', vrmSolarToday);\n    global.set('pvinv_yield_today', pvinvYield);\n    node.status({fill:'yellow', shape:'dot',\n        text: `VRM ✓ solaire=${vrmSolarToday.toFixed(2)} kWh (baseline: attente PVInverter)`});\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 1280,
+        "wires": [
+            []
+        ]
     },
 
     {
