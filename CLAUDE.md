@@ -577,6 +577,74 @@ santuario/meteo/venus        ← irradiance RS485
 
 ---
 
+## 15e. PERSISTANCE PRODUCTION SOLAIRE APRÈS REBOOT PI5 ✅ (2026-03-22)
+
+**Problème** : Après reboot Pi5, les globals Node-RED (mémoire) sont perdus → `pvinv_baseline`
+réinitialisée au cumul courant → `TodaysYield` repart de 0 pour le reste de la journée.
+
+**Solution** : Contexte persistant Node-RED (store `localfilesystem`)
+
+### Fichiers créés/modifiés
+
+| Fichier | Changement |
+|---|---|
+| `docker/nodered/settings.js` | Nouveau — active `contextStorage.file` (localfilesystem) |
+| `docker-compose.yml` | Monte `./docker/nodered/settings.js:/data/settings.js:ro` |
+| `flux-nodered/meteo.json` | `global.get/set` de production → store `'file'` |
+
+### Comment ça marche
+
+```
+Node-RED restart
+  ↓ global.get('pvinv_baseline', 'file') → lit depuis /data/context/ (volume Docker)
+  ↓ baseline restaurée correctement
+Nouveau message PVInverter reçu (ex: 592.3 kWh)
+  ↓ dailyYield = 592.3 − baseline_restaurée → valeur correcte ✓
+  ↓ global.set('total_yield_today', correct, 'file') → persisté sur disque
+```
+
+### Variables persistantes (store `'file'`)
+
+```
+pvinv_baseline      ← cumul PVInverter au début du jour
+pvinv_yield_today   ← delta PVInverter kWh/jour
+mppt_yields         ← dict {topic: kWh} par MPPT
+mppt_yield_today    ← somme MPPT kWh/jour
+total_yield_today   ← total affiché dans TodaysYield
+```
+
+### Variables éphémères (store mémoire — recalculées au démarrage)
+
+```
+outdoor_temp / outdoor_humidity / outdoor_pressure / outdoor_wind_*
+irradiance_wm2
+```
+→ Open-Meteo `once:true` (fire ~0.1s) + irradiance MQTT retained → disponibles rapidement
+
+### Polling keepalive météo
+
+Changé de **25s → 5 minutes (300s)** — suffisant pour Venus OS, moins de traffic MQTT.
+
+### Déploiement (après modification docker-compose.yml)
+
+```bash
+# Sur Pi5
+cd ~/Daly-BMS-Rust
+git pull origin claude/review-venus-integration-35qN7
+make down && make up
+
+# Vérifier le settings.js dans le container
+docker exec dalybms-nodered cat /data/settings.js | grep -A 10 contextStorage
+
+# Puis importer flux-nodered/meteo.json mis à jour dans Node-RED et déployer
+```
+
+> **IMPORTANT** : `make reset` efface les volumes Docker (y compris le contexte fichier).
+> Ne jamais utiliser `make reset` en production sauf si on accepte de perdre `pvinv_baseline`.
+> `make down && make up` est safe — volumes préservés.
+
+---
+
 ## 15d. INTÉGRATION VENUS OS — CORRECTIONS (2026-03-22) ✅
 
 **Branche** : `claude/review-venus-integration-35qN7`
