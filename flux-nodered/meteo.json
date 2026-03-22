@@ -2,7 +2,7 @@
     {
         "id": "e6e3a16384301f83",
         "type": "tab",
-        "label": "Meteo & ET112",
+        "label": "Meteo",
         "disabled": false,
         "info": "Open-Meteo (15 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT Yield/User + PVInverter delta journalier",
         "env": []
