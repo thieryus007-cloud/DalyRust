@@ -161,9 +161,9 @@ impl MeteoValues {
         m.insert("/Irradiance".into(),  DbusItem::f64(self.irradiance, "W/m²"));
         m.insert("/TodaysYield".into(), DbusItem::f64(self.todays_yield, "kWh"));
 
-        // Données météo OpenWeatherMap (toujours présents pour que le chemin D-Bus existe)
-        m.insert("/ExternalTemperature".into(),
-            DbusItem::f64(self.external_temperature.unwrap_or(0.0), "°C"));
+        // ExternalTemperature non exposé sur D-Bus : Venus OS l'affiche comme "-"
+        // sans pouvoir le corriger (limitation firmware). La température extérieure
+        // est publiée via com.victronenergy.temperature.mqtt_1 (type 4=Outdoor).
         m.insert("/WindDirection".into(),
             DbusItem::f64(self.wind_direction.unwrap_or(0.0), "°"));
         m.insert("/WindSpeed".into(),
