@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 ///   /Temperature      °C
 ///   /TemperatureType  0=battery 1=fridge 2=generic 3=Room 4=Outdoor 5=WaterHeater 6=Freezer
 ///   /Humidity         %
-///   /Pressure         kPa
+///   /Pressure         hPa
 ///   /CustomName       string
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HeatPayload {

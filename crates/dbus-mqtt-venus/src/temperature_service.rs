@@ -10,7 +10,7 @@
 //! /TemperatureType  — 0=battery 1=fridge 2=generic 3=Room 4=Outdoor 5=WaterHeater 6=Freezer
 //! /CustomName       — nom libre (ex: "Température Extérieure")
 //! /Humidity         — % humidité relative (optionnel)
-//! /Pressure         — kPa (optionnel)
+//! /Pressure         — hPa (optionnel)
 //! /Status           — 0=OK, 1=Disconnected
 //! /Connected        — 0 ou 1
 //! /ProductName      — ex: "Temperature Sensor"
@@ -185,7 +185,7 @@ impl SensorValues {
         // Toujours enregistrés (0.0 si absent) pour que le chemin D-Bus existe
         // dès la création du service et soit interrogeable immédiatement.
         m.insert("/Humidity".into(), DbusItem::f64(self.humidity.unwrap_or(0.0), "%"));
-        m.insert("/Pressure".into(), DbusItem::f64(self.pressure.unwrap_or(0.0), "kPa"));
+        m.insert("/Pressure".into(), DbusItem::f64(self.pressure.unwrap_or(0.0), "hPa"));
 
         m
     }
