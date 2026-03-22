@@ -3,7 +3,7 @@
         "id": "weather_flow",
         "type": "tab",
         "label": "Prévisions Météo Solaire",
-        "disabled": true,
+        "disabled": false,
         "info": ""
     },
     {
@@ -11,11 +11,7 @@
         "type": "inject",
         "z": "weather_flow",
         "name": "Exécution quotidienne 7h",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
+        "props": [{"p": "payload"}],
         "repeat": "",
         "crontab": "00 07 * * *",
         "once": false,
@@ -25,22 +21,14 @@
         "payloadType": "date",
         "x": 160,
         "y": 120,
-        "wires": [
-            [
-                "get_weather"
-            ]
-        ]
+        "wires": [["build_url_main"]]
     },
     {
         "id": "manual_trigger",
         "type": "inject",
         "z": "weather_flow",
         "name": "Test manuel",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
+        "props": [{"p": "payload"}],
         "repeat": "",
         "crontab": "",
         "once": false,
@@ -49,12 +37,24 @@
         "payload": "",
         "payloadType": "date",
         "x": 110,
-        "y": 260,
-        "wires": [
-            [
-                "get_weather"
-            ]
-        ]
+        "y": 200,
+        "wires": [["build_url_main"]]
+    },
+    {
+        "id": "build_url_main",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Construire URL (clé env)",
+        "func": "const apiKey = env.get('OWM_API_KEY');\nif (!apiKey) {\n    node.error('OWM_API_KEY non définie. Configurer dans Node-RED Settings → Environment variables.');\n    node.status({fill: 'red', shape: 'ring', text: 'Clé API manquante'});\n    return null;\n}\nmsg.url = `https://api.openweathermap.org/data/3.0/onecall?lat=43.9151&lon=7.8452&exclude=minutely,alerts&appid=${apiKey}&units=metric&lang=fr`;\nnode.status({fill: 'green', shape: 'dot', text: 'OK'});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 160,
+        "wires": [["get_weather"]]
     },
     {
         "id": "get_weather",
@@ -64,7 +64,7 @@
         "method": "GET",
         "ret": "obj",
         "paytoqs": "ignore",
-        "url": "https://api.openweathermap.org/data/3.0/onecall?lat=43.9151&lon=7.8452&exclude=minutely,alerts&appid=d759c8b8a2d56a671810e0eef605f8b6&units=metric&lang=fr",
+        "url": "",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -72,13 +72,9 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 260,
-        "y": 180,
-        "wires": [
-            [
-                "check_response"
-            ]
-        ]
+        "x": 600,
+        "y": 160,
+        "wires": [["check_response"]]
     },
     {
         "id": "check_response",
@@ -93,14 +89,10 @@
         "finalize": "",
         "libs": [],
         "x": 360,
-        "y": 260,
+        "y": 280,
         "wires": [
-            [
-                "parse_weather"
-            ],
-            [
-                "debug_error"
-            ]
+            ["parse_weather"],
+            ["debug_error"]
         ]
     },
     {
@@ -116,12 +108,9 @@
         "finalize": "",
         "libs": [],
         "x": 640,
-        "y": 180,
+        "y": 200,
         "wires": [
-            [
-                "format_output",
-                "save_history"
-            ]
+            ["format_output", "save_history"]
         ]
     },
     {
@@ -129,7 +118,7 @@
         "type": "function",
         "z": "weather_flow",
         "name": "Formatage message",
-        "func": "const d = msg.payload;\n\nconst message = `☀️ PRÉVISIONS SOLAIRES - ${d.date}\n\n${d.recommendation}\n🌤️ Ensoleillement: ${d.sunshinePercent}%\n⏱️ Heures production: ${d.sunHours}h / ${d.daylightHours}h jour\n⚡ Production estimée: ${d.estimatedProduction} kWh\n\n🌡️ Température: ${d.avgTemperature}°C\n☀️ UV Index: ${d.avgUVI} (max: ${d.maxUVI})\n💧 Humidité: ${d.humidity}%\n💨 Vent: ${d.windSpeed} m/s\n🌅 Lever: ${d.sunrise} | Coucher: ${d.sunset}\n\n🔋 STRATÉGIE BATTERIE:\n${d.chargeStrategy}`;\n\nmsg.payload = message;\nreturn msg;",
+        "func": "const d = msg.payload;\n\nconst message = `☀️ PRÉVISIONS SOLAIRES - ${d.date}\\n\\n${d.recommendation}\\n🌤️ Ensoleillement: ${d.sunshinePercent}%\\n⏱️ Heures production: ${d.sunHours}h / ${d.daylightHours}h jour\\n⚡ Production estimée: ${d.estimatedProduction} kWh\\n\\n🌡️ Température: ${d.avgTemperature}°C\\n☀️ UV Index: ${d.avgUVI} (max: ${d.maxUVI})\\n💧 Humidité: ${d.humidity}%\\n💨 Vent: ${d.windSpeed} m/s\\n🌅 Lever: ${d.sunrise} | Coucher: ${d.sunset}\\n\\n🔋 STRATÉGIE BATTERIE:\\n${d.chargeStrategy}`;\n\nmsg.payload = message;\nreturn msg;",
         "outputs": 1,
         "timeout": 0,
         "noerr": 0,
@@ -137,12 +126,8 @@
         "finalize": "",
         "libs": [],
         "x": 660,
-        "y": 260,
-        "wires": [
-            [
-                "debug_output"
-            ]
-        ]
+        "y": 280,
+        "wires": [["debug_output"]]
     },
     {
         "id": "debug_output",
@@ -158,7 +143,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 720,
-        "y": 340,
+        "y": 360,
         "wires": []
     },
     {
@@ -191,12 +176,8 @@
         "finalize": "",
         "libs": [],
         "x": 470,
-        "y": 340,
-        "wires": [
-            [
-                "debug_output"
-            ]
-        ]
+        "y": 360,
+        "wires": [["debug_output"]]
     },
     {
         "id": "get_forecast",
@@ -211,23 +192,15 @@
         "finalize": "",
         "libs": [],
         "x": 390,
-        "y": 480,
-        "wires": [
-            [
-                "output_forecast"
-            ]
-        ]
+        "y": 500,
+        "wires": [["output_forecast"]]
     },
     {
         "id": "trigger_get",
         "type": "inject",
         "z": "weather_flow",
         "name": "Lire dernière prévision",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
+        "props": [{"p": "payload"}],
         "repeat": "",
         "crontab": "",
         "once": false,
@@ -236,12 +209,8 @@
         "payload": "",
         "payloadType": "date",
         "x": 160,
-        "y": 480,
-        "wires": [
-            [
-                "get_forecast"
-            ]
-        ]
+        "y": 500,
+        "wires": [["get_forecast"]]
     },
     {
         "id": "output_forecast",
@@ -257,7 +226,7 @@
         "statusVal": "",
         "statusType": "auto",
         "x": 610,
-        "y": 480,
+        "y": 500,
         "wires": []
     },
     {
@@ -265,11 +234,7 @@
         "type": "inject",
         "z": "weather_flow",
         "name": "Test clé NODE-RED",
-        "props": [
-            {
-                "p": "payload"
-            }
-        ],
+        "props": [{"p": "payload"}],
         "repeat": "",
         "crontab": "",
         "once": false,
@@ -279,11 +244,23 @@
         "payloadType": "date",
         "x": 130,
         "y": 40,
-        "wires": [
-            [
-                "283501e9d27b4847"
-            ]
-        ]
+        "wires": [["build_url_test"]]
+    },
+    {
+        "id": "build_url_test",
+        "type": "function",
+        "z": "weather_flow",
+        "name": "Construire URL test (clé env)",
+        "func": "const apiKey = env.get('OWM_API_KEY');\nif (!apiKey) {\n    node.error('OWM_API_KEY non définie. Configurer dans Node-RED Settings → Environment variables.');\n    node.status({fill: 'red', shape: 'ring', text: 'Clé API manquante'});\n    return null;\n}\nmsg.url = `https://api.openweathermap.org/data/3.0/onecall?lat=43.9151&lon=7.8452&appid=${apiKey}&units=metric`;\nnode.status({fill: 'green', shape: 'dot', text: 'OK'});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 40,
+        "wires": [["283501e9d27b4847"]]
     },
     {
         "id": "283501e9d27b4847",
@@ -293,7 +270,7 @@
         "method": "GET",
         "ret": "txt",
         "paytoqs": "ignore",
-        "url": "https://api.openweathermap.org/data/3.0/onecall?lat=43.9151&lon=7.8452&appid=d759c8b8a2d56a671810e0eef605f8b6&units=metric",
+        "url": "",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -301,13 +278,9 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 410,
+        "x": 630,
         "y": 40,
-        "wires": [
-            [
-                "b77988c9dd6c9620"
-            ]
-        ]
+        "wires": [["b77988c9dd6c9620"]]
     },
     {
         "id": "b77988c9dd6c9620",
@@ -322,7 +295,7 @@
         "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 670,
+        "x": 870,
         "y": 40,
         "wires": []
     },
@@ -333,7 +306,7 @@
         "name": "Calcul prévision kWh",
         "info": "Voici la formule utilisée dans le flux météo :\n\n**Formule de calcul :**\n\n```\nProduction (kWh) = Heures_Soleil × Puissance_Installée × Efficacité_Ajustée\n```\n\n**Détail du calcul :**\n\n1. **Bonus UV :**\n   ```\n   uviBonus = min(UV_moyen / 10, 0.15)\n   ```\n   - Si UV = 3 → uviBonus = 0.03 (3%)\n   - Si UV = 5 → uviBonus = 0.05 (5%)\n   - Si UV = 10 → uviBonus = 0.10 (10%)\n   - Si UV = 20 → uviBonus = 0.15 (plafonné à 15%)\n\n2. **Efficacité ajustée :**\n   ```\n   Efficacité_Ajustée = 0.65 × (1 + uviBonus)\n   ```\n   - Efficacité de base = 0.65 (65%)\n   - Exemple : Si UV = 5, Efficacité = 0.65 × 1.05 = 0.6825\n\n3. **Production finale :**\n   ```\n   Production = 5.9h × 9.3kWc × 0.6825 = 37.4 kWh\n   ```\n\n**Paramètres actuels :**\n- Puissance installée : **9.3 kWc** (15 panneaux × 620W)\n- Efficacité de base : **0.65** (65%)\n- Fenêtre production : **10H-15H** (5h maximum)\n- Bonus UV : **0 à 15%** selon conditions\n\nL'UV index booste l'efficacité car un UV élevé indique généralement un ciel très clair avec peu d'atténuation atmosphérique, donc plus d'énergie solaire directe reçue par les panneaux.",
         "x": 160,
-        "y": 380,
+        "y": 420,
         "wires": []
     }
 ]
