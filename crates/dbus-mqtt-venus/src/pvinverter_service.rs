@@ -230,8 +230,9 @@ impl PvinverterRootIface {
 // =============================================================================
 
 struct BusItemLeaf {
-    path:   String,
-    values: Arc<Mutex<PvinverterValues>>,
+    path:       String,
+    values:     Arc<Mutex<PvinverterValues>>,
+    connection: Connection,
 }
 
 #[zbus::interface(name = "com.victronenergy.BusItem")]
@@ -249,7 +250,40 @@ impl BusItemLeaf {
         guard.to_items().get(&self.path).map(|i| i.text.clone()).unwrap_or_default()
     }
 
-    fn set_value(&self, _val: zvariant::Value<'_>) -> i32 { 1 }
+    fn set_value(&self, val: zvariant::Value<'_>) -> i32 {
+        if self.path != "/Position" {
+            return 1;
+        }
+        // Position : 0=AC Input, 1=AC Output
+        let new_pos: i32 = match &val {
+            zvariant::Value::I32(v) => *v,
+            zvariant::Value::U32(v) => *v as i32,
+            zvariant::Value::I64(v) => *v as i32,
+            zvariant::Value::U64(v) => *v as i32,
+            _ => return 1,
+        };
+        if !(0..=2).contains(&new_pos) {
+            return 1;
+        }
+        let items = {
+            let mut g = self.values.lock().unwrap();
+            g.position = new_pos;
+            info!(position = new_pos, "Position pvinverter mise à jour par Venus OS");
+            g.to_items()
+        };
+        // Émettre ItemsChanged (fire-and-forget depuis contexte sync)
+        let conn = self.connection.clone();
+        let dict: ItemsDict = items
+            .iter()
+            .map(|(p, i)| (p.clone(), item_to_inner(i)))
+            .collect();
+        tokio::spawn(async move {
+            if let Ok(ctx) = SignalContext::new(&conn, "/") {
+                let _ = PvinverterRootIface::items_changed(&ctx, dict).await;
+            }
+        });
+        0
+    }
 }
 
 // =============================================================================
@@ -352,7 +386,11 @@ pub async fn create_pvinverter_service(
 
     for path in &leaf_paths {
         conn.object_server()
-            .at(path.as_str(), BusItemLeaf { path: path.clone(), values: initial_values.clone() })
+            .at(path.as_str(), BusItemLeaf {
+                path:       path.clone(),
+                values:     initial_values.clone(),
+                connection: conn.clone(),
+            })
             .await?;
     }
 
