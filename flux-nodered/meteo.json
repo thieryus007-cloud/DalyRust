@@ -4,7 +4,7 @@
         "type": "tab",
         "label": "Meteo",
         "disabled": false,
-        "info": "Open-Meteo (15 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT Yield/User + PVInverter delta journalier",
+        "info": "Open-Meteo (15 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT History/Daily/0/Yield + PVInverter delta journalier",
         "env": []
     },
 
@@ -152,8 +152,8 @@
         "id": "meteo_comment_yield",
         "type": "comment",
         "z": "e6e3a16384301f83",
-        "name": "Production solaire du jour — MPPT Yield/User + PVInverter delta",
-        "info": "## Sources\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/Yield/User\n  Venus OS reset cette valeur automatiquement à minuit.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/32/Ac/Energy/Forward\n  Valeur cumulée depuis installation → on calcule le delta journalier.\n\n## Reset minuit\n  L'inject cron à 00h00 remet à zéro la baseline du PVInverter.\n  Le MPPT est géré automatiquement par Venus OS.\n\n## Contexte global utilisé\n  mppt_yields        — dict {topic: kWh} par MPPT\n  mppt_yield_today   — somme MPPT kWh/jour\n  pvinv_baseline     — énergie PVInverter au début du jour\n  pvinv_yield_today  — delta PVInverter kWh/jour\n  total_yield_today  — somme totale publiée dans TodaysYield",
+        "name": "Production solaire du jour — MPPT History/Daily/0/Yield + PVInverter delta",
+        "info": "## Sources\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS reset cette valeur automatiquement à minuit.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/32/Ac/Energy/Forward\n  Valeur cumulée depuis installation → on calcule le delta journalier.\n\n## Reset minuit\n  L'inject cron à 00h00 remet à zéro la baseline du PVInverter.\n  Le MPPT est géré automatiquement par Venus OS.\n\n## Contexte global utilisé\n  mppt_yields        — dict {topic: kWh} par MPPT\n  mppt_yield_today   — somme MPPT kWh/jour\n  pvinv_baseline     — énergie PVInverter au début du jour\n  pvinv_yield_today  — delta PVInverter kWh/jour\n  total_yield_today  — somme totale publiée dans TodaysYield",
         "x": 300,
         "y": 360,
         "wires": []
@@ -163,8 +163,8 @@
         "id": "mppt_yield_in",
         "type": "mqtt in",
         "z": "e6e3a16384301f83",
-        "name": "MPPT Yield/User (kWh/jour)",
-        "topic": "N/c0619ab9929a/solarcharger/+/Yield/User",
+        "name": "MPPT History/Daily/0/Yield (kWh aujourd'hui)",
+        "topic": "N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield",
         "qos": "0",
         "datatype": "json",
         "broker": "pi5_mqtt_broker",
