@@ -181,9 +181,6 @@ services:
       TZ: Europe/Paris
     volumes:
       - nodered-data:/data
-      # settings.js personnalisé : active le contexte persistant (store "file")
-      # → pvinv_baseline, total_yield_today, etc. survivent aux redémarrages Pi5
-      - ./docker/nodered/settings.js:/data/settings.js:ro
     depends_on:
       mosquitto:
         condition: service_healthy
