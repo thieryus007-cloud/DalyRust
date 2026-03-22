@@ -4,14 +4,13 @@
         "type": "tab",
         "label": "FIX — PVInverter baseline",
         "disabled": false,
-        "info": "Flow de correction à importer et exécuter UNE SEULE FOIS quand pvinv_baseline est incorrect (ex: reset fait en pleine journée).\n\n1. Importer ce flow dans Node-RED\n2. Vérifier les valeurs dans le nœud 'Fix PVInv Baseline'\n3. Cliquer Deploy\n4. Cliquer le bouton Inject\n5. Vérifier le statut : Total=X.XX kWh\n6. Supprimer ce flow après usage"
+        "info": "Flow de correction à importer et exécuter UNE SEULE FOIS.\nProcédure :\n1. Vérifier les constantes dans le nœud Fix PVInv Baseline\n2. Deploy\n3. Cliquer Inject\n4. Vérifier statut : Total=X.XX kWh\n5. Supprimer ce flow après usage"
     },
-
     {
         "id": "fix_pvinv_inject",
         "type": "inject",
         "z": "fix_pvinv_tab",
-        "name": "▶ Lancer la correction (1 fois)",
+        "name": "Lancer la correction (1 fois)",
         "props": [],
         "repeat": "",
         "crontab": "",
@@ -20,56 +19,29 @@
         "topic": "",
         "x": 200,
         "y": 100,
-        "wires": [
-            ["fix_pvinv_fn"]
-        ]
+        "wires": [["fix_pvinv_fn"]]
     },
-
     {
         "id": "fix_pvinv_fn",
         "type": "function",
         "z": "fix_pvinv_tab",
         "name": "Fix PVInv Baseline",
-        "func":
-            "// ─────────────────────────────────────────────────────\n" +
-            "// VALEURS À VÉRIFIER AVANT D'EXÉCUTER\n" +
-            "// currentCumul : lire sur NanoPi avec\n" +
-            "//   dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n" +
-            "// totalVictron : valeur 'Solaire' affichée dans Venus OS (MPPT + PVInverter)\n" +
-            "// ─────────────────────────────────────────────────────\n" +
-            "const currentCumul = 587.2;   // ← kWh cumulé PVInverter (NanoPi)\n" +
-            "const totalVictron  = 3.9;    // ← kWh 'Solaire' Victron (MPPT + PVInv)\n" +
-            "\n" +
-            "const mpptToday   = global.get('mppt_yield_today') || 0;\n" +
-            "const pvinvToday  = Math.max(0, parseFloat((totalVictron - mpptToday).toFixed(3)));\n" +
-            "const newBaseline = parseFloat((currentCumul - pvinvToday).toFixed(3));\n" +
-            "const total       = parseFloat((mpptToday + pvinvToday).toFixed(3));\n" +
-            "\n" +
-            "global.set('pvinv_baseline',    newBaseline);\n" +
-            "global.set('pvinv_yield_today', pvinvToday);\n" +
-            "global.set('total_yield_today', total);\n" +
-            "\n" +
-            "node.warn(`✅ Baseline fixée: ${newBaseline} kWh | MPPT: ${mpptToday.toFixed(2)} | PVInv: ${pvinvToday.toFixed(2)} | Total: ${total.toFixed(2)} kWh`);\n" +
-            "node.status({fill:'green', shape:'dot', text:`Total=${total.toFixed(2)} kWh — OK`});\n" +
-            "return msg;",
+        "func": "// VALEURS A VERIFIER AVANT D'EXECUTER\n// currentCumul : lire sur NanoPi\n//   dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n// totalVictron : valeur Solaire affichee dans Venus OS (MPPT + PVInverter)\n\nconst currentCumul = 587.2;   // kWh cumule PVInverter (NanoPi)\nconst totalVictron  = 3.9;    // kWh Solaire Victron (MPPT + PVInv)\n\nconst mpptToday   = global.get('mppt_yield_today') || 0;\nconst pvinvToday  = Math.max(0, parseFloat((totalVictron - mpptToday).toFixed(3)));\nconst newBaseline = parseFloat((currentCumul - pvinvToday).toFixed(3));\nconst total       = parseFloat((mpptToday + pvinvToday).toFixed(3));\n\nglobal.set('pvinv_baseline',    newBaseline);\nglobal.set('pvinv_yield_today', pvinvToday);\nglobal.set('total_yield_today', total);\n\nnode.warn('Baseline fixee: ' + newBaseline + ' kWh | MPPT: ' + mpptToday.toFixed(2) + ' | PVInv: ' + pvinvToday.toFixed(2) + ' | Total: ' + total.toFixed(2) + ' kWh');\nnode.status({fill:'green', shape:'dot', text:'Total=' + total.toFixed(2) + ' kWh OK'});\nreturn msg;",
         "outputs": 1,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 480,
+        "x": 460,
         "y": 100,
-        "wires": [
-            ["fix_pvinv_debug"]
-        ]
+        "wires": [["fix_pvinv_debug"]]
     },
-
     {
         "id": "fix_pvinv_debug",
         "type": "debug",
         "z": "fix_pvinv_tab",
-        "name": "Résultat correction",
+        "name": "Resultat correction",
         "active": true,
         "tosidebar": true,
         "console": false,
@@ -77,33 +49,16 @@
         "complete": "true",
         "statusVal": "",
         "statusType": "auto",
-        "x": 720,
+        "x": 700,
         "y": 100,
         "wires": []
     },
-
     {
         "id": "fix_pvinv_comment",
         "type": "comment",
         "z": "fix_pvinv_tab",
-        "name": "PROCÉDURE",
-        "info":
-            "## Quand utiliser ce flow ?\n" +
-            "Quand le reset minuit a été déclenché manuellement en pleine journée,\n" +
-            "ou quand pvinv_yield_today = 0 alors que le PVInverter a produit.\n\n" +
-            "## Avant d'exécuter\n" +
-            "1. Sur NanoPi :\n" +
-            "   dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n" +
-            "   → noter la valeur (ex: 587.2)\n\n" +
-            "2. Sur Victron GUI :\n" +
-            "   Noter la valeur 'Solaire' (ex: 3.9 kWh)\n\n" +
-            "3. Mettre à jour les deux constantes dans le nœud 'Fix PVInv Baseline'\n\n" +
-            "## Vérification après\n" +
-            "Sur NanoPi :\n" +
-            "  mosquitto_sub -h 127.0.0.1 -p 1883 -t 'santuario/meteo/venus' -C 1\n" +
-            "  → TodaysYield doit afficher ~totalVictron\n\n" +
-            "## IMPORTANT\n" +
-            "Supprimer ce flow après usage pour ne pas l'exécuter par accident.",
+        "name": "PROCEDURE",
+        "info": "## Quand utiliser ce flow ?\nQuand pvinv_yield_today = 0 alors que le PVInverter a produit.\n(reset manuel en pleine journee, ou premiere utilisation)\n\n## Avant d'executer\n1. Sur NanoPi :\n   dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n   noter la valeur (ex: 587.2)\n\n2. Sur Victron GUI :\n   noter la valeur Solaire (ex: 3.9 kWh)\n\n3. Mettre a jour les deux constantes dans Fix PVInv Baseline\n\n## Verification apres\nSur NanoPi :\n  mosquitto_sub -h 127.0.0.1 -p 1883 -t santuario/meteo/venus -C 1\n  TodaysYield doit afficher ~totalVictron\n\n## IMPORTANT\nSupprimer ce flow apres usage.",
         "x": 200,
         "y": 200,
         "wires": []
