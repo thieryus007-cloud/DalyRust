@@ -180,7 +180,7 @@
     "type": "function",
     "z": "e6e3a16384301f83",
     "name": "Accumuler MPPT yields",
-    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\n// Note: total_yield_today est géré par VRM API (vrm_restore_result_fn)\nnode.status({fill:'green', shape:'dot', text:'MPPT: ' + mpptTotal.toFixed(2) + ' kWh'});\nreturn [msg, {}];",
+    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\n// Mettre à jour le total (pvinv_daily_fn complétera)\nconst pvinvYield = global.get('pvinv_yield_today') || 0;\nglobal.set('total_yield_today', parseFloat((mpptTotal + pvinvYield).toFixed(3)));\n\nnode.status({fill:'green', shape:'dot', text:'MPPT: ' + mpptTotal.toFixed(2) + ' kWh'});\nreturn [msg, {}];",
     "outputs": 2,
     "timeout": "",
     "noerr": 0,
@@ -224,7 +224,7 @@
     "type": "function",
     "z": "e6e3a16384301f83",
     "name": "Delta journalier PVInverter",
-    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\nglobal.set('_last_pvinv_cumul', current);\n\nlet baseline = global.get('pvinv_baseline');\nconst isNewBaseline = (baseline === null || baseline === undefined);\n\nif (isNewBaseline) {\n    // Baseline non encore restaurée — poser temporairement, NE PAS persister en retain\n    // (la bonne valeur sera restaurée par MQTT retain ou InfluxDB dans les 5 prochaines secondes)\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nnode.status({fill:'blue', shape:'dot', text:'PVInv: ' + dailyYield.toFixed(2) + ' kWh (affichage seul)'});\n\n// Output 1 → debug\n// Output 2 → persist retain UNIQUEMENT si la baseline était déjà établie (pas une init à froid)\n// Output 3 → InfluxDB persist\nreturn [msg, isNewBaseline ? null : {payload: baseline}, {}];",
+    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\nglobal.set('_last_pvinv_cumul', current);\n\nlet baseline = global.get('pvinv_baseline');\nconst isNewBaseline = (baseline === null || baseline === undefined);\n\nif (isNewBaseline) {\n    // Première initialisation → NE PAS persister en retain\n    // (la vraie baseline sera restaurée par MQTT retain < 200ms)\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'blue', shape:'dot',\n    text: 'PVInv: ' + dailyYield.toFixed(2) + ' | Total: ' + total.toFixed(2) + ' kWh'});\n\n// Output 1 → debug\n// Output 2 → persist retain UNIQUEMENT si baseline était déjà établie\n// Output 3 → InfluxDB\nreturn [msg, isNewBaseline ? null : {payload: baseline}, {}];",
     "outputs": 3,
     "timeout": "",
     "noerr": 0,
@@ -627,35 +627,5 @@
     "willMsg": {},
     "userProps": "",
     "sessionExpiry": ""
-  },
-  {
-    "id": "solar_yield_in",
-    "type": "mqtt in",
-    "name": "Venus OS Yield/Solar (total MPPT+PVInv)",
-    "topic": "N/c0619ab9929a/system/0/Yield/Solar",
-    "qos": "0",
-    "datatype": "json",
-    "broker": "pi5_mqtt_broker",
-    "nl": false,
-    "rap": true,
-    "rh": 0,
-    "inputs": 0,
-    "wires": [
-      [
-        "solar_yield_fn"
-      ]
-    ]
-  },
-  {
-    "id": "solar_yield_fn",
-    "type": "function",
-    "name": "TodaysYield depuis Venus OS system",
-    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(parseFloat(val))) return null;\n\nconst total = parseFloat(val);\nglobal.set('total_yield_today', total);\nnode.status({fill:'green', shape:'dot', text: 'Solaire Venus: ' + total.toFixed(2) + ' kWh'});\n\n// Publier immédiatement vers Venus OS meteo\nconst irradiance = global.get('irradiance_wm2') || 0;\nconst windSpeed  = global.get('outdoor_wind_speed') || 0;\nconst windDir    = global.get('outdoor_wind_dir') || 0;\nconst temp       = global.get('outdoor_temp') || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        global.get('outdoor_humidity') || 0,\n        Pressure:        global.get('outdoor_pressure') || 0\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   total,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
-    "outputs": 1,
-    "wires": [
-      [
-        "meteo_mqtt_out"
-      ]
-    ]
   }
 ]
