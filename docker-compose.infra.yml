@@ -81,6 +81,7 @@ services:
       - "1880:1880"
     environment:
       - TZ=Europe/Paris
+      - HOSTNAME=pi5
       # InfluxDB — persistance production solaire (écriture + restore au démarrage +5s)
       - INFLUX_TOKEN=${INFLUX_TOKEN}
       - INFLUX_ORG=${INFLUX_ORG:-santuario}
@@ -92,7 +93,10 @@ services:
     volumes:
       - nodered-data:/data
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_started
+      influxdb:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:1880"]
       interval: 30s
