@@ -837,5 +837,10 @@ dbus -y com.victronenergy.battery.mqtt_2 /Soc GetValue
 
 ### Limitations connues Venus OS (NE PAS chercher à corriger)
 
-- **ExternalTemperature dans widget météo** : toujours "-" même si D-Bus = 8.4°C. C'est un bug d'affichage Venus OS, la valeur D-Bus est correcte.
+- **Température "-" dans widget météo Capteur [40]** : bug d'affichage Venus OS confirmé.
+  - `com.victronenergy.meteo /ExternalTemperature` = 8.4°C ✅ (D-Bus correct)
+  - `com.victronenergy.temperature.mqtt_1 /Temperature` = 8.8°C, Connected=1 ✅
+  - Venus OS n'affiche pas la température dans le widget météo → limitation firmware.
+  - La valeur est accessible via D-Bus et via le service temperature séparé.
+- **"Dernières 24h" dans widget météo** : valeur correcte depuis la correction baseline PVInverter (6.6 kWh). Était erronée (671.1 kWh) car `TodaysYield` retenait l'ancienne valeur cumulative.
 - **MPPT SmartSolar VE.CAN** : race condition au boot (cf. §15c).
