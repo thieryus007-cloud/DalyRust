@@ -1,641 +1,628 @@
 [
-    {
-        "id": "e6e3a16384301f83",
-        "type": "tab",
-        "label": "Meteo",
-        "disabled": false,
-        "info": "Open-Meteo (5 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT History/Daily/0/Yield + PVInverter delta journalier\n\nPersistance pvinv_baseline :\n  Stockée en MQTT retained (santuario/persist/pvinv_baseline)\n  Mosquitto persistence=true → survit aux redémarrages Pi5 et NanoPi\n  Pas de modifications Docker ni de settings.js nécessaires.",
-        "env": []
-    },
-
-    {
-        "id": "e8ba731c3af093d3",
-        "type": "inject",
-        "z": "e6e3a16384301f83",
-        "name": "Récupération météo (toutes les 5 min)",
-        "props": [],
-        "repeat": "300",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 0.1,
-        "topic": "",
-        "x": 240,
-        "y": 60,
-        "wires": [
-            [
-                "18ade779417faa1a"
-            ]
-        ]
-    },
-    {
-        "id": "18ade779417faa1a",
-        "type": "http request",
-        "z": "e6e3a16384301f83",
-        "name": "Open-Meteo API - Badalucco",
-        "method": "GET",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://api.open-meteo.com/v1/forecast?latitude=43.8833&longitude=7.8667&current=temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m,wind_direction_10m&timezone=Europe%2FRome&wind_speed_unit=ms",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 610,
-        "y": 60,
-        "wires": [
-            [
-                "e7a4e51e485d047b"
-            ]
-        ]
-    },
-    {
-        "id": "e7a4e51e485d047b",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Extraire et publier météo",
-        "func": "const cur = msg.payload.current;\nconst temp      = cur.temperature_2m;\nconst humidity  = cur.relative_humidity_2m;\nconst pressure  = cur.pressure_msl;\nconst windSpeed = cur.wind_speed_10m;\nconst windDir   = cur.wind_direction_10m;\n\nglobal.set('outdoor_temp',       temp);\nglobal.set('outdoor_humidity',   humidity);\nglobal.set('outdoor_pressure',   pressure);\nglobal.set('outdoor_wind_speed', windSpeed);\nglobal.set('outdoor_wind_dir',   windDir);\n\nconst todaysYield = global.get('total_yield_today') || 0;\nconst irradiance  = global.get('irradiance_wm2')    || 0;\n\nnode.status({fill:'green', shape:'dot', text:`${temp}°C — ${irradiance} W/m² — ${todaysYield.toFixed(2)} kWh`});\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 260,
-        "y": 140,
-        "wires": [
-            [
-                "meteo_mqtt_out",
-                "d65816bfa4e7b8c4"
-            ]
-        ]
-    },
-
-    {
-        "id": "temp_keepalive_inject",
-        "type": "inject",
-        "z": "e6e3a16384301f83",
-        "name": "Keepalive Venus (toutes les 5 min)",
-        "props": [],
-        "repeat": "300",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0,
-        "topic": "",
-        "x": 210,
-        "y": 260,
-        "wires": [
-            [
-                "temp_keepalive_fn"
-            ]
-        ]
-    },
-    {
-        "id": "temp_keepalive_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Republier depuis contexte",
-        "func": "const temp      = global.get('outdoor_temp');\nconst humidity  = global.get('outdoor_humidity');\nconst pressure  = global.get('outdoor_pressure');\nconst windSpeed = global.get('outdoor_wind_speed');\nconst windDir   = global.get('outdoor_wind_dir');\n\n// Attendre la première récupération Open-Meteo (once:true → ~0.1s)\nif (temp === undefined || temp === null) return null;\n\nconst todaysYield = global.get('total_yield_today') || 0;\nconst irradiance  = global.get('irradiance_wm2')    || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 560,
-        "y": 260,
-        "wires": [
-            [
-                "meteo_mqtt_out"
-            ]
-        ]
-    },
-
-    {
-        "id": "meteo_mqtt_out",
-        "type": "mqtt out",
-        "z": "e6e3a16384301f83",
-        "name": "Venus Météo",
-        "topic": "",
-        "qos": "1",
-        "retain": "true",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "pi5_mqtt_broker",
-        "x": 840,
-        "y": 160,
-        "wires": []
-    },
-    {
-        "id": "d65816bfa4e7b8c4",
-        "type": "debug",
-        "z": "e6e3a16384301f83",
-        "name": "debug météo",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 840,
-        "y": 220,
-        "wires": []
-    },
-
-    {
-        "id": "meteo_comment_yield",
-        "type": "comment",
-        "z": "e6e3a16384301f83",
-        "name": "Production solaire — MPPT + PVInverter delta — Persistance MQTT retained",
-        "info": "## Sources production solaire\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS remet à zéro à minuit automatiquement.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward\n  Valeur cumulée → delta journalier via baseline.\n\n## Persistance pvinv_baseline (survit aux redémarrages)\n  topic: santuario/persist/pvinv_baseline  (retain:true, qos:1)\n  Mosquitto persistence=true + volume Docker → persiste sur disque\n  Au démarrage Node-RED : mqtt-in (rap:true) reçoit immédiatement la baseline\n  Le bridge NanoPi reconnecte en ~30s → PVInverter arrive après baseline ✓\n\n## Reset minuit\n  L'inject cron 00:00 remet pvinv_baseline à null et publie payload vide\n  (supprime le retained dans Mosquitto).\n  Au premier message PVInverter du matin → nouvelle baseline posée.\n\n## Vérification NanoPi\n  dbus -y | grep pvinverter\n  dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n\n## Vérifier la baseline persistée\n  mosquitto_sub -h localhost -p 1883 -t santuario/persist/pvinv_baseline -C 1",
-        "x": 330,
-        "y": 360,
-        "wires": []
-    },
-
-    {
-        "id": "mppt_yield_in",
-        "type": "mqtt in",
-        "z": "e6e3a16384301f83",
-        "name": "MPPT History/Daily/0/Yield (kWh aujourd'hui)",
-        "topic": "N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 200,
-        "y": 440,
-        "wires": [
-            [
-                "mppt_yield_fn"
-            ]
-        ]
-    },
-    {
-        "id": "mppt_yield_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Accumuler MPPT yields",
-        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\nconst pvinvYield = global.get('pvinv_yield_today') || 0;\nconst total = parseFloat((mpptTotal + pvinvYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'green', shape:'dot', text:`MPPT: ${mpptTotal.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n// Output 1 → debug_yield, Output 2 → InfluxDB persist\nreturn [msg, {}];",
-        "outputs": 2,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 500,
-        "y": 440,
-        "wires": [
-            [
-                "debug_yield"
-            ],
-            [
-                "influx_write_fn"
-            ]
-        ]
-    },
-
-    {
-        "id": "pvinv_energy_in",
-        "type": "mqtt in",
-        "z": "e6e3a16384301f83",
-        "name": "PVInverter énergie totale (kWh cumulé)",
-        "topic": "N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward",
-        "qos": "0",
-        "datatype": "json",
-        "broker": "pi5_mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 220,
-        "y": 520,
-        "wires": [
-            [
-                "pvinv_daily_fn"
-            ]
-        ]
-    },
-    {
-        "id": "pvinv_daily_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Delta journalier PVInverter",
-        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n// Stocker le cumul courant → utilisé par vrm_restore_result_fn pour recalculer la baseline\nglobal.set('_last_pvinv_cumul', current);\n\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    // Vérifier si la restauration VRM a déjà eu lieu avant ce premier message\n    const vrmSolarAtRestore = global.get('_vrm_solar_today_at_restore');\n    if (vrmSolarAtRestore !== null && vrmSolarAtRestore !== undefined) {\n        // VRM restore connaît déjà le total solaire du jour\n        const mpptYieldForBaseline = global.get('mppt_yield_today') || 0;\n        const pvinvYieldFromVrm = Math.max(0, parseFloat((vrmSolarAtRestore - mpptYieldForBaseline).toFixed(3)));\n        baseline = parseFloat((current - pvinvYieldFromVrm).toFixed(3));\n        global.set('pvinv_baseline', baseline);\n        global.set('_vrm_solar_today_at_restore', null); // consommé\n    } else {\n        // Pas encore de restauration — poser la baseline (delta = 0 jusqu'à restauration)\n        global.set('pvinv_baseline', current);\n        baseline = current;\n    }\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'blue', shape:'dot', text:`PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n\n// Output 1 → debug_yield\n// Output 2 → persist baseline MQTT retained\n// Output 3 → InfluxDB persist\nreturn [msg, {payload: baseline}, {}];",
-        "outputs": 3,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 510,
-        "y": 520,
-        "wires": [
-            [
-                "debug_yield"
-            ],
-            [
-                "pvinv_persist_out"
-            ],
-            [
-                "influx_write_fn"
-            ]
-        ]
-    },
-
-    {
-        "id": "midnight_reset_inject",
-        "type": "inject",
-        "z": "e6e3a16384301f83",
-        "name": "Reset minuit (00:00)",
-        "props": [],
-        "repeat": "",
-        "crontab": "0 0 * * *",
-        "once": false,
-        "onceDelay": 0,
-        "topic": "",
-        "x": 190,
-        "y": 600,
-        "wires": [
-            [
-                "midnight_reset_fn"
-            ]
-        ]
-    },
-    {
-        "id": "midnight_reset_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Reset baseline PVInverter",
-        "func": "global.set('pvinv_baseline', null);\nglobal.set('pvinv_yield_today', 0);\nglobal.set('mppt_yields', {});\nglobal.set('mppt_yield_today', 0);\nglobal.set('total_yield_today', 0);\nnode.status({fill:'blue', shape:'dot', text:'Reset minuit OK'});\n// Output 1 → rien\n// Output 2 → effacer le retained Mosquitto (payload vide = suppression du retained)\nreturn [null, {payload: ''}];",
-        "outputs": 2,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 460,
-        "y": 600,
-        "wires": [
-            [],
-            [
-                "pvinv_persist_out"
-            ]
-        ]
-    },
-
-    {
-        "id": "debug_yield",
-        "type": "debug",
-        "z": "e6e3a16384301f83",
-        "name": "debug yield",
-        "active": false,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 720,
-        "y": 480,
-        "wires": []
-    },
-
-    {
-        "id": "persist_comment",
-        "type": "comment",
-        "z": "e6e3a16384301f83",
-        "name": "PERSISTANCE pvinv_baseline — MQTT retained (Mosquitto persistence=true)",
-        "info": "## Principe\npvinv_baseline est publiée en retained sur santuario/persist/pvinv_baseline\nMosquitto stocke ce message sur disque (persistence=true + volume Docker).\n\nAu redémarrage Node-RED / Pi5 :\n1. pvinv_persist_in (rap:true) reçoit immédiatement la baseline depuis Mosquitto local\n2. restore_baseline_fn repose global.pvinv_baseline\n3. Bridge NanoPi reconnecte ~30s plus tard\n4. Premier PVInverter reçu → baseline déjà posée → delta correct ✓\n\n## Vérification\nmosquitto_sub -h localhost -p 1883 -t santuario/persist/pvinv_baseline -C 1\n# → doit afficher la baseline (ex: 587.2)\n\n## Reset manuel si baseline incorrecte\nSe référer à fix-pvinv-baseline.json (CLAUDE.md §10)",
-        "x": 280,
-        "y": 680,
-        "wires": []
-    },
-
-    {
-        "id": "pvinv_persist_in",
-        "type": "mqtt in",
-        "z": "e6e3a16384301f83",
-        "name": "Restore pvinv_baseline (au démarrage)",
-        "topic": "santuario/persist/pvinv_baseline",
-        "qos": "1",
-        "datatype": "auto",
-        "broker": "pi5_mqtt_broker",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 230,
-        "y": 760,
-        "wires": [
-            [
-                "restore_baseline_fn"
-            ]
-        ]
-    },
-    {
-        "id": "restore_baseline_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Restaurer pvinv_baseline",
-        "func": "const raw = msg.payload;\n\n// Payload vide = reset minuit (retained effacé), ou pas de baseline stockée\nif (raw === '' || raw === null || raw === undefined) {\n    global.set('pvinv_baseline', null);\n    node.status({fill:'grey', shape:'ring', text:'Pas de baseline (reset ou 1er jour)'});\n    return null;\n}\n\nconst baseline = parseFloat(raw);\nif (isNaN(baseline) || baseline <= 0) {\n    node.status({fill:'red', shape:'ring', text:'Baseline invalide: ' + raw});\n    return null;\n}\n\nglobal.set('pvinv_baseline', baseline);\nnode.status({fill:'yellow', shape:'dot', text:'Baseline restaurée: ' + baseline.toFixed(1) + ' kWh'});\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 570,
-        "y": 760,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "pvinv_persist_out",
-        "type": "mqtt out",
-        "z": "e6e3a16384301f83",
-        "name": "Persist pvinv_baseline (retained)",
-        "topic": "santuario/persist/pvinv_baseline",
-        "qos": "1",
-        "retain": "true",
-        "respTopic": "",
-        "contentType": "",
-        "userProps": "",
-        "correl": "",
-        "expiry": "",
-        "broker": "pi5_mqtt_broker",
-        "x": 870,
-        "y": 560,
-        "wires": []
-    },
-
-    {
-        "id": "vrm_comment",
-        "type": "comment",
-        "z": "e6e3a16384301f83",
-        "name": "RESTAURATION VRM API — today.totals.kwh = Production solaire totale du jour",
-        "info": "## Principe\nL'API VRM Victron fournit directement la production solaire du jour (MPPT + PVInverter)\nvia l'endpoint /overallstats → today.totals.kwh\n\nAvantages vs InfluxDB :\n  - Fonctionne même si InfluxDB est vide (premier jour, après make reset)\n  - Source de vérité = VRM (même valeur que le dashboard VRM)\n  - Pas de dérive possible, données certifiées Victron\n  - Fonctionne après n'importe quel reboot\n\n## Variables d'environnement requises\n  VRM_TOKEN            → Personal Access Token (vrm.victronenergy.com → Profile → Tokens)\n  VRM_INSTALLATION_ID  → ID de l'installation (visible dans l'URL VRM : /installation/865936/)\n\n## Procédure création token\n  1. Se connecter à https://vrm.victronenergy.com\n  2. Cliquer sur l'icône profil en haut à droite → Personal Access Tokens\n  3. Créer un token avec nom descriptif (ex: 'pi5-nodered')\n  4. Copier le token dans .env : VRM_TOKEN=xxxx\n  5. Ajouter VRM_INSTALLATION_ID=865936 dans .env\n  6. make down && make up  (pour passer les env vars à Node-RED)\n  7. make deploy-nodered   (pour pousser les flows)\n\n## Séquence au démarrage Node-RED\n  +1-2s : MPPT MQTT retained arrive → mppt_yield_today mis à jour\n  +1-2s : PVInverter MQTT retained arrive → _last_pvinv_cumul stocké\n  +5s   : InfluxDB restore (baseline du jour si disponible)\n  +10s  : VRM restore (REMPLACE la baseline par la valeur authoritative VRM)\n    → pvinv_yield_today = vrm_solar - mppt_yield_today\n    → pvinv_baseline = _last_pvinv_cumul - pvinv_yield_today\n    → total_yield_today = vrm_solar ← CORRECT même après reboot\n\n## Note timezone UTC\n  L'endpoint today de VRM est en UTC. La production solaire ayant lieu\n  de ~06h00 à ~20h00, UTC et heure locale ne causent pas de différence\n  pour la production solaire (pas de production entre minuit local et minuit UTC).\n\n## Endpoint VRM utilisé\n  GET https://vrmapi.victronenergy.com/v2/installations/{id}/overallstats\n  Header: X-Authorization: Token {VRM_TOKEN}\n  Réponse : data.records.today.totals.kwh → kWh solaire du jour",
-        "x": 300,
-        "y": 1120,
-        "wires": []
-    },
-    {
-        "id": "vrm_startup_inject",
-        "type": "inject",
-        "z": "e6e3a16384301f83",
-        "name": "Restaurer depuis VRM API (démarrage +10s)",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 10,
-        "topic": "",
-        "x": 230,
-        "y": 1200,
-        "wires": [
-            [
-                "vrm_restore_fn"
-            ]
-        ]
-    },
-    {
-        "id": "vrm_restore_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Préparer requête VRM overallstats",
-        "func": "const token  = env.get('VRM_TOKEN');\nconst siteId = env.get('VRM_INSTALLATION_ID') || '865936';\n\nif (!token) {\n    node.status({fill:'grey', shape:'ring',\n        text:'VRM_TOKEN manquant → ajouter dans .env + make down && make up'});\n    return null;\n}\n\n// today.totals.kwh = production solaire du jour (MPPT + PVInverter)\nmsg.url    = `https://vrmapi.victronenergy.com/v2/installations/${siteId}/overallstats`;\nmsg.method = 'GET';\nmsg.headers = {\n    'X-Authorization': 'Token ' + token\n};\nnode.status({fill:'blue', shape:'dot', text:'Requête VRM API installation ' + siteId});\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 550,
-        "y": 1200,
-        "wires": [
-            [
-                "vrm_query_req"
-            ]
-        ]
-    },
-    {
-        "id": "vrm_query_req",
-        "type": "http request",
-        "z": "e6e3a16384301f83",
-        "name": "VRM API overallstats",
-        "method": "use",
-        "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 830,
-        "y": 1200,
-        "wires": [
-            [
-                "vrm_restore_result_fn"
-            ]
-        ]
-    },
-    {
-        "id": "vrm_restore_result_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Restaurer production depuis VRM today.totals.kwh",
-        "func": "// Vérifier erreur réseau / HTTP\nif (msg.statusCode && msg.statusCode >= 400) {\n    node.status({fill:'red', shape:'ring', text:'Erreur HTTP VRM: ' + msg.statusCode});\n    return null;\n}\n\nconst data = msg.payload;\nif (!data || !data.success) {\n    node.status({fill:'red', shape:'ring', text:'Réponse VRM invalide (success=false ou vide)'});\n    return null;\n}\n\n// today.totals.kwh = production solaire du jour (MPPT + AC-couplé PVInverter)\nconst todayTotals = data.records && data.records.today && data.records.today.totals;\nif (!todayTotals || todayTotals.kwh === undefined || todayTotals.kwh === null) {\n    node.status({fill:'yellow', shape:'ring',\n        text:'Pas de kwh dans today.totals VRM (vérifier attributeCodes ou installation_id)'});\n    return null;\n}\n\nconst vrmSolarToday = parseFloat(todayTotals.kwh);\nif (isNaN(vrmSolarToday) || vrmSolarToday < 0) {\n    node.status({fill:'red', text:'Valeur VRM invalide: ' + todayTotals.kwh});\n    return null;\n}\n\n// MPPT arrive via MQTT retained ~1-2s → disponible ici (+10s)\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst pvinvYield = Math.max(0, parseFloat((vrmSolarToday - mpptYield).toFixed(3)));\n\n// _last_pvinv_cumul stocké par pvinv_daily_fn au 1er message PVInverter retained (~1-2s)\nconst pvinvCumul = global.get('_last_pvinv_cumul');\n\nif (pvinvCumul !== null && pvinvCumul !== undefined) {\n    // Cas normal : PVInverter MQTT retained déjà arrivé avant VRM (+10s)\n    const newBaseline = parseFloat((pvinvCumul - pvinvYield).toFixed(3));\n    global.set('pvinv_baseline',     newBaseline);\n    global.set('pvinv_yield_today',  pvinvYield);\n    global.set('total_yield_today',  vrmSolarToday);\n    node.status({fill:'green', shape:'dot',\n        text: `VRM ✓ solaire=${vrmSolarToday.toFixed(2)} kWh | baseline=${newBaseline.toFixed(1)}`});\n} else {\n    // Cas rare : VRM arrive avant 1er message PVInverter\n    // → pvinv_daily_fn utilisera _vrm_solar_today_at_restore pour calculer la baseline\n    global.set('_vrm_solar_today_at_restore', vrmSolarToday);\n    global.set('total_yield_today', vrmSolarToday);\n    global.set('pvinv_yield_today', pvinvYield);\n    node.status({fill:'yellow', shape:'dot',\n        text: `VRM ✓ solaire=${vrmSolarToday.toFixed(2)} kWh (baseline: attente PVInverter)`});\n}\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 580,
-        "y": 1280,
-        "wires": [
-            []
-        ]
-    },
-
-    {
-        "id": "influx_comment",
-        "type": "comment",
-        "z": "e6e3a16384301f83",
-        "name": "PERSISTANCE InfluxDB — solar_persist (pvinv_baseline + production du jour)",
-        "info": "## Principe (solution pérenne)\npvinv_baseline, mppt_yield_today, pvinv_yield_today, total_yield_today\nsont écrits dans InfluxDB (measurement: solar_persist) avec un tag 'day' = date locale Paris.\n\n## Au démarrage (+5s)\n  influx_startup_inject → influx_restore_fn → influx_query_req → influx_restore_result_fn\n  Requête Flux : dernier enregistrement solar_persist pour aujourd'hui (tag day=YYYY-MM-DD)\n  → pvinv_baseline restaurée → 1er PVInverter calcule delta correct ✓\n\n## Écriture\n  mppt_yield_fn (output 2) → influx_write_fn → influx_write_req\n  pvinv_daily_fn (output 3) → influx_write_fn → influx_write_req\n  Line protocol : solar_persist,day=2026-03-22,host=pi5 pvinv_baseline=587.2,...\n\n## Variables d'environnement requises dans docker-compose.infra.yml\n  INFLUX_TOKEN, INFLUX_ORG, INFLUX_BUCKET\n\n## Vérification (Pi5)\n  # Voir les derniers enregistrements\n  docker exec dalybms-influxdb influx query \\\n    'from(bucket:\"daly_bms\") |> range(start:-2h) |> filter(fn:(r)=>r._measurement==\"solar_persist\") |> last()'",
-        "x": 310,
-        "y": 860,
-        "wires": []
-    },
-
-    {
-        "id": "influx_startup_inject",
-        "type": "inject",
-        "z": "e6e3a16384301f83",
-        "name": "Restaurer depuis InfluxDB (démarrage +5s)",
-        "props": [],
-        "repeat": "",
-        "crontab": "",
-        "once": true,
-        "onceDelay": 5,
-        "topic": "",
-        "x": 230,
-        "y": 940,
-        "wires": [
-            [
-                "influx_restore_fn"
-            ]
-        ]
-    },
-    {
-        "id": "influx_restore_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Préparer requête Flux (restore baseline)",
-        "func": "// Date locale Paris pour filtrer uniquement les données d'aujourd'hui\nconst now = new Date();\nconst parisISO = now.toLocaleString('sv-SE', {timeZone: 'Europe/Paris'});\nconst today = parisISO.substring(0, 10); // YYYY-MM-DD\n\nconst token = env.get('INFLUX_TOKEN');\nif (!token) {\n    node.status({fill:'red', shape:'ring', text:'INFLUX_TOKEN manquant dans docker-compose'});\n    return null;\n}\n\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\n// range -30h pour couvrir les décalages de fuseau horaire\n// tag 'day' garantit qu'on ne récupère QUE les données du jour Paris\nconst fluxQuery = [\n    'from(bucket: \"' + bucket + '\")',\n    '  |> range(start: -30h)',\n    '  |> filter(fn: (r) => r._measurement == \"solar_persist\")',\n    '  |> filter(fn: (r) => r.day == \"' + today + '\")',\n    '  |> last()'\n].join('\\n');\n\nmsg.url     = 'http://dalybms-influxdb:8086/api/v2/query?org=' + org;\nmsg.method  = 'POST';\nmsg.payload = fluxQuery;\nmsg.headers = {\n    'Authorization': 'Token ' + token,\n    'Content-Type': 'application/vnd.flux',\n    'Accept': 'application/csv'\n};\nnode.status({fill:'blue', shape:'dot', text:'Requête Flux pour ' + today});\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 540,
-        "y": 940,
-        "wires": [
-            [
-                "influx_query_req"
-            ]
-        ]
-    },
-    {
-        "id": "influx_query_req",
-        "type": "http request",
-        "z": "e6e3a16384301f83",
-        "name": "InfluxDB Query (Flux)",
-        "method": "use",
-        "ret": "txt",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 820,
-        "y": 940,
-        "wires": [
-            [
-                "influx_restore_result_fn"
-            ]
-        ]
-    },
-    {
-        "id": "influx_restore_result_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Restaurer globals depuis CSV Flux",
-        "func": "const csv = msg.payload || '';\n\n// InfluxDB2 retourne du CSV annoté (lignes #datatype, #group, #default + header + données)\nconst lines = csv.split('\\n').filter(l => l.trim() && !l.startsWith('#'));\nif (lines.length < 2) {\n    node.status({fill:'grey', shape:'ring', text:'Pas de données InfluxDB pour aujourd\\'hui'});\n    return null;\n}\n\nconst header = lines[0].split(',');\nconst fieldIdx = header.findIndex(h => h.trim() === '_field');\nconst valueIdx = header.findIndex(h => h.trim() === '_value');\n\nif (fieldIdx === -1 || valueIdx === -1) {\n    node.error('CSV inattendu: ' + header.join(','));\n    node.status({fill:'red', text:'Erreur format CSV InfluxDB'});\n    return null;\n}\n\nconst data = {};\nfor (let i = 1; i < lines.length; i++) {\n    const cols = lines[i].split(',');\n    const field = (cols[fieldIdx] || '').trim();\n    const value = parseFloat((cols[valueIdx] || '').trim());\n    if (field && !isNaN(value)) data[field] = value;\n}\n\n// Restaurer pvinv_baseline — valeur critique\nif (data.pvinv_baseline !== undefined && data.pvinv_baseline > 0) {\n    global.set('pvinv_baseline', data.pvinv_baseline);\n}\nif (data.mppt_yield_today !== undefined)  global.set('mppt_yield_today',  data.mppt_yield_today || 0);\nif (data.pvinv_yield_today !== undefined) global.set('pvinv_yield_today', data.pvinv_yield_today || 0);\nif (data.total_yield_today !== undefined) global.set('total_yield_today', data.total_yield_today || 0);\n\nconst baseline = data.pvinv_baseline;\nconst total    = data.total_yield_today || 0;\nif (baseline && baseline > 0) {\n    node.status({fill:'green', shape:'dot',\n        text: `Restauré ✓ baseline=${baseline.toFixed(1)} total=${total.toFixed(2)} kWh`});\n} else {\n    node.status({fill:'yellow', shape:'ring', text:'Pas de baseline (1er jour ou après reset minuit)'});\n}\nreturn null;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 560,
-        "y": 1020,
-        "wires": [
-            []
-        ]
-    },
-
-    {
-        "id": "influx_write_fn",
-        "type": "function",
-        "z": "e6e3a16384301f83",
-        "name": "Formater line protocol InfluxDB",
-        "func": "const token  = env.get('INFLUX_TOKEN');\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\nif (!token) return null;\n\nconst baseline = global.get('pvinv_baseline');\n// Ne pas écrire si la baseline n'est pas encore établie (début de journée)\nif (baseline === null || baseline === undefined) return null;\n\nconst mppt  = global.get('mppt_yield_today')  || 0;\nconst pvinv = global.get('pvinv_yield_today') || 0;\nconst total = global.get('total_yield_today') || 0;\n\n// Tag 'day' = date locale Paris → permet de filtrer par jour au redémarrage\nconst now = new Date();\nconst parisISO = now.toLocaleString('sv-SE', {timeZone: 'Europe/Paris'});\nconst day = parisISO.substring(0, 10); // YYYY-MM-DD\n\nconst ts   = Math.floor(Date.now() / 1000);\nconst line = `solar_persist,day=${day},host=pi5 pvinv_baseline=${baseline},mppt_yield_today=${mppt},pvinv_yield_today=${pvinv},total_yield_today=${total} ${ts}`;\n\nmsg.url     = `http://dalybms-influxdb:8086/api/v2/write?org=${org}&bucket=${bucket}&precision=s`;\nmsg.method  = 'POST';\nmsg.payload = line;\nmsg.headers = {\n    'Authorization': 'Token ' + token,\n    'Content-Type': 'text/plain; charset=utf-8'\n};\nreturn msg;",
-        "outputs": 1,
-        "timeout": "",
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 780,
-        "y": 540,
-        "wires": [
-            [
-                "influx_write_req"
-            ]
-        ]
-    },
-    {
-        "id": "influx_write_req",
-        "type": "http request",
-        "z": "e6e3a16384301f83",
-        "name": "InfluxDB Write (solar_persist)",
-        "method": "use",
-        "ret": "txt",
-        "paytoqs": "ignore",
-        "url": "",
-        "tls": "",
-        "persist": false,
-        "proxy": "",
-        "insecureHTTPParser": false,
-        "authType": "",
-        "senderr": false,
-        "headers": [],
-        "x": 1000,
-        "y": 540,
-        "wires": [
-            []
-        ]
-    },
-
-    {
-        "id": "pi5_mqtt_broker",
-        "type": "mqtt-broker",
-        "name": "Pi5 MQTT",
-        "broker": "dalybms-mosquitto",
-        "port": "1883",
-        "clientid": "",
-        "autoConnect": true,
-        "usetls": false,
-        "protocolVersion": "4",
-        "keepalive": "60",
-        "cleansession": true,
-        "autoUnsubscribe": true,
-        "birthTopic": "",
-        "birthQos": "0",
-        "birthRetain": "false",
-        "birthPayload": "",
-        "birthMsg": {},
-        "closeTopic": "",
-        "closeQos": "0",
-        "closeRetain": "false",
-        "closePayload": "",
-        "closeMsg": {},
-        "willTopic": "",
-        "willQos": "0",
-        "willRetain": "false",
-        "willPayload": "",
-        "willMsg": {},
-        "userProps": "",
-        "sessionExpiry": ""
-    }
+  {
+    "id": "e6e3a16384301f83",
+    "type": "tab",
+    "label": "Meteo",
+    "disabled": false,
+    "info": "Open-Meteo (5 min) → température / humidité / pression / vent → Venus OS\nProduction solaire du jour : MPPT History/Daily/0/Yield + PVInverter delta journalier\n\nPersistance pvinv_baseline :\n  Stockée en MQTT retained (santuario/persist/pvinv_baseline)\n  Mosquitto persistence=true → survit aux redémarrages Pi5 et NanoPi\n  Pas de modifications Docker ni de settings.js nécessaires.",
+    "env": []
+  },
+  {
+    "id": "e8ba731c3af093d3",
+    "type": "inject",
+    "z": "e6e3a16384301f83",
+    "name": "Récupération météo (toutes les 5 min)",
+    "props": [],
+    "repeat": "300",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 0.1,
+    "topic": "",
+    "x": 240,
+    "y": 60,
+    "wires": [
+      [
+        "18ade779417faa1a"
+      ]
+    ]
+  },
+  {
+    "id": "18ade779417faa1a",
+    "type": "http request",
+    "z": "e6e3a16384301f83",
+    "name": "Open-Meteo API - Badalucco",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "https://api.open-meteo.com/v1/forecast?latitude=43.8833&longitude=7.8667&current=temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m,wind_direction_10m&timezone=Europe%2FRome&wind_speed_unit=ms",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 610,
+    "y": 60,
+    "wires": [
+      [
+        "e7a4e51e485d047b"
+      ]
+    ]
+  },
+  {
+    "id": "e7a4e51e485d047b",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Extraire et publier météo",
+    "func": "const cur = msg.payload.current;\nconst temp      = cur.temperature_2m;\nconst humidity  = cur.relative_humidity_2m;\nconst pressure  = cur.pressure_msl;\nconst windSpeed = cur.wind_speed_10m;\nconst windDir   = cur.wind_direction_10m;\n\nglobal.set('outdoor_temp',       temp);\nglobal.set('outdoor_humidity',   humidity);\nglobal.set('outdoor_pressure',   pressure);\nglobal.set('outdoor_wind_speed', windSpeed);\nglobal.set('outdoor_wind_dir',   windDir);\n\nconst todaysYield = global.get('total_yield_today') || 0;\nconst irradiance  = global.get('irradiance_wm2')    || 0;\n\nnode.status({fill:'green', shape:'dot', text:`${temp}°C — ${irradiance} W/m² — ${todaysYield.toFixed(2)} kWh`});\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 260,
+    "y": 140,
+    "wires": [
+      [
+        "meteo_mqtt_out",
+        "d65816bfa4e7b8c4"
+      ]
+    ]
+  },
+  {
+    "id": "temp_keepalive_inject",
+    "type": "inject",
+    "z": "e6e3a16384301f83",
+    "name": "Keepalive Venus (toutes les 5 min)",
+    "props": [],
+    "repeat": "300",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0,
+    "topic": "",
+    "x": 210,
+    "y": 260,
+    "wires": [
+      [
+        "temp_keepalive_fn"
+      ]
+    ]
+  },
+  {
+    "id": "temp_keepalive_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Republier depuis contexte",
+    "func": "const temp      = global.get('outdoor_temp');\nconst humidity  = global.get('outdoor_humidity');\nconst pressure  = global.get('outdoor_pressure');\nconst windSpeed = global.get('outdoor_wind_speed');\nconst windDir   = global.get('outdoor_wind_dir');\n\n// Attendre la première récupération Open-Meteo (once:true → ~0.1s)\nif (temp === undefined || temp === null) return null;\n\nconst todaysYield = global.get('total_yield_today') || 0;\nconst irradiance  = global.get('irradiance_wm2')    || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        humidity,\n        Pressure:        pressure\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   todaysYield,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 560,
+    "y": 260,
+    "wires": [
+      [
+        "meteo_mqtt_out"
+      ]
+    ]
+  },
+  {
+    "id": "meteo_mqtt_out",
+    "type": "mqtt out",
+    "z": "e6e3a16384301f83",
+    "name": "Venus Météo",
+    "topic": "",
+    "qos": "1",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "pi5_mqtt_broker",
+    "x": 840,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "d65816bfa4e7b8c4",
+    "type": "debug",
+    "z": "e6e3a16384301f83",
+    "name": "debug météo",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "false",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 840,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "meteo_comment_yield",
+    "type": "comment",
+    "z": "e6e3a16384301f83",
+    "name": "Production solaire — MPPT + PVInverter delta — Persistance MQTT retained",
+    "info": "## Sources production solaire\n- MPPT SmartSolar → N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield\n  Venus OS remet à zéro à minuit automatiquement.\n- Micro-onduleurs → N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward\n  Valeur cumulée → delta journalier via baseline.\n\n## Persistance pvinv_baseline (survit aux redémarrages)\n  topic: santuario/persist/pvinv_baseline  (retain:true, qos:1)\n  Mosquitto persistence=true + volume Docker → persiste sur disque\n  Au démarrage Node-RED : mqtt-in (rap:true) reçoit immédiatement la baseline\n  Le bridge NanoPi reconnecte en ~30s → PVInverter arrive après baseline ✓\n\n## Reset minuit\n  L'inject cron 00:00 remet pvinv_baseline à null et publie payload vide\n  (supprime le retained dans Mosquitto).\n  Au premier message PVInverter du matin → nouvelle baseline posée.\n\n## Vérification NanoPi\n  dbus -y | grep pvinverter\n  dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 /Ac/Energy/Forward GetValue\n\n## Vérifier la baseline persistée\n  mosquitto_sub -h localhost -p 1883 -t santuario/persist/pvinv_baseline -C 1",
+    "x": 330,
+    "y": 360,
+    "wires": []
+  },
+  {
+    "id": "mppt_yield_in",
+    "type": "mqtt in",
+    "z": "e6e3a16384301f83",
+    "name": "MPPT History/Daily/0/Yield (kWh aujourd'hui)",
+    "topic": "N/c0619ab9929a/solarcharger/+/History/Daily/0/Yield",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "pi5_mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 200,
+    "y": 440,
+    "wires": [
+      [
+        "mppt_yield_fn"
+      ]
+    ]
+  },
+  {
+    "id": "mppt_yield_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Accumuler MPPT yields",
+    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\n// Note: total_yield_today est géré par VRM API (vrm_restore_result_fn)\nnode.status({fill:'green', shape:'dot', text:'MPPT: ' + mpptTotal.toFixed(2) + ' kWh'});\nreturn [msg, {}];",
+    "outputs": 2,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 500,
+    "y": 440,
+    "wires": [
+      [
+        "debug_yield"
+      ],
+      [
+        "influx_write_fn"
+      ]
+    ]
+  },
+  {
+    "id": "pvinv_energy_in",
+    "type": "mqtt in",
+    "z": "e6e3a16384301f83",
+    "name": "PVInverter énergie totale (kWh cumulé)",
+    "topic": "N/c0619ab9929a/pvinverter/+/Ac/Energy/Forward",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "pi5_mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 220,
+    "y": 520,
+    "wires": [
+      [
+        "pvinv_daily_fn"
+      ]
+    ]
+  },
+  {
+    "id": "pvinv_daily_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Delta journalier PVInverter",
+    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\nglobal.set('_last_pvinv_cumul', current);\n\nlet baseline = global.get('pvinv_baseline');\nconst isNewBaseline = (baseline === null || baseline === undefined);\n\nif (isNewBaseline) {\n    // Baseline non encore restaurée — poser temporairement, NE PAS persister en retain\n    // (la bonne valeur sera restaurée par MQTT retain ou InfluxDB dans les 5 prochaines secondes)\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nnode.status({fill:'blue', shape:'dot', text:'PVInv: ' + dailyYield.toFixed(2) + ' kWh (affichage seul)'});\n\n// Output 1 → debug\n// Output 2 → persist retain UNIQUEMENT si la baseline était déjà établie (pas une init à froid)\n// Output 3 → InfluxDB persist\nreturn [msg, isNewBaseline ? null : {payload: baseline}, {}];",
+    "outputs": 3,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 510,
+    "y": 520,
+    "wires": [
+      [
+        "debug_yield"
+      ],
+      [
+        "pvinv_persist_out"
+      ],
+      [
+        "influx_write_fn"
+      ]
+    ]
+  },
+  {
+    "id": "midnight_reset_inject",
+    "type": "inject",
+    "z": "e6e3a16384301f83",
+    "name": "Reset minuit (00:00)",
+    "props": [],
+    "repeat": "",
+    "crontab": "0 0 * * *",
+    "once": false,
+    "onceDelay": 0,
+    "topic": "",
+    "x": 190,
+    "y": 600,
+    "wires": [
+      [
+        "midnight_reset_fn"
+      ]
+    ]
+  },
+  {
+    "id": "midnight_reset_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Reset baseline PVInverter",
+    "func": "global.set('pvinv_baseline', null);\nglobal.set('pvinv_yield_today', 0);\nglobal.set('mppt_yields', {});\nglobal.set('mppt_yield_today', 0);\nglobal.set('total_yield_today', 0);\nnode.status({fill:'blue', shape:'dot', text:'Reset minuit OK'});\n// Output 1 → rien\n// Output 2 → effacer le retained Mosquitto (payload vide = suppression du retained)\nreturn [null, {payload: ''}];",
+    "outputs": 2,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 600,
+    "wires": [
+      [],
+      [
+        "pvinv_persist_out"
+      ]
+    ]
+  },
+  {
+    "id": "debug_yield",
+    "type": "debug",
+    "z": "e6e3a16384301f83",
+    "name": "debug yield",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "false",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 720,
+    "y": 480,
+    "wires": []
+  },
+  {
+    "id": "persist_comment",
+    "type": "comment",
+    "z": "e6e3a16384301f83",
+    "name": "PERSISTANCE pvinv_baseline — MQTT retained (Mosquitto persistence=true)",
+    "info": "## Principe\npvinv_baseline est publiée en retained sur santuario/persist/pvinv_baseline\nMosquitto stocke ce message sur disque (persistence=true + volume Docker).\n\nAu redémarrage Node-RED / Pi5 :\n1. pvinv_persist_in (rap:true) reçoit immédiatement la baseline depuis Mosquitto local\n2. restore_baseline_fn repose global.pvinv_baseline\n3. Bridge NanoPi reconnecte ~30s plus tard\n4. Premier PVInverter reçu → baseline déjà posée → delta correct ✓\n\n## Vérification\nmosquitto_sub -h localhost -p 1883 -t santuario/persist/pvinv_baseline -C 1\n# → doit afficher la baseline (ex: 587.2)\n\n## Reset manuel si baseline incorrecte\nSe référer à fix-pvinv-baseline.json (CLAUDE.md §10)",
+    "x": 280,
+    "y": 680,
+    "wires": []
+  },
+  {
+    "id": "pvinv_persist_in",
+    "type": "mqtt in",
+    "z": "e6e3a16384301f83",
+    "name": "Restore pvinv_baseline (au démarrage)",
+    "topic": "santuario/persist/pvinv_baseline",
+    "qos": "1",
+    "datatype": "auto",
+    "broker": "pi5_mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 230,
+    "y": 760,
+    "wires": [
+      [
+        "restore_baseline_fn"
+      ]
+    ]
+  },
+  {
+    "id": "restore_baseline_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Restaurer pvinv_baseline",
+    "func": "const raw = msg.payload;\n\n// Payload vide = reset minuit (retained effacé), ou pas de baseline stockée\nif (raw === '' || raw === null || raw === undefined) {\n    global.set('pvinv_baseline', null);\n    node.status({fill:'grey', shape:'ring', text:'Pas de baseline (reset ou 1er jour)'});\n    return null;\n}\n\nconst baseline = parseFloat(raw);\nif (isNaN(baseline) || baseline <= 0) {\n    node.status({fill:'red', shape:'ring', text:'Baseline invalide: ' + raw});\n    return null;\n}\n\nglobal.set('pvinv_baseline', baseline);\nnode.status({fill:'yellow', shape:'dot', text:'Baseline restaurée: ' + baseline.toFixed(1) + ' kWh'});\nreturn null;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 570,
+    "y": 760,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "pvinv_persist_out",
+    "type": "mqtt out",
+    "z": "e6e3a16384301f83",
+    "name": "Persist pvinv_baseline (retained)",
+    "topic": "santuario/persist/pvinv_baseline",
+    "qos": "1",
+    "retain": "true",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "pi5_mqtt_broker",
+    "x": 870,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "vrm_comment",
+    "type": "comment",
+    "z": "e6e3a16384301f83",
+    "name": "RESTAURATION VRM API — today.totals.kwh = Production solaire totale du jour",
+    "info": "## Principe\nL'API VRM Victron fournit directement la production solaire du jour (MPPT + PVInverter)\nvia l'endpoint /overallstats → today.totals.kwh\n\nAvantages vs InfluxDB :\n  - Fonctionne même si InfluxDB est vide (premier jour, après make reset)\n  - Source de vérité = VRM (même valeur que le dashboard VRM)\n  - Pas de dérive possible, données certifiées Victron\n  - Fonctionne après n'importe quel reboot\n\n## Variables d'environnement requises\n  VRM_TOKEN            → Personal Access Token (vrm.victronenergy.com → Profile → Tokens)\n  VRM_INSTALLATION_ID  → ID de l'installation (visible dans l'URL VRM : /installation/865936/)\n\n## Procédure création token\n  1. Se connecter à https://vrm.victronenergy.com\n  2. Cliquer sur l'icône profil en haut à droite → Personal Access Tokens\n  3. Créer un token avec nom descriptif (ex: 'pi5-nodered')\n  4. Copier le token dans .env : VRM_TOKEN=xxxx\n  5. Ajouter VRM_INSTALLATION_ID=865936 dans .env\n  6. make down && make up  (pour passer les env vars à Node-RED)\n  7. make deploy-nodered   (pour pousser les flows)\n\n## Séquence au démarrage Node-RED\n  +1-2s : MPPT MQTT retained arrive → mppt_yield_today mis à jour\n  +1-2s : PVInverter MQTT retained arrive → _last_pvinv_cumul stocké\n  +5s   : InfluxDB restore (baseline du jour si disponible)\n  +10s  : VRM restore (REMPLACE la baseline par la valeur authoritative VRM)\n    → pvinv_yield_today = vrm_solar - mppt_yield_today\n    → pvinv_baseline = _last_pvinv_cumul - pvinv_yield_today\n    → total_yield_today = vrm_solar ← CORRECT même après reboot\n\n## Note timezone UTC\n  L'endpoint today de VRM est en UTC. La production solaire ayant lieu\n  de ~06h00 à ~20h00, UTC et heure locale ne causent pas de différence\n  pour la production solaire (pas de production entre minuit local et minuit UTC).\n\n## Endpoint VRM utilisé\n  GET https://vrmapi.victronenergy.com/v2/installations/{id}/overallstats\n  Header: X-Authorization: Token {VRM_TOKEN}\n  Réponse : data.records.today.totals.kwh → kWh solaire du jour",
+    "x": 300,
+    "y": 1120,
+    "wires": []
+  },
+  {
+    "id": "vrm_startup_inject",
+    "type": "inject",
+    "z": "e6e3a16384301f83",
+    "name": "Récupération VRM (démarrage +10s puis toutes les 5 min)",
+    "props": [],
+    "repeat": "300",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 10,
+    "topic": "",
+    "x": 230,
+    "y": 1200,
+    "wires": [
+      [
+        "vrm_restore_fn"
+      ]
+    ]
+  },
+  {
+    "id": "vrm_restore_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Préparer requête VRM overallstats",
+    "func": "const token  = env.get('VRM_TOKEN');\nconst siteId = env.get('VRM_INSTALLATION_ID') || '865936';\n\nif (!token) {\n    node.status({fill:'grey', shape:'ring',\n        text:'VRM_TOKEN manquant → ajouter dans .env + make down && make up'});\n    return null;\n}\n\n// today.totals.kwh = production solaire du jour (MPPT + PVInverter)\nmsg.url    = `https://vrmapi.victronenergy.com/v2/installations/${siteId}/overallstats`;\nmsg.method = 'GET';\nmsg.headers = {\n    'X-Authorization': 'Token ' + token\n};\nnode.status({fill:'blue', shape:'dot', text:'Requête VRM API installation ' + siteId});\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 550,
+    "y": 1200,
+    "wires": [
+      [
+        "vrm_query_req"
+      ]
+    ]
+  },
+  {
+    "id": "vrm_query_req",
+    "type": "http request",
+    "z": "e6e3a16384301f83",
+    "name": "VRM API overallstats",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 830,
+    "y": 1200,
+    "wires": [
+      [
+        "vrm_restore_result_fn"
+      ]
+    ]
+  },
+  {
+    "id": "vrm_restore_result_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "TodaysYield depuis VRM (source unique)",
+    "func": "// Vérifier erreur réseau / HTTP\nif (msg.statusCode && msg.statusCode >= 400) {\n    node.status({fill:'red', shape:'ring', text:'Erreur HTTP VRM: ' + msg.statusCode});\n    return null;\n}\n\nconst data = msg.payload;\nif (!data || !data.success) {\n    node.status({fill:'red', shape:'ring', text:'Réponse VRM invalide'});\n    return null;\n}\n\n// today.totals.kwh = production solaire du jour (MPPT + PVInverter), calculé côté serveur Victron\nconst todayTotals = data.records && data.records.today && data.records.today.totals;\nif (!todayTotals || todayTotals.kwh === undefined || todayTotals.kwh === null) {\n    node.status({fill:'yellow', shape:'ring', text:'Pas de kwh VRM — vérifier installation_id'});\n    return null;\n}\n\nconst vrmSolarToday = parseFloat(todayTotals.kwh);\nif (isNaN(vrmSolarToday) || vrmSolarToday < 0) {\n    node.status({fill:'red', text:'Valeur VRM invalide: ' + todayTotals.kwh});\n    return null;\n}\n\n// VRM = source unique de vérité pour TodaysYield\nglobal.set('total_yield_today', vrmSolarToday);\nnode.status({fill:'green', shape:'dot', text:'VRM ✓ ' + vrmSolarToday.toFixed(2) + ' kWh'});\n\n// Publier immédiatement vers Venus OS sans attendre le prochain keepalive\nconst temp      = global.get('outdoor_temp')     || 0;\nconst irradiance = global.get('irradiance_wm2')  || 0;\nconst windSpeed  = global.get('outdoor_wind_speed') || 0;\nconst windDir    = global.get('outdoor_wind_dir')   || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        global.get('outdoor_humidity')  || 0,\n        Pressure:        global.get('outdoor_pressure')  || 0\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   vrmSolarToday,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 580,
+    "y": 1280,
+    "wires": [
+      [
+        "meteo_mqtt_out"
+      ]
+    ]
+  },
+  {
+    "id": "influx_comment",
+    "type": "comment",
+    "z": "e6e3a16384301f83",
+    "name": "PERSISTANCE InfluxDB — solar_persist (pvinv_baseline + production du jour)",
+    "info": "## Principe (solution pérenne)\npvinv_baseline, mppt_yield_today, pvinv_yield_today, total_yield_today\nsont écrits dans InfluxDB (measurement: solar_persist) avec un tag 'day' = date locale Paris.\n\n## Au démarrage (+5s)\n  influx_startup_inject → influx_restore_fn → influx_query_req → influx_restore_result_fn\n  Requête Flux : dernier enregistrement solar_persist pour aujourd'hui (tag day=YYYY-MM-DD)\n  → pvinv_baseline restaurée → 1er PVInverter calcule delta correct ✓\n\n## Écriture\n  mppt_yield_fn (output 2) → influx_write_fn → influx_write_req\n  pvinv_daily_fn (output 3) → influx_write_fn → influx_write_req\n  Line protocol : solar_persist,day=2026-03-22,host=pi5 pvinv_baseline=587.2,...\n\n## Variables d'environnement requises dans docker-compose.infra.yml\n  INFLUX_TOKEN, INFLUX_ORG, INFLUX_BUCKET\n\n## Vérification (Pi5)\n  # Voir les derniers enregistrements\n  docker exec dalybms-influxdb influx query \\\n    'from(bucket:\"daly_bms\") |> range(start:-2h) |> filter(fn:(r)=>r._measurement==\"solar_persist\") |> last()'",
+    "x": 310,
+    "y": 860,
+    "wires": []
+  },
+  {
+    "id": "influx_startup_inject",
+    "type": "inject",
+    "z": "e6e3a16384301f83",
+    "name": "Restaurer depuis InfluxDB (démarrage +5s)",
+    "props": [],
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 5,
+    "topic": "",
+    "x": 230,
+    "y": 940,
+    "wires": [
+      [
+        "influx_restore_fn"
+      ]
+    ]
+  },
+  {
+    "id": "influx_restore_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Préparer requête Flux (restore baseline)",
+    "func": "// Date locale Paris pour filtrer uniquement les données d'aujourd'hui\nconst now = new Date();\nconst parisISO = now.toLocaleString('sv-SE', {timeZone: 'Europe/Paris'});\nconst today = parisISO.substring(0, 10); // YYYY-MM-DD\n\nconst token = env.get('INFLUX_TOKEN');\nif (!token) {\n    node.status({fill:'red', shape:'ring', text:'INFLUX_TOKEN manquant dans docker-compose'});\n    return null;\n}\n\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\n// range -30h pour couvrir les décalages de fuseau horaire\n// tag 'day' garantit qu'on ne récupère QUE les données du jour Paris\nconst fluxQuery = [\n    'from(bucket: \"' + bucket + '\")',\n    '  |> range(start: -30h)',\n    '  |> filter(fn: (r) => r._measurement == \"solar_persist\")',\n    '  |> filter(fn: (r) => r.day == \"' + today + '\")',\n    '  |> last()'\n].join('\\n');\n\nmsg.url     = 'http://dalybms-influxdb:8086/api/v2/query?org=' + org;\nmsg.method  = 'POST';\nmsg.payload = fluxQuery;\nmsg.headers = {\n    'Authorization': 'Token ' + token,\n    'Content-Type': 'application/vnd.flux',\n    'Accept': 'application/csv'\n};\nnode.status({fill:'blue', shape:'dot', text:'Requête Flux pour ' + today});\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 540,
+    "y": 940,
+    "wires": [
+      [
+        "influx_query_req"
+      ]
+    ]
+  },
+  {
+    "id": "influx_query_req",
+    "type": "http request",
+    "z": "e6e3a16384301f83",
+    "name": "InfluxDB Query (Flux)",
+    "method": "use",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 820,
+    "y": 940,
+    "wires": [
+      [
+        "influx_restore_result_fn"
+      ]
+    ]
+  },
+  {
+    "id": "influx_restore_result_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Restaurer globals depuis CSV Flux",
+    "func": "const csv = msg.payload || '';\n\n// InfluxDB2 retourne du CSV annoté (lignes #datatype, #group, #default + header + données)\nconst lines = csv.split('\\n').filter(l => l.trim() && !l.startsWith('#'));\nif (lines.length < 2) {\n    node.status({fill:'grey', shape:'ring', text:'Pas de données InfluxDB pour aujourd\\'hui'});\n    return null;\n}\n\nconst header = lines[0].split(',');\nconst fieldIdx = header.findIndex(h => h.trim() === '_field');\nconst valueIdx = header.findIndex(h => h.trim() === '_value');\n\nif (fieldIdx === -1 || valueIdx === -1) {\n    node.error('CSV inattendu: ' + header.join(','));\n    node.status({fill:'red', text:'Erreur format CSV InfluxDB'});\n    return null;\n}\n\nconst data = {};\nfor (let i = 1; i < lines.length; i++) {\n    const cols = lines[i].split(',');\n    const field = (cols[fieldIdx] || '').trim();\n    const value = parseFloat((cols[valueIdx] || '').trim());\n    if (field && !isNaN(value)) data[field] = value;\n}\n\n// Restaurer pvinv_baseline — valeur critique\nif (data.pvinv_baseline !== undefined && data.pvinv_baseline > 0) {\n    global.set('pvinv_baseline', data.pvinv_baseline);\n}\nif (data.mppt_yield_today !== undefined)  global.set('mppt_yield_today',  data.mppt_yield_today || 0);\nif (data.pvinv_yield_today !== undefined) global.set('pvinv_yield_today', data.pvinv_yield_today || 0);\nif (data.total_yield_today !== undefined) global.set('total_yield_today', data.total_yield_today || 0);\n\nconst baseline = data.pvinv_baseline;\nconst total    = data.total_yield_today || 0;\nif (baseline && baseline > 0) {\n    node.status({fill:'green', shape:'dot',\n        text: `Restauré ✓ baseline=${baseline.toFixed(1)} total=${total.toFixed(2)} kWh`});\n} else {\n    node.status({fill:'yellow', shape:'ring', text:'Pas de baseline (1er jour ou après reset minuit)'});\n}\nreturn null;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 560,
+    "y": 1020,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "influx_write_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Formater line protocol InfluxDB",
+    "func": "const token  = env.get('INFLUX_TOKEN');\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\nif (!token) return null;\n\nconst baseline = global.get('pvinv_baseline');\n// Ne pas écrire si la baseline n'est pas encore établie (début de journée)\nif (baseline === null || baseline === undefined) return null;\n\nconst mppt  = global.get('mppt_yield_today')  || 0;\nconst pvinv = global.get('pvinv_yield_today') || 0;\nconst total = global.get('total_yield_today') || 0;\n\n// Tag 'day' = date locale Paris → permet de filtrer par jour au redémarrage\nconst now = new Date();\nconst parisISO = now.toLocaleString('sv-SE', {timeZone: 'Europe/Paris'});\nconst day = parisISO.substring(0, 10); // YYYY-MM-DD\n\nconst ts   = Math.floor(Date.now() / 1000);\nconst line = `solar_persist,day=${day},host=pi5 pvinv_baseline=${baseline},mppt_yield_today=${mppt},pvinv_yield_today=${pvinv},total_yield_today=${total} ${ts}`;\n\nmsg.url     = `http://dalybms-influxdb:8086/api/v2/write?org=${org}&bucket=${bucket}&precision=s`;\nmsg.method  = 'POST';\nmsg.payload = line;\nmsg.headers = {\n    'Authorization': 'Token ' + token,\n    'Content-Type': 'text/plain; charset=utf-8'\n};\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 780,
+    "y": 540,
+    "wires": [
+      [
+        "influx_write_req"
+      ]
+    ]
+  },
+  {
+    "id": "influx_write_req",
+    "type": "http request",
+    "z": "e6e3a16384301f83",
+    "name": "InfluxDB Write (solar_persist)",
+    "method": "use",
+    "ret": "txt",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 1000,
+    "y": 540,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "pi5_mqtt_broker",
+    "type": "mqtt-broker",
+    "name": "Pi5 MQTT",
+    "broker": "dalybms-mosquitto",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthRetain": "false",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closeRetain": "false",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willRetain": "false",
+    "willPayload": "",
+    "willMsg": {},
+    "userProps": "",
+    "sessionExpiry": ""
+  }
 ]
