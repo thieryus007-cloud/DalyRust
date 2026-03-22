@@ -81,6 +81,10 @@ services:
       - "1880:1880"
     environment:
       - TZ=Europe/Paris
+      # Transmis aux flows pour les requêtes InfluxDB (persistance production solaire)
+      - INFLUX_TOKEN=${INFLUX_TOKEN}
+      - INFLUX_ORG=${INFLUX_ORG:-santuario}
+      - INFLUX_BUCKET=${INFLUX_BUCKET:-daly_bms}
     volumes:
       - nodered-data:/data
     depends_on:

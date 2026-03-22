@@ -185,8 +185,8 @@
         "type": "function",
         "z": "e6e3a16384301f83",
         "name": "Accumuler MPPT yields",
-        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\nconst pvinvYield = global.get('pvinv_yield_today') || 0;\nconst total = parseFloat((mpptTotal + pvinvYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'green', shape:'dot', text:`MPPT: ${mpptTotal.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\nreturn msg;",
-        "outputs": 1,
+        "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptYields = global.get('mppt_yields') || {};\nmpptYields[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_yields', mpptYields);\n\nconst mpptTotal = Object.values(mpptYields).reduce((a, b) => a + b, 0);\nglobal.set('mppt_yield_today', mpptTotal);\n\nconst pvinvYield = global.get('pvinv_yield_today') || 0;\nconst total = parseFloat((mpptTotal + pvinvYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'green', shape:'dot', text:`MPPT: ${mpptTotal.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n// Output 1 → debug_yield, Output 2 → InfluxDB persist\nreturn [msg, {}];",
+        "outputs": 2,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -197,6 +197,9 @@
         "wires": [
             [
                 "debug_yield"
+            ],
+            [
+                "influx_write_fn"
             ]
         ]
     },
@@ -228,7 +231,7 @@
         "z": "e6e3a16384301f83",
         "name": "Delta journalier PVInverter",
         "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(val);\n\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    // Premier message du jour (ou après reset minuit) : poser la baseline\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst dailyYield = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', dailyYield);\n\nconst mpptYield = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptYield + dailyYield).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'blue', shape:'dot', text:`PVInv: ${dailyYield.toFixed(2)} kWh | Total: ${total.toFixed(2)} kWh`});\n\n// Output 1 → debug_yield\n// Output 2 → persist baseline dans Mosquitto (retain)\nreturn [msg, {payload: baseline}];",
-        "outputs": 2,
+        "outputs": 3,
         "timeout": "",
         "noerr": 0,
         "initialize": "",
@@ -242,6 +245,9 @@
             ],
             [
                 "pvinv_persist_out"
+            ],
+            [
+                "influx_write_fn"
             ]
         ]
     },
@@ -371,6 +377,142 @@
         "x": 870,
         "y": 560,
         "wires": []
+    },
+
+    {
+        "id": "influx_comment",
+        "type": "comment",
+        "z": "e6e3a16384301f83",
+        "name": "PERSISTANCE InfluxDB — solar_persist (pvinv_baseline + production du jour)",
+        "info": "## Principe (solution pérenne)\npvinv_baseline, mppt_yield_today, pvinv_yield_today, total_yield_today\nsont écrits dans InfluxDB (measurement: solar_persist) avec un tag 'day' = date locale Paris.\n\n## Au démarrage (+5s)\n  influx_startup_inject → influx_restore_fn → influx_query_req → influx_restore_result_fn\n  Requête Flux : dernier enregistrement solar_persist pour aujourd'hui (tag day=YYYY-MM-DD)\n  → pvinv_baseline restaurée → 1er PVInverter calcule delta correct ✓\n\n## Écriture\n  mppt_yield_fn (output 2) → influx_write_fn → influx_write_req\n  pvinv_daily_fn (output 3) → influx_write_fn → influx_write_req\n  Line protocol : solar_persist,day=2026-03-22,host=pi5 pvinv_baseline=587.2,...\n\n## Variables d'environnement requises dans docker-compose.infra.yml\n  INFLUX_TOKEN, INFLUX_ORG, INFLUX_BUCKET\n\n## Vérification (Pi5)\n  # Voir les derniers enregistrements\n  docker exec dalybms-influxdb influx query \\\n    'from(bucket:\"daly_bms\") |> range(start:-2h) |> filter(fn:(r)=>r._measurement==\"solar_persist\") |> last()'",
+        "x": 310,
+        "y": 860,
+        "wires": []
+    },
+
+    {
+        "id": "influx_startup_inject",
+        "type": "inject",
+        "z": "e6e3a16384301f83",
+        "name": "Restaurer depuis InfluxDB (démarrage +5s)",
+        "props": [],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 5,
+        "topic": "",
+        "x": 230,
+        "y": 940,
+        "wires": [
+            [
+                "influx_restore_fn"
+            ]
+        ]
+    },
+    {
+        "id": "influx_restore_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Préparer requête Flux (restore baseline)",
+        "func": "// Date locale Paris pour filtrer uniquement les données d'aujourd'hui\nconst now = new Date();\nconst parisISO = now.toLocaleString('sv-SE', {timeZone: 'Europe/Paris'});\nconst today = parisISO.substring(0, 10); // YYYY-MM-DD\n\nconst token = env.get('INFLUX_TOKEN');\nif (!token) {\n    node.status({fill:'red', shape:'ring', text:'INFLUX_TOKEN manquant dans docker-compose'});\n    return null;\n}\n\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\n// range -30h pour couvrir les décalages de fuseau horaire\n// tag 'day' garantit qu'on ne récupère QUE les données du jour Paris\nconst fluxQuery = [\n    'from(bucket: \"' + bucket + '\")',\n    '  |> range(start: -30h)',\n    '  |> filter(fn: (r) => r._measurement == \"solar_persist\")',\n    '  |> filter(fn: (r) => r.day == \"' + today + '\")',\n    '  |> last()'\n].join('\\n');\n\nmsg.url     = 'http://dalybms-influxdb:8086/api/v2/query?org=' + org;\nmsg.method  = 'POST';\nmsg.payload = fluxQuery;\nmsg.headers = {\n    'Authorization': 'Token ' + token,\n    'Content-Type': 'application/vnd.flux',\n    'Accept': 'application/csv'\n};\nnode.status({fill:'blue', shape:'dot', text:'Requête Flux pour ' + today});\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 940,
+        "wires": [
+            [
+                "influx_query_req"
+            ]
+        ]
+    },
+    {
+        "id": "influx_query_req",
+        "type": "http request",
+        "z": "e6e3a16384301f83",
+        "name": "InfluxDB Query (Flux)",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 820,
+        "y": 940,
+        "wires": [
+            [
+                "influx_restore_result_fn"
+            ]
+        ]
+    },
+    {
+        "id": "influx_restore_result_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Restaurer globals depuis CSV Flux",
+        "func": "const csv = msg.payload || '';\n\n// InfluxDB2 retourne du CSV annoté (lignes #datatype, #group, #default + header + données)\nconst lines = csv.split('\\n').filter(l => l.trim() && !l.startsWith('#'));\nif (lines.length < 2) {\n    node.status({fill:'grey', shape:'ring', text:'Pas de données InfluxDB pour aujourd\\'hui'});\n    return null;\n}\n\nconst header = lines[0].split(',');\nconst fieldIdx = header.findIndex(h => h.trim() === '_field');\nconst valueIdx = header.findIndex(h => h.trim() === '_value');\n\nif (fieldIdx === -1 || valueIdx === -1) {\n    node.error('CSV inattendu: ' + header.join(','));\n    node.status({fill:'red', text:'Erreur format CSV InfluxDB'});\n    return null;\n}\n\nconst data = {};\nfor (let i = 1; i < lines.length; i++) {\n    const cols = lines[i].split(',');\n    const field = (cols[fieldIdx] || '').trim();\n    const value = parseFloat((cols[valueIdx] || '').trim());\n    if (field && !isNaN(value)) data[field] = value;\n}\n\n// Restaurer pvinv_baseline — valeur critique\nif (data.pvinv_baseline !== undefined && data.pvinv_baseline > 0) {\n    global.set('pvinv_baseline', data.pvinv_baseline);\n}\nif (data.mppt_yield_today !== undefined)  global.set('mppt_yield_today',  data.mppt_yield_today || 0);\nif (data.pvinv_yield_today !== undefined) global.set('pvinv_yield_today', data.pvinv_yield_today || 0);\nif (data.total_yield_today !== undefined) global.set('total_yield_today', data.total_yield_today || 0);\n\nconst baseline = data.pvinv_baseline;\nconst total    = data.total_yield_today || 0;\nif (baseline && baseline > 0) {\n    node.status({fill:'green', shape:'dot',\n        text: `Restauré ✓ baseline=${baseline.toFixed(1)} total=${total.toFixed(2)} kWh`});\n} else {\n    node.status({fill:'yellow', shape:'ring', text:'Pas de baseline (1er jour ou après reset minuit)'});\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 1020,
+        "wires": [
+            []
+        ]
+    },
+
+    {
+        "id": "influx_write_fn",
+        "type": "function",
+        "z": "e6e3a16384301f83",
+        "name": "Formater line protocol InfluxDB",
+        "func": "const token  = env.get('INFLUX_TOKEN');\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\nif (!token) return null;\n\nconst baseline = global.get('pvinv_baseline');\n// Ne pas écrire si la baseline n'est pas encore établie (début de journée)\nif (baseline === null || baseline === undefined) return null;\n\nconst mppt  = global.get('mppt_yield_today')  || 0;\nconst pvinv = global.get('pvinv_yield_today') || 0;\nconst total = global.get('total_yield_today') || 0;\n\n// Tag 'day' = date locale Paris → permet de filtrer par jour au redémarrage\nconst now = new Date();\nconst parisISO = now.toLocaleString('sv-SE', {timeZone: 'Europe/Paris'});\nconst day = parisISO.substring(0, 10); // YYYY-MM-DD\n\nconst ts   = Math.floor(Date.now() / 1000);\nconst line = `solar_persist,day=${day},host=pi5 pvinv_baseline=${baseline},mppt_yield_today=${mppt},pvinv_yield_today=${pvinv},total_yield_today=${total} ${ts}`;\n\nmsg.url     = `http://dalybms-influxdb:8086/api/v2/write?org=${org}&bucket=${bucket}&precision=s`;\nmsg.method  = 'POST';\nmsg.payload = line;\nmsg.headers = {\n    'Authorization': 'Token ' + token,\n    'Content-Type': 'text/plain; charset=utf-8'\n};\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 780,
+        "y": 540,
+        "wires": [
+            [
+                "influx_write_req"
+            ]
+        ]
+    },
+    {
+        "id": "influx_write_req",
+        "type": "http request",
+        "z": "e6e3a16384301f83",
+        "name": "InfluxDB Write (solar_persist)",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 1000,
+        "y": 540,
+        "wires": [
+            []
+        ]
     },
 
     {
