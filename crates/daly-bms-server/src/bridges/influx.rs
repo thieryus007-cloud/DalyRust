@@ -5,6 +5,7 @@
 //! `batch_flush_interval_sec` secondes.
 
 use crate::config::InfluxConfig;
+use crate::et112::Et112Snapshot;
 use crate::state::AppState;
 use daly_bms_core::types::BmsSnapshot;
 use influxdb2::Client;
@@ -31,6 +32,9 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
     let mut rx = state.subscribe_ws();
     let flush_interval = Duration::from_secs_f64(cfg.batch_flush_interval_sec.max(1.0));
     let mut flush_ticker = tokio::time::interval(flush_interval);
+    // Ticker séparé pour polling ET112 (état est dans state, pas dans channel broadcast)
+    let et112_interval = Duration::from_secs(10);
+    let mut et112_ticker = tokio::time::interval(et112_interval);
 
     loop {
         tokio::select! {
@@ -40,6 +44,18 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
                     batch.extend(points);
                 }
                 if batch.len() >= cfg.batch_size {
+                    flush_batch(&client, &cfg.bucket, &mut batch).await;
+                }
+            }
+            _ = et112_ticker.tick() => {
+                // Lire les derniers snapshots ET112 et les écrire dans InfluxDB
+                let et112_snaps = state.et112_latest_all().await;
+                for snap in et112_snaps {
+                    if let Ok(p) = et112_snapshot_to_point(&snap) {
+                        batch.push(p);
+                    }
+                }
+                if !batch.is_empty() {
                     flush_batch(&client, &cfg.bucket, &mut batch).await;
                 }
             }
@@ -109,4 +125,30 @@ fn snapshot_to_points(snap: &BmsSnapshot) -> Vec<DataPoint> {
     }
 
     points
+}
+
+/// Convertit un [`Et112Snapshot`] en un point InfluxDB.
+///
+/// Measurement : `et112_status`
+/// Tags : `address` (hex), `name`
+fn et112_snapshot_to_point(snap: &Et112Snapshot) -> anyhow::Result<DataPoint> {
+    let addr_tag = format!("{:#04x}", snap.address);
+    let ts_ns = snap.timestamp.timestamp_nanos_opt().unwrap_or(0);
+
+    let point = DataPoint::builder("et112_status")
+        .tag("address", addr_tag)
+        .tag("name",    snap.name.clone())
+        .field("voltage_v",          snap.voltage_v as f64)
+        .field("current_a",          snap.current_a as f64)
+        .field("power_w",            snap.power_w as f64)
+        .field("apparent_power_va",  snap.apparent_power_va as f64)
+        .field("reactive_power_var", snap.reactive_power_var as f64)
+        .field("power_factor",       snap.power_factor as f64)
+        .field("frequency_hz",       snap.frequency_hz as f64)
+        .field("energy_import_wh",   snap.energy_import_wh as f64)
+        .field("energy_export_wh",   snap.energy_export_wh as f64)
+        .timestamp(ts_ns)
+        .build()?;
+
+    Ok(point)
 }

@@ -38,6 +38,10 @@ pub struct AppConfig {
     /// Configurations individuelles par BMS (optionnel)
     #[serde(default)]
     pub bms: Vec<BmsDeviceConfig>,
+
+    /// Configuration ET112 (compteurs Carlo Gavazzi RS485)
+    #[serde(default)]
+    pub et112: Et112Config,
 }
 
 // =============================================================================
@@ -151,6 +155,81 @@ pub struct SerialConfig {
     /// Liste explicite d'adresses BMS (ex: ["0x01", "0x02"])
     #[serde(default)]
     pub addresses: Vec<String>,
+}
+
+// =============================================================================
+// Configuration ET112
+// =============================================================================
+
+/// Configuration globale pour les compteurs Carlo Gavazzi ET112.
+///
+/// ```toml
+/// [et112]
+/// port             = "/dev/ttyUSB1"
+/// baud             = 9600
+/// poll_interval_ms = 5000
+/// ring_buffer_size = 720       # 1 heure à 1 mesure / 5s
+///
+/// [[et112.devices]]
+/// address          = "0x03"
+/// name             = "Micro-inverseurs"
+/// mqtt_index       = 3         # → topic santuario/pvinverter/3/venus
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Et112Config {
+    /// Port série (ex: /dev/ttyUSB1)
+    pub port: String,
+    /// Vitesse en bauds (9600 par défaut usine)
+    pub baud: u32,
+    /// Intervalle de polling en ms
+    pub poll_interval_ms: u64,
+    /// Taille du ring buffer par appareil
+    pub ring_buffer_size: usize,
+    /// Liste des compteurs ET112 configurés
+    #[serde(default)]
+    pub devices: Vec<Et112DeviceConfig>,
+}
+
+impl Default for Et112Config {
+    fn default() -> Self {
+        Self {
+            port:             "/dev/ttyUSB1".into(),
+            baud:             9600,
+            poll_interval_ms: 5000,
+            ring_buffer_size: 720,
+            devices:          Vec::new(),
+        }
+    }
+}
+
+/// Configuration d'un ET112 individuel.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct Et112DeviceConfig {
+    /// Adresse Modbus (ex: "0x03", "3")
+    pub address: String,
+    /// Nom affiché dans le dashboard
+    #[serde(default = "default_et112_name")]
+    pub name: String,
+    /// Index MQTT → topic `santuario/pvinverter/{mqtt_index}/venus`
+    pub mqtt_index: Option<u8>,
+    /// Puissance nominale max (W) — pour l'affichage gauge
+    pub max_power_w: Option<f32>,
+}
+
+fn default_et112_name() -> String {
+    "ET112".to_string()
+}
+
+impl Et112DeviceConfig {
+    /// Parse l'adresse en u8 (supporte "0x03", "3").
+    pub fn parsed_address(&self) -> u8 {
+        let s = self.address.trim();
+        if s.starts_with("0x") || s.starts_with("0X") {
+            u8::from_str_radix(&s[2..], 16).unwrap_or(3)
+        } else {
+            s.parse::<u8>().unwrap_or(3)
+        }
+    }
 }
 
 impl Default for SerialConfig {

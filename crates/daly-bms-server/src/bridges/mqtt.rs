@@ -14,6 +14,7 @@
 //! ```
 
 use crate::config::MqttConfig;
+use crate::et112::Et112Snapshot;
 use crate::state::AppState;
 use daly_bms_core::types::BmsSnapshot;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
@@ -68,18 +69,81 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig, addr_map: HashMap
     loop {
         ticker.tick().await;
 
+        // ── BMS snapshots ─────────────────────────────────────────────────────
         let snapshots = state.latest_snapshots().await;
         for snap in &snapshots {
-            // Résoudre l'identifiant de topic : "1", "2", … ou adresse décimale brute
             let topic_id = addr_map
                 .get(&snap.address)
                 .cloned()
                 .unwrap_or_else(|| snap.address.to_string());
             if let Err(e) = publish_snapshot(&client, &cfg, snap, &topic_id).await {
-                error!("MQTT publish erreur : {:?}", e);
+                error!("MQTT publish BMS erreur : {:?}", e);
+            }
+        }
+
+        // ── ET112 snapshots → topic pvinverter/{mqtt_index}/venus ────────────
+        let et112_snaps = state.et112_latest_all().await;
+        for snap in &et112_snaps {
+            // Résoudre le mqtt_index depuis la config
+            let idx = state.config.et112.devices
+                .iter()
+                .find(|d| d.parsed_address() == snap.address)
+                .and_then(|d| d.mqtt_index)
+                .unwrap_or(snap.address);
+            if let Err(e) = publish_et112_snapshot(&client, &cfg, snap, idx).await {
+                error!("MQTT publish ET112 erreur : {:?}", e);
             }
         }
     }
+}
+
+/// Publie un snapshot ET112 sur le topic `santuario/pvinverter/{idx}/venus`.
+///
+/// Format compatible `dbus-mqtt-venus` type pvinverter (com.victronenergy.pvinverter).
+async fn publish_et112_snapshot(
+    client: &AsyncClient,
+    cfg: &MqttConfig,
+    snap: &Et112Snapshot,
+    mqtt_index: u8,
+) -> anyhow::Result<()> {
+    // Dériver le topic prefix pvinverter depuis le topic prefix BMS
+    // "santuario/bms" → "santuario/pvinverter"
+    let base = cfg.topic_prefix
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix)
+        .unwrap_or("santuario");
+    let topic = format!("{}/pvinverter/{}/venus", base, mqtt_index);
+
+    let payload = json!({
+        "Ac": {
+            "L1": {
+                "Voltage": snap.voltage_v,
+                "Current": snap.current_a,
+                "Power":   snap.power_w,
+                "Energy": {
+                    "Forward": snap.energy_import_kwh(),
+                    "Reverse": snap.energy_export_kwh()
+                }
+            },
+            "Power":         snap.power_w,
+            "Energy": {
+                "Forward":   snap.energy_import_kwh(),
+                "Reverse":   snap.energy_export_kwh()
+            }
+        },
+        "StatusCode":           7,   // Running
+        "ErrorCode":            0,   // No Error
+        "Position":             1,   // AC output (micro-inverseurs sur AC output)
+        "IsGenericEnergyMeter": 1,   // ET112 = generic energy meter
+        "ProductName":          format!("ET112 addr={:#04x}", snap.address),
+        "CustomName":           snap.name,
+    });
+
+    client
+        .publish(&topic, QoS::AtLeastOnce, true, serde_json::to_vec(&payload)?)
+        .await?;
+
+    Ok(())
 }
 
 /// Publie un snapshot complet sur tous les topics d'un BMS.

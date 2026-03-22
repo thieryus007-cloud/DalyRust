@@ -36,6 +36,8 @@ mod meteo_service;
 mod mqtt_source;
 mod platform_manager;
 mod platform_service;
+mod pvinverter_manager;
+mod pvinverter_service;
 mod sensor_manager;
 mod switch_manager;
 mod switch_service;
@@ -51,10 +53,11 @@ use manager::BatteryManager;
 use meteo_manager::MeteoManager;
 use mqtt_source::{
     start_grid_mqtt_source, start_heatpump_mqtt_source, start_meteo_mqtt_source,
-    start_mqtt_source, start_platform_mqtt_source, start_sensor_mqtt_source,
-    start_switch_mqtt_source,
+    start_mqtt_source, start_platform_mqtt_source, start_pvinverter_mqtt_source,
+    start_sensor_mqtt_source, start_switch_mqtt_source,
 };
 use platform_manager::PlatformManager;
+use pvinverter_manager::PvinverterManager;
 use sensor_manager::SensorManager;
 use switch_manager::SwitchManager;
 use std::path::PathBuf;
@@ -111,21 +114,23 @@ async fn main() -> Result<()> {
     }
 
     info!(
-        version          = env!("CARGO_PKG_VERSION"),
-        dbus_bus         = %cfg.venus.dbus_bus,
-        mqtt_host        = %cfg.mqtt.host,
-        bms_prefix       = %cfg.mqtt.topic_prefix,
-        heat_prefix      = %cfg.heat.topic_prefix,
-        heatpump_prefix  = %cfg.heatpump.topic_prefix,
-        meteo_topic      = %cfg.meteo.topic,
-        switch_prefix    = %cfg.switch.topic_prefix,
-        grid_prefix      = %cfg.grid.topic_prefix,
-        platform_topic   = %cfg.platform.topic,
-        bms_count        = cfg.bms.len(),
-        sensor_count     = cfg.sensors.len(),
-        heatpump_count   = cfg.heatpumps.len(),
-        switch_count     = cfg.switches.len(),
-        grid_count       = cfg.grids.len(),
+        version            = env!("CARGO_PKG_VERSION"),
+        dbus_bus           = %cfg.venus.dbus_bus,
+        mqtt_host          = %cfg.mqtt.host,
+        bms_prefix         = %cfg.mqtt.topic_prefix,
+        heat_prefix        = %cfg.heat.topic_prefix,
+        heatpump_prefix    = %cfg.heatpump.topic_prefix,
+        meteo_topic        = %cfg.meteo.topic,
+        switch_prefix      = %cfg.switch.topic_prefix,
+        grid_prefix        = %cfg.grid.topic_prefix,
+        pvinverter_prefix  = %cfg.pvinverter.topic_prefix,
+        platform_topic     = %cfg.platform.topic,
+        bms_count          = cfg.bms.len(),
+        sensor_count       = cfg.sensors.len(),
+        heatpump_count     = cfg.heatpumps.len(),
+        switch_count       = cfg.switches.len(),
+        grid_count         = cfg.grids.len(),
+        pvinverter_count   = cfg.pvinverters.len(),
         "dbus-mqtt-venus démarrage"
     );
 
@@ -236,14 +241,31 @@ async fn main() -> Result<()> {
     });
 
     // -------------------------------------------------------------------------
+    // Bridge pvinverter/ET112 : MQTT santuario/pvinverter/{n}/venus → D-Bus com.victronenergy.pvinverter.{n}
+    // -------------------------------------------------------------------------
+    let (pvinverter_tx, pvinverter_rx) = mpsc::channel(32);
+    let mqtt_cfg7          = cfg.mqtt.clone();
+    let pvinverter_prefix  = cfg.pvinverter.topic_prefix.clone();
+    tokio::spawn(async move {
+        start_pvinverter_mqtt_source(mqtt_cfg7, pvinverter_prefix, pvinverter_tx).await;
+    });
+
+    let pvinverter_manager = PvinverterManager::new(cfg.venus.clone(), cfg.pvinverters, pvinverter_rx);
+    tokio::spawn(async move {
+        if let Err(e) = pvinverter_manager.run().await {
+            error!("PvinverterManager terminé avec erreur : {:#}", e);
+        }
+    });
+
+    // -------------------------------------------------------------------------
     // Bridge platform : MQTT santuario/platform/venus → D-Bus com.victronenergy.platform
     // Le PlatformManager est le dernier et bloque le thread principal
     // -------------------------------------------------------------------------
     let (platform_tx, platform_rx) = mpsc::channel(16);
-    let mqtt_cfg7      = cfg.mqtt.clone();
+    let mqtt_cfg8      = cfg.mqtt.clone();
     let platform_topic = cfg.platform.topic.clone();
     tokio::spawn(async move {
-        start_platform_mqtt_source(mqtt_cfg7, platform_topic, platform_tx).await;
+        start_platform_mqtt_source(mqtt_cfg8, platform_topic, platform_tx).await;
     });
 
     let platform_manager = PlatformManager::new(cfg.venus, cfg.platform, platform_rx);

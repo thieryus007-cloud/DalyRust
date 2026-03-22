@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}ET112 — {{ name }} — DalyBMS{% endblock %}
+
+{% block content %}
+
+{# ─── En-tête ────────────────────────────────────────────────────────────── #}
+<div class="info-bar">
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <div class="dot {% if connected %}active{% endif %}"></div>
+    {% if connected %}
+      <strong>Connecté</strong>
+    {% else %}
+      <span style="color:var(--muted)">En attente de données…</span>
+    {% endif %}
+  </div>
+  <div>⚡ <strong>ET112</strong> — {{ name }}</div>
+  <div>Adresse Modbus : <code>{{ addr_hex }}</code></div>
+  <div style="margin-left:auto;font-size:0.7rem;color:var(--muted)">
+    Dernière mesure : <span id="last-ts">{{ last_ts }}</span>
+  </div>
+</div>
+
+{% if connected %}
+
+{# ─── Cartes de métriques instantanées ──────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+
+  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Puissance</div>
+    <div style="font-size:2rem;font-weight:700;color:{% if power_w >= 0.0 %}var(--green){% else %}var(--accent){% endif %}" id="val-power">
+      {{ power_w|f1 }} W
+    </div>
+    <div style="font-size:0.7rem;color:var(--muted)">{% if power_w >= 0.0 %}Import{% else %}Export{% endif %}</div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Tension</div>
+    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-voltage">
+      {{ voltage_v|f1 }} V
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Courant</div>
+    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-current">
+      {{ current_a|f2 }} A
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Facteur de puissance</div>
+    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-pf">
+      {{ power_factor|f3 }}
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Fréquence</div>
+    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-freq">
+      {{ frequency_hz|f2 }} Hz
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Puiss. apparente</div>
+    <div style="font-size:2rem;font-weight:700;color:var(--muted)" id="val-apparent">
+      {{ apparent_power_va|f1 }} VA
+    </div>
+  </div>
+
+</div>
+
+{# ─── Énergie cumulée ─────────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+
+  <div class="card" style="padding:1.5rem;display:flex;flex-direction:column;gap:0.5rem;">
+    <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">⬇ Énergie importée (depuis MàJ)</div>
+    <div style="font-size:2.2rem;font-weight:700;color:var(--green)" id="val-import">
+      {{ energy_import_kwh|f3 }} kWh
+    </div>
+    <div style="font-size:0.7rem;color:var(--muted)">{{ energy_import_wh|f0 }} Wh brut (cumulé compteur)</div>
+  </div>
+
+  <div class="card" style="padding:1.5rem;display:flex;flex-direction:column;gap:0.5rem;">
+    <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">⬆ Énergie exportée</div>
+    <div style="font-size:2.2rem;font-weight:700;color:var(--accent)" id="val-export">
+      {{ energy_export_kwh|f3 }} kWh
+    </div>
+    <div style="font-size:0.7rem;color:var(--muted)">{{ energy_export_wh|f0 }} Wh brut (cumulé compteur)</div>
+  </div>
+
+</div>
+
+{# ─── Graphique puissance (ECharts) ──────────────────────────────────────── #}
+<div class="card" style="padding:1rem;">
+  <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.75rem;color:var(--muted)">Historique puissance (dernières mesures)</div>
+  <div id="chart-power" style="height:250px;"></div>
+</div>
+
+{% else %}
+
+<div class="card" style="text-align:center;padding:3rem;color:var(--muted)">
+  <div style="font-size:2.5rem;margin-bottom:1rem">⏳</div>
+  <div>En attente du premier snapshot ET112…</div>
+  <div style="font-size:0.8rem;margin-top:0.5rem">
+    Vérifiez que l'ET112 est alimenté sur <code>{{ addr_hex }}</code> @ <code>/dev/ttyUSB1</code>
+  </div>
+</div>
+
+{% endif %}
+
+{# ─── Script ECharts ──────────────────────────────────────────────────────── #}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script>
+const ADDR = "{{ address }}";
+const API  = `/api/v1/et112/${ADDR}`;
+
+// Initialiser le graphique
+const chartDom = document.getElementById('chart-power');
+let myChart = null;
+if (chartDom) {
+    myChart = echarts.init(chartDom);
+    myChart.setOption({
+        tooltip: { trigger: 'axis', formatter: params => {
+            const t = params[0].name;
+            return `${t}<br/>Puissance: <b>${params[0].value} W</b>`;
+        }},
+        xAxis: { type: 'category', data: [], axisLabel: { fontSize: 11 } },
+        yAxis: { type: 'value', name: 'W', axisLabel: { fontSize: 11 } },
+        series: [{
+            name: 'Puissance',
+            type: 'line',
+            data: [],
+            smooth: true,
+            lineStyle: { color: '#0969da' },
+            areaStyle: { opacity: 0.15 },
+            symbol: 'none',
+        }],
+        grid: { left: 50, right: 20, top: 20, bottom: 30 },
+    });
+    window.addEventListener('resize', () => myChart.resize());
+}
+
+// Mise à jour périodique
+async function update() {
+    try {
+        const resp = await fetch(`${API}/status`);
+        if (!resp.ok) return;
+        const d = await resp.json();
+        document.getElementById('val-power').textContent   = d.power_w.toFixed(1) + ' W';
+        document.getElementById('val-voltage').textContent = d.voltage_v.toFixed(1) + ' V';
+        document.getElementById('val-current').textContent = d.current_a.toFixed(2) + ' A';
+        document.getElementById('val-pf').textContent      = d.power_factor.toFixed(3);
+        document.getElementById('val-freq').textContent    = d.frequency_hz.toFixed(2) + ' Hz';
+        document.getElementById('val-apparent').textContent = d.apparent_power_va.toFixed(1) + ' VA';
+        document.getElementById('val-import').textContent  = (d.energy_import_wh / 1000).toFixed(3) + ' kWh';
+        document.getElementById('val-export').textContent  = (d.energy_export_wh / 1000).toFixed(3) + ' kWh';
+        document.getElementById('last-ts').textContent     = new Date().toLocaleTimeString();
+    } catch(e) {}
+}
+
+async function loadHistory() {
+    if (!myChart) return;
+    try {
+        const resp = await fetch(`${API}/history?limit=120`);
+        if (!resp.ok) return;
+        const d = await resp.json();
+        const xs = d.history.map(s => new Date(s.timestamp).toLocaleTimeString());
+        const ys = d.history.map(s => s.power_w.toFixed(1));
+        myChart.setOption({ xAxis: { data: xs }, series: [{ data: ys }] });
+    } catch(e) {}
+}
+
+update();
+loadHistory();
+setInterval(update, 5000);
+setInterval(loadHistory, 30000);
+</script>
+
+{% endblock %}

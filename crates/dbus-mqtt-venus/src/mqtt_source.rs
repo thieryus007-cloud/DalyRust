@@ -6,7 +6,7 @@
 //! - `{heat_prefix}/+/venus` → capteurs température → `SensorMqttEvent`
 
 use crate::config::MqttRef;
-use crate::types::{GridPayload, HeatPayload, HeatpumpPayload, MeteoPayload, PlatformPayload, SwitchPayload, VenusPayload};
+use crate::types::{GridPayload, HeatPayload, HeatpumpPayload, MeteoPayload, PlatformPayload, PvinverterPayload, SwitchPayload, VenusPayload};
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -73,6 +73,15 @@ pub struct GridMqttEvent {
 pub struct PlatformMqttEvent {
     /// Payload platform parsé
     pub payload: PlatformPayload,
+}
+
+/// Événement onduleur PV / compteur ET112 reçu depuis MQTT (topic pvinverter).
+#[derive(Debug)]
+pub struct PvinverterMqttEvent {
+    /// Index (ex: `santuario/pvinverter/3/venus` → `3`)
+    pub mqtt_index: u8,
+    /// Payload pvinverter parsé
+    pub payload: PvinverterPayload,
 }
 
 // =============================================================================
@@ -596,6 +605,74 @@ async fn platform_connect_and_run(
                 }
             }
             Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT platform ConnAck reçu"),
+            Ok(_) => {}
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
+// =============================================================================
+// Source MQTT pour onduleurs PV / compteurs ET112 (santuario/pvinverter/{n}/venus)
+// =============================================================================
+
+/// Démarre la source MQTT pour les onduleurs PV / compteurs ET112.
+///
+/// S'abonne sur `{pvinverter_prefix}/+/venus`, parse le `PvinverterPayload`
+/// et émet des `PvinverterMqttEvent` vers le `PvinverterManager`.
+pub async fn start_pvinverter_mqtt_source(
+    cfg:               MqttRef,
+    pvinverter_prefix: String,
+    tx:                mpsc::Sender<PvinverterMqttEvent>,
+) {
+    let subscribe_topic = format!("{}/+/venus", pvinverter_prefix);
+
+    info!(
+        broker = %format!("{}:{}", cfg.host, cfg.port),
+        topic  = %subscribe_topic,
+        "Démarrage source MQTT pvinverter/ET112"
+    );
+
+    loop {
+        match pvinverter_connect_and_run(&cfg, &subscribe_topic, &pvinverter_prefix, &tx).await {
+            Ok(())  => warn!("MQTT source pvinverter terminée de façon inattendue, reconnexion dans 5s"),
+            Err(e)  => error!("MQTT source pvinverter erreur : {:#}, reconnexion dans 5s", e),
+        }
+        tokio::time::sleep(Duration::from_secs(5)).await;
+    }
+}
+
+async fn pvinverter_connect_and_run(
+    cfg:               &MqttRef,
+    subscribe_topic:   &str,
+    pvinverter_prefix: &str,
+    tx:                &mpsc::Sender<PvinverterMqttEvent>,
+) -> anyhow::Result<()> {
+    let client_id = format!("dbus-mqtt-venus-pvinverter-{}", uuid_short());
+    let mut opts = MqttOptions::new(client_id, &cfg.host, cfg.port);
+    opts.set_keep_alive(Duration::from_secs(30));
+    opts.set_clean_session(true);
+    if let (Some(u), Some(p)) = (&cfg.username, &cfg.password) { opts.set_credentials(u, p); }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 64);
+    client.subscribe(subscribe_topic, QoS::AtLeastOnce).await?;
+    info!("MQTT pvinverter connecté, abonnement sur '{}'", subscribe_topic);
+
+    loop {
+        match eventloop.poll().await {
+            Ok(Event::Incoming(Packet::Publish(msg))) => {
+                let topic = &msg.topic;
+                debug!(topic = %topic, "MQTT pvinverter message reçu");
+                if let Some(idx) = extract_mqtt_index(topic, pvinverter_prefix) {
+                    match serde_json::from_slice::<PvinverterPayload>(&msg.payload) {
+                        Ok(payload) => {
+                            let evt = PvinverterMqttEvent { mqtt_index: idx, payload };
+                            if tx.send(evt).await.is_err() { return Ok(()); }
+                        }
+                        Err(e) => warn!(topic = %topic, "Échec parsing payload pvinverter: {}", e),
+                    }
+                }
+            }
+            Ok(Event::Incoming(Packet::ConnAck(_))) => info!("MQTT pvinverter ConnAck reçu"),
             Ok(_) => {}
             Err(e) => return Err(e.into()),
         }

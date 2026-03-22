@@ -15,6 +15,7 @@
 
 mod autodetect;
 mod config;
+mod et112;
 mod state;
 mod api;
 mod bridges;
@@ -221,6 +222,31 @@ async fn main() -> anyhow::Result<()> {
         let (s, c) = (state.clone(), config.alerts.clone());
         async move { alerts::run_alert_engine(s, c).await }
     });
+
+    // ── Bridge ET112 polling (tâche indépendante) ──────────────────────────────
+    if !config.et112.devices.is_empty() {
+        info!(
+            port  = %config.et112.port,
+            count = config.et112.devices.len(),
+            "Démarrage polling ET112"
+        );
+        let state_et = state.clone();
+        let et112_cfg = config.et112.clone();
+        tokio::spawn(async move {
+            et112::run_et112_poll_loop(
+                et112_cfg.port,
+                et112_cfg.baud,
+                et112_cfg.devices,
+                std::time::Duration::from_millis(et112_cfg.poll_interval_ms),
+                move |snap| {
+                    let state = state_et.clone();
+                    tokio::spawn(async move {
+                        state.on_et112_snapshot(snap).await;
+                    });
+                },
+            ).await;
+        });
+    }
 
     // ── Mode SIMULATION ou HARDWARE ────────────────────────────────────────────
     if args.simulate {

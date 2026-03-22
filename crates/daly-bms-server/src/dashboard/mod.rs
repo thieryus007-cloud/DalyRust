@@ -10,6 +10,7 @@
 
 pub mod charts;
 
+use crate::et112::Et112Snapshot;
 use crate::state::AppState;
 use askama::Template;
 use axum::{
@@ -35,6 +36,10 @@ mod filters {
     /// Formate un f32 sans décimale : 1234
     pub fn f0(v: &f32) -> ::askama::Result<String> {
         Ok(format!("{:.0}", v))
+    }
+    /// Formate un f32 avec 2 décimales : 3.40
+    pub fn f2(v: &f32) -> ::askama::Result<String> {
+        Ok(format!("{:.2}", v))
     }
     /// Formate un f32 avec 3 décimales : 3.405
     pub fn f3(v: &f32) -> ::askama::Result<String> {
@@ -376,12 +381,101 @@ pub async fn dashboard_settings(State(state): State<AppState>) -> Response {
     render(SettingsTemplate { bms_list })
 }
 
+// =============================================================================
+// Dashboard ET112
+// =============================================================================
+
+#[derive(Template)]
+#[template(path = "et112.html")]
+struct Et112Template {
+    name:                String,
+    address:             u8,
+    addr_hex:            String,
+    connected:           bool,
+    last_ts:             String,
+    // Valeurs instantanées
+    power_w:             f32,
+    voltage_v:           f32,
+    current_a:           f32,
+    apparent_power_va:   f32,
+    power_factor:        f32,
+    frequency_hz:        f32,
+    // Énergie
+    energy_import_wh:    f32,
+    energy_export_wh:    f32,
+    energy_import_kwh:   f32,
+    energy_export_kwh:   f32,
+}
+
+/// Page de monitoring ET112.
+pub async fn dashboard_et112(
+    State(state): State<AppState>,
+    Path(addr_str): Path<String>,
+) -> Response {
+    let addr = match parse_addr(&addr_str) {
+        Some(a) => a,
+        None    => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    // Trouver le nom depuis la config
+    let name = state.config.et112.devices
+        .iter()
+        .find(|d| d.parsed_address() == addr)
+        .map(|d| d.name.clone())
+        .unwrap_or_else(|| format!("ET112 {:#04x}", addr));
+
+    let snap_opt = state.et112_latest_for(addr).await;
+    let connected = snap_opt.is_some();
+
+    let (last_ts, power_w, voltage_v, current_a, apparent_power_va,
+         power_factor, frequency_hz, energy_import_wh, energy_export_wh) =
+        if let Some(ref s) = snap_opt {
+            (
+                s.timestamp.format("%H:%M:%S").to_string(),
+                s.power_w, s.voltage_v, s.current_a, s.apparent_power_va,
+                s.power_factor, s.frequency_hz, s.energy_import_wh, s.energy_export_wh,
+            )
+        } else {
+            ("—".to_string(), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        };
+
+    render(Et112Template {
+        name,
+        address: addr,
+        addr_hex: format!("{:#04x}", addr),
+        connected,
+        last_ts,
+        power_w,
+        voltage_v,
+        current_a,
+        apparent_power_va,
+        power_factor,
+        frequency_hz,
+        energy_import_wh,
+        energy_export_wh,
+        energy_import_kwh: energy_import_wh / 1000.0,
+        energy_export_kwh: energy_export_wh / 1000.0,
+    })
+}
+
+/// Liste des ET112 configurés (page d'accueil redirige vers premier ET112).
+pub async fn dashboard_et112_list(State(state): State<AppState>) -> Response {
+    let devices = &state.config.et112.devices;
+    if let Some(first) = devices.first() {
+        let addr = first.parsed_address();
+        return Redirect::temporary(&format!("/dashboard/et112/{}", addr)).into_response();
+    }
+    (StatusCode::NOT_FOUND, "Aucun ET112 configuré").into_response()
+}
+
 /// Construit le routeur du dashboard (à fusionner dans le routeur principal).
 pub fn build_dashboard_router() -> Router<AppState> {
     Router::new()
-        .route("/",                      get(redirect_root))
-        .route("/dashboard",             get(dashboard_index))
-        .route("/dashboard/bms/:id",     get(dashboard_bms))
-        .route("/dashboard/logs",        get(dashboard_logs))
-        .route("/dashboard/settings",    get(dashboard_settings))
+        .route("/",                          get(redirect_root))
+        .route("/dashboard",                 get(dashboard_index))
+        .route("/dashboard/bms/:id",         get(dashboard_bms))
+        .route("/dashboard/logs",            get(dashboard_logs))
+        .route("/dashboard/settings",        get(dashboard_settings))
+        .route("/dashboard/et112",           get(dashboard_et112_list))
+        .route("/dashboard/et112/:addr",     get(dashboard_et112))
 }

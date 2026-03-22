@@ -297,6 +297,106 @@ pub struct PlatformRestorePayload {
 }
 
 // =============================================================================
+// Payload onduleur PV / compteur énergie AC (santuario/pvinverter/{n}/venus)
+// =============================================================================
+
+/// Payload pour onduleurs PV et compteurs énergie AC (ET112 micro-inverseurs).
+///
+/// Publié par `daly-bms-server` sur `santuario/pvinverter/{n}/venus`.
+/// Cible D-Bus : `com.victronenergy.pvinverter.{n}`
+///
+/// Chemins D-Bus exposés (wiki Victron — PV Inverter) :
+///   /Ac/Power              — W puissance AC totale
+///   /Ac/Energy/Forward     — kWh énergie produite totale
+///   /Ac/L1/Voltage         — V tension L1
+///   /Ac/L1/Current         — A courant L1
+///   /Ac/L1/Power           — W puissance L1
+///   /Ac/L1/Energy/Forward  — kWh énergie L1
+///   /StatusCode            — 0=Startup…7=Running
+///   /ErrorCode             — 0=No Error
+///   /Position              — 0=AC Input, 1=AC Output
+///   /IsGenericEnergyMeter  — 1 si compteur générique (ET112)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PvinverterPayload {
+    /// Données AC (L1 + totaux).
+    #[serde(rename = "Ac")]
+    pub ac: PvinverterAcPayload,
+
+    /// Code d'état : 0=Startup, 1=Fault, 2=Bulk, 3=Absorption,
+    /// 4=Float, 5=Inverted, 6=Off, 7=Running.
+    #[serde(rename = "StatusCode", default)]
+    pub status_code: i32,
+
+    /// Code d'erreur : 0=No Error.
+    #[serde(rename = "ErrorCode", default)]
+    pub error_code: i32,
+
+    /// Position : 0=AC Input, 1=AC Output.
+    #[serde(rename = "Position", default)]
+    pub position: i32,
+
+    /// 1 si compteur générique masquerade en pvinverter (ET112).
+    #[serde(rename = "IsGenericEnergyMeter", default)]
+    pub is_generic_energy_meter: i32,
+
+    /// Nom produit (ex: "ET112 addr=0x03").
+    #[serde(rename = "ProductName", default)]
+    pub product_name: Option<String>,
+
+    /// Nom personnalisé affiché dans Venus OS.
+    #[serde(rename = "CustomName", default)]
+    pub custom_name: Option<String>,
+}
+
+/// Données AC du payload pvinverter (totaux + phase L1).
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PvinverterAcPayload {
+    /// Phase L1.
+    #[serde(rename = "L1", default)]
+    pub l1: Option<PvinverterL1Payload>,
+
+    /// Puissance AC totale en W.
+    #[serde(rename = "Power", default)]
+    pub power: f64,
+
+    /// Énergie AC totale.
+    #[serde(rename = "Energy", default)]
+    pub energy: Option<PvinverterEnergyPayload>,
+}
+
+/// Données de la phase L1 pour pvinverter.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PvinverterL1Payload {
+    /// Tension en V AC.
+    #[serde(rename = "Voltage", default)]
+    pub voltage: f64,
+
+    /// Courant en A.
+    #[serde(rename = "Current", default)]
+    pub current: f64,
+
+    /// Puissance en W.
+    #[serde(rename = "Power", default)]
+    pub power: f64,
+
+    /// Énergie L1.
+    #[serde(rename = "Energy", default)]
+    pub energy: Option<PvinverterEnergyPayload>,
+}
+
+/// Sous-payload énergie pour pvinverter.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PvinverterEnergyPayload {
+    /// Énergie produite / importée en kWh.
+    #[serde(rename = "Forward", default)]
+    pub forward: f64,
+
+    /// Énergie consommée / exportée en kWh (optionnel).
+    #[serde(rename = "Reverse", default)]
+    pub reverse: f64,
+}
+
+// =============================================================================
 // Payload batteries (santuario/bms/{n}/venus)
 // =============================================================================
 

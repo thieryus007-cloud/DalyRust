@@ -64,6 +64,14 @@ pub struct VenusServiceConfig {
     /// Configuration du service platform (backup/restore Pi5)
     #[serde(default)]
     pub platform: PlatformConfig,
+
+    /// Configuration MQTT pvinverter (onduleurs PV / compteurs ET112)
+    #[serde(default)]
+    pub pvinverter: PvinverterConfig,
+
+    /// Configurations par onduleur PV / compteur ET112
+    #[serde(default)]
+    pub pvinverters: Vec<PvinverterRef>,
 }
 
 /// Référence à la config MQTT du serveur principal.
@@ -326,6 +334,41 @@ pub struct GridRef {
     /// "grid"   → `com.victronenergy.grid.{prefix}_{n}`
     /// "acload" → `com.victronenergy.acload.{prefix}_{n}`
     pub service_type: Option<String>,
+}
+
+// =============================================================================
+// Configuration onduleurs PV / compteurs ET112 (pvinverter)
+// =============================================================================
+
+/// Préfixe MQTT pour les onduleurs PV / compteurs d'énergie ET112.
+///
+/// Topic abonné : `{topic_prefix}/{n}/venus`
+/// Exemple : `santuario/pvinverter/3/venus`
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PvinverterConfig {
+    /// Préfixe des topics pvinverter (ex: "santuario/pvinverter")
+    pub topic_prefix: String,
+}
+
+impl Default for PvinverterConfig {
+    fn default() -> Self {
+        Self { topic_prefix: "santuario/pvinverter".to_string() }
+    }
+}
+
+/// Configuration d'un onduleur PV / compteur ET112 individuel.
+///
+/// Une section `[[pvinverters]]` par appareil dans le TOML.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct PvinverterRef {
+    /// Index dans le topic MQTT (ex: 3 → `santuario/pvinverter/3/venus`).
+    pub mqtt_index: Option<u8>,
+
+    /// Nom affiché dans Venus OS (`/ProductName`).
+    pub name: Option<String>,
+
+    /// DeviceInstance Venus OS D-Bus (ex: 63).
+    pub device_instance: Option<u32>,
 }
 
 // =============================================================================

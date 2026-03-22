@@ -80,6 +80,9 @@ bytes         = "1"
 futures       = "0.3"
 tokio-util    = { version = "0.7",  features = ["codec"] }
 
+# ── Modbus RTU (ET112 et autres compteurs RS485) ───────────────────────────────
+tokio-modbus  = { version = "0.14", features = ["rtu"] }
+
 # =============================================================================
 # Release profile — optimisé taille + vitesse pour le Pi
 # =============================================================================

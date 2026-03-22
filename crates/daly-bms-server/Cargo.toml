@@ -37,3 +37,4 @@ uuid           = { workspace = true }
 futures        = { workspace = true }
 bytes          = { workspace = true }
 askama         = "0.12"
+tokio-modbus   = { workspace = true }

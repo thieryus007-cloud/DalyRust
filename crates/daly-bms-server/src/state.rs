@@ -4,6 +4,7 @@
 //! et les handlers Axum.
 
 use crate::config::AppConfig;
+use crate::et112::Et112Snapshot;
 use daly_bms_core::bus::DalyPort;
 use daly_bms_core::types::BmsSnapshot;
 use serde::Serialize;
@@ -63,6 +64,36 @@ impl BmsRingBuffer {
 // AppState
 // =============================================================================
 
+// =============================================================================
+// Ring buffer ET112
+// =============================================================================
+
+/// Ring buffer de snapshots ET112 pour un compteur.
+pub struct Et112RingBuffer {
+    pub buffer: VecDeque<Et112Snapshot>,
+    pub capacity: usize,
+}
+
+impl Et112RingBuffer {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            buffer: VecDeque::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    pub fn push(&mut self, snap: Et112Snapshot) {
+        if self.buffer.len() >= self.capacity {
+            self.buffer.pop_front();
+        }
+        self.buffer.push_back(snap);
+    }
+
+    pub fn latest(&self) -> Option<&Et112Snapshot> {
+        self.buffer.back()
+    }
+}
+
 /// État global partagé de l'application.
 #[derive(Clone)]
 pub struct AppState {
@@ -83,6 +114,9 @@ pub struct AppState {
 
     /// Buffer de logs pour l'interface web.
     pub log_buffer: LogBuffer,
+
+    /// Ring buffers ET112 indexés par adresse Modbus.
+    pub et112_buffers: Arc<RwLock<BTreeMap<u8, Et112RingBuffer>>>,
 }
 
 impl AppState {
@@ -96,6 +130,13 @@ impl AppState {
             buffers.insert(*addr, BmsRingBuffer::new(ring_size));
         }
 
+        // Pré-allouer les ring buffers ET112
+        let et112_ring_size = config.et112.ring_buffer_size;
+        let mut et112_buffers = BTreeMap::new();
+        for dev in &config.et112.devices {
+            et112_buffers.insert(dev.parsed_address(), Et112RingBuffer::new(et112_ring_size));
+        }
+
         Self {
             config: Arc::new(config),
             buffers: Arc::new(RwLock::new(buffers)),
@@ -103,6 +144,7 @@ impl AppState {
             polling_active: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             port: Arc::new(RwLock::new(None)),
             log_buffer,
+            et112_buffers: Arc::new(RwLock::new(et112_buffers)),
         }
     }
 
@@ -152,5 +194,36 @@ impl AppState {
     /// S'abonne au canal broadcast WebSocket.
     pub fn subscribe_ws(&self) -> broadcast::Receiver<Arc<Vec<BmsSnapshot>>> {
         self.ws_tx.subscribe()
+    }
+
+    /// Enregistre un snapshot ET112 dans le ring buffer correspondant.
+    pub async fn on_et112_snapshot(&self, snap: Et112Snapshot) {
+        let mut buffers = self.et112_buffers.write().await;
+        buffers
+            .entry(snap.address)
+            .or_insert_with(|| Et112RingBuffer::new(self.config.et112.ring_buffer_size))
+            .push(snap);
+    }
+
+    /// Retourne le dernier snapshot ET112 pour une adresse donnée.
+    pub async fn et112_latest_for(&self, addr: u8) -> Option<Et112Snapshot> {
+        let buffers = self.et112_buffers.read().await;
+        buffers.get(&addr)?.latest().cloned()
+    }
+
+    /// Retourne les `n` derniers snapshots ET112 (pour historique).
+    pub async fn et112_history_for(&self, addr: u8, limit: usize) -> Vec<Et112Snapshot> {
+        let buffers = self.et112_buffers.read().await;
+        if let Some(buf) = buffers.get(&addr) {
+            buf.buffer.iter().rev().take(limit).cloned().collect()
+        } else {
+            vec![]
+        }
+    }
+
+    /// Retourne tous les derniers snapshots ET112.
+    pub async fn et112_latest_all(&self) -> Vec<Et112Snapshot> {
+        let buffers = self.et112_buffers.read().await;
+        buffers.values().filter_map(|b| b.latest().cloned()).collect()
     }
 }

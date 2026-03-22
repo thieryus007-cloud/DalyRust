@@ -195,6 +195,46 @@ product_name    = "Capteur Irradiance"
 device_instance = 40      # DeviceInstance Venus OS / VRM
 
 
+# =============================================================================
+# Compteur énergie ET112 Carlo Gavazzi (RS485 Modbus RTU)
+# =============================================================================
+# Matériel : ET112 sur /dev/ttyUSB1 (FTDI FT232 USB-RS485, Bus 004 Device 003)
+# Adresses : 0x03 = micro-inverseurs Pi5 (0x01 et 0x02 connectés directement sur Victron)
+#
+# Chemins D-Bus pvinverter exposés (via dbus-mqtt-venus sur NanoPi) :
+#   /Ac/Power, /Ac/Energy/Forward
+#   /Ac/L1/{Voltage, Current, Power, Energy/Forward}
+#   /StatusCode=7, /ErrorCode=0, /Position=1, /IsGenericEnergyMeter=1
+
+[et112]
+# Port série USB-RS485 (partagé ou dédié)
+port = "/dev/ttyUSB1"
+
+# Vitesse de communication (ET112 standard = 9600 baud)
+baud = 9600
+
+# Intervalle de polling en millisecondes (5000 = toutes les 5 secondes)
+poll_interval_ms = 5000
+
+# Taille du ring buffer (720 = 1 heure à 1 mesure/5s)
+ring_buffer_size = 720
+
+[[et112.devices]]
+address     = "0x03"           # Adresse Modbus RTU de l'ET112
+name        = "Micro-inverseurs"
+mqtt_index  = 3                # → topic santuario/pvinverter/3/venus
+
+# Les ET112 0x01 et 0x02 sont connectés directement sur le Victron (à migrer)
+# [[et112.devices]]
+# address     = "0x01"
+# name        = "ET112-PV-1"
+# mqtt_index  = 1
+# [[et112.devices]]
+# address     = "0x02"
+# name        = "ET112-PV-2"
+# mqtt_index  = 2
+
+
 [influxdb]
 # true  = activer l'écriture InfluxDB (Docker infra doit être démarré)
 # false = désactiver (pas de Docker, ou test sans InfluxDB)

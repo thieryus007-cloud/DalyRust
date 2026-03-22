@@ -4,6 +4,7 @@
 
 pub mod system;
 pub mod bms;
+pub mod et112;
 
 use crate::dashboard;
 use crate::state::AppState;
@@ -56,6 +57,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/bms/:id/settings/current-alarms",          post(bms::set_current_alarms))
         .route("/api/v1/bms/:id/settings/delta-alarms",            post(bms::set_delta_alarms))
         .route("/api/v1/bms/:id/settings/balancing",               post(bms::set_balancing))
+
+        // ── ET112 ────────────────────────────────────────────────────────────
+        .route("/api/v1/et112",                   get(et112::list_et112))
+        .route("/api/v1/et112/:addr/status",      get(et112::get_et112_status))
+        .route("/api/v1/et112/:addr/history",     get(et112::get_et112_history))
 
         // ── WebSocket ─────────────────────────────────────────────────────────
         .route("/ws/bms/stream",         get(bms::ws_all))

@@ -143,6 +143,38 @@ topic_prefix = "santuario/grid"
 # service_type    = "grid"     # "grid" ou "acload"
 
 # -----------------------------------------------------------------------------
+# Onduleurs PV / compteurs énergie ET112 (Carlo Gavazzi)
+# Topics : santuario/pvinverter/{mqtt_index}/venus
+# D-Bus  : com.victronenergy.pvinverter.mqtt_{mqtt_index}
+#
+# ET112 sur Pi5 (adresse RS485 0x03 → mqtt_index=3, device_instance=63)
+# Les ET112 0x01/0x02 restent connectés directement sur le Victron
+# (instances 61/62 déjà enregistrées côté Victron).
+#
+# /Ac/Power, /Ac/Energy/Forward, /Ac/L1/{Voltage,Current,Power,Energy/Forward}
+# /StatusCode=7 (Running), /ErrorCode=0, /Position=1 (AC Output)
+# /IsGenericEnergyMeter=1 (ET112 masquerade en pvinverter)
+# -----------------------------------------------------------------------------
+[pvinverter]
+topic_prefix = "santuario/pvinverter"
+
+[[pvinverters]]
+mqtt_index      = 3
+name            = "Micro-inverseurs"
+device_instance = 63          # 61/62 = ET112 Victron direct, 63 = ET112 Pi5
+
+# Décommenter lors de la migration des ET112 depuis le Victron vers le Pi5 :
+# [[pvinverters]]
+# mqtt_index      = 1
+# name            = "ET112-PV-1"
+# device_instance = 61
+#
+# [[pvinverters]]
+# mqtt_index      = 2
+# name            = "ET112-PV-2"
+# device_instance = 62
+
+# -----------------------------------------------------------------------------
 # Platform Pi5 — état backup/restore (singleton)
 # Topic fixe : santuario/platform/venus
 # D-Bus      : com.victronenergy.platform

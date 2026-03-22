@@ -47,6 +47,7 @@
 │    ├── com.victronenergy.heatpump.mqtt_1                         │
 │    ├── com.victronenergy.switch.*                                │
 │    ├── com.victronenergy.grid.* / acload.*                       │
+│    ├── com.victronenergy.pvinverter.mqtt_3 (instance 63) ← ET112 │
 │    └── com.victronenergy.meteo (singleton)                       │
 │                                                                  │
 │  dbus-mqtt-battery (legacy, à terme à supprimer)                 │
@@ -890,6 +891,157 @@ ls -la /dev/serial/by-id/
 
 ---
 
+## 16c. INTÉGRATION ET112 CARLO GAVAZZI (2026-03-22) ✅
+
+**Objectif** : Remplacer le capteur irradiance RS485 (déplacé) par un compteur ET112
+connecté sur le même port `/dev/ttyUSB1`, et l'exposer comme `com.victronenergy.pvinverter`
+sur le D-Bus Venus OS (micro-inverseurs, instance 63).
+
+### Matériel
+
+| Composant | Détail |
+|---|---|
+| Compteur | Carlo Gavazzi ET112 |
+| Interface | FTDI FT232 USB-RS485 — Pi5 Bus 004 Device 003 |
+| Port | `/dev/ttyUSB1` |
+| Adresse Modbus | `0x03` (slave address configurée sur le compteur) |
+| Baud | 9600 8N1 |
+| Protocole | Modbus RTU FC=04, FLOAT32 Big-Endian |
+
+### Registres Modbus ET112 (FLOAT32 = 2 words par registre)
+
+| Adresse | Grandeur | Unité |
+|---|---|---|
+| 0x0000 | Tension V | V |
+| 0x0002 | Courant I | A |
+| 0x0004 | Puissance active | W |
+| 0x0006 | Puissance apparente | VA |
+| 0x0008 | Puissance réactive | VAR |
+| 0x000A | Facteur de puissance | — |
+| 0x000C | Angle de phase | ° |
+| 0x000E | Fréquence | Hz |
+| 0x0010 | Énergie importée | Wh |
+| 0x0012 | Énergie exportée | Wh |
+
+### Architecture
+
+```
+ET112 (/dev/ttyUSB1, addr 0x03)
+  ↓ Modbus RTU (tokio-modbus 0.14, FLOAT32 Big-Endian)
+daly-bms-server — et112::run_et112_poll_loop (5s)
+  ├── AppState::on_et112_snapshot() → ring buffer 720 entrées
+  ├── API REST : GET /api/v1/et112, /api/v1/et112/3/status, /api/v1/et112/3/history
+  ├── Dashboard SSR : /dashboard/et112/3 (ECharts temps réel)
+  ├── MQTT : santuario/pvinverter/3/venus (retain=true)
+  └── InfluxDB : measurement et112_status (tags: address, name)
+
+santuario/pvinverter/3/venus → (NanoPi broker)
+  ↓ dbus-mqtt-venus — PvinverterManager → PvinverterServiceHandle
+com.victronenergy.pvinverter.mqtt_3 (device instance 63)
+  ├── /Ac/Power
+  ├── /Ac/Energy/Forward
+  ├── /Ac/L1/{Voltage, Current, Power, Energy/Forward}
+  ├── /StatusCode=7 (Running)
+  ├── /ErrorCode=0
+  ├── /Position=1 (AC Output — micro-inverseurs sur AC output)
+  └── /IsGenericEnergyMeter=1 (ET112 masquerade)
+```
+
+### Fichiers créés/modifiés
+
+| Fichier | Modification |
+|---|---|
+| `crates/daly-bms-server/src/et112/types.rs` | Struct `Et112Snapshot` |
+| `crates/daly-bms-server/src/et112/poll.rs` | Polling Modbus RTU async |
+| `crates/daly-bms-server/src/et112/mod.rs` | Module public |
+| `crates/daly-bms-server/src/api/et112.rs` | Endpoints REST |
+| `crates/daly-bms-server/src/dashboard/mod.rs` | Handler dashboard ET112 |
+| `crates/daly-bms-server/templates/et112.html` | Template Askama |
+| `crates/daly-bms-server/templates/base.html` | Lien nav ET112 |
+| `crates/daly-bms-server/src/bridges/mqtt.rs` | `publish_et112_snapshot()` |
+| `crates/daly-bms-server/src/bridges/influx.rs` | `et112_snapshot_to_point()` |
+| `crates/dbus-mqtt-venus/src/types.rs` | `PvinverterPayload` |
+| `crates/dbus-mqtt-venus/src/config.rs` | `PvinverterConfig`, `PvinverterRef` |
+| `crates/dbus-mqtt-venus/src/mqtt_source.rs` | `start_pvinverter_mqtt_source()` |
+| `crates/dbus-mqtt-venus/src/pvinverter_service.rs` | Service D-Bus pvinverter |
+| `crates/dbus-mqtt-venus/src/pvinverter_manager.rs` | Manager pvinverter |
+| `crates/dbus-mqtt-venus/src/main.rs` | Wire-up PvinverterManager |
+| `Config.toml` | Section `[et112]` + `[[et112.devices]]` |
+| `nanoPi/config-nanopi.toml` | Section `[pvinverter]` + `[[pvinverters]]` |
+
+### ET112 déjà sur Victron (instances 61/62 — à migrer ultérieurement)
+
+Les ET112 aux adresses RS485 0x01 et 0x02 sont connectés directement sur le Victron
+via USB-RS485 et apparaissent en production comme :
+- `com.victronenergy.pvinverter.cgwacs_ttyUSBx_mb1` → instance 61
+- `com.victronenergy.pvinverter.cgwacs_ttyUSBx_mb2` → instance 62
+
+Lors de la migration vers Pi5 :
+1. Débrancher les 2 câbles USB du Victron
+2. Brancher les 2 ET112 sur les ports USB du Pi5 (`/dev/ttyUSB2`, `/dev/ttyUSB3`)
+3. Ajouter `[[et112.devices]]` dans `Config.toml` pour addresses 0x01 et 0x02
+4. Décommenter `[[pvinverters]]` mqtt_index=1 et 2 dans `nanoPi/config-nanopi.toml`
+5. Déployer + redémarrer les services
+
+### Topics MQTT pvinverter
+
+```
+santuario/pvinverter/3/venus  ← ET112 addr=0x03 (Pi5 → NanoPi)
+```
+
+Format JSON (compatible `dbus-mqtt-venus` PvinverterPayload) :
+```json
+{
+  "Ac": {
+    "L1": { "Voltage": 230.1, "Current": 5.43, "Power": 1250.0,
+            "Energy": { "Forward": 587.23, "Reverse": 0.0 } },
+    "Power": 1250.0,
+    "Energy": { "Forward": 587.23, "Reverse": 0.0 }
+  },
+  "StatusCode": 7,
+  "ErrorCode": 0,
+  "Position": 1,
+  "IsGenericEnergyMeter": 1,
+  "ProductName": "ET112 addr=0x03",
+  "CustomName": "Micro-inverseurs"
+}
+```
+
+### Vérification D-Bus (📍 NanoPi)
+
+```bash
+# Vérifier que le service apparaît
+dbus -y | grep pvinverter
+
+# Lire la puissance instantanée
+dbus -y com.victronenergy.pvinverter.mqtt_3 /Ac/Power GetValue
+
+# Lire l'énergie totale
+dbus -y com.victronenergy.pvinverter.mqtt_3 /Ac/Energy/Forward GetValue
+
+# Tous les chemins
+dbus -y com.victronenergy.pvinverter.mqtt_3 / GetItems
+```
+
+### Diagnostic Pi5
+
+```bash
+# Dashboard web
+http://192.168.1.141:8080/dashboard/et112/3
+
+# API REST
+curl http://192.168.1.141:8080/api/v1/et112/3/status
+curl http://192.168.1.141:8080/api/v1/et112/3/history?limit=60
+
+# MQTT publié
+mosquitto_sub -h 192.168.1.120 -p 1883 -t 'santuario/pvinverter/3/venus' -v
+
+# InfluxDB
+# measurement: et112_status, tags: address=0x03, name=Micro-inverseurs
+```
+
+---
+
 ## 17. MAINTENANCE OPÉRATIONNELLE
 
 ### Checklist quotidienne / hebdomadaire
@@ -998,7 +1150,8 @@ git commit -m "chore(nanopi): backup config.toml"
 | `com.victronenergy.temperature.mqtt_1` | Capteur ext. (type 4) | `dbus -y ... /Temperature GetValue` |
 | `com.victronenergy.heatpump.mqtt_1` | PAC / chauffe-eau | `dbus -y ... /State GetValue` |
 | `com.victronenergy.meteo` | Irradiance + TodaysYield | `dbus -y ... /TodaysYield GetValue` |
-| `com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2` | Onduleur PV AC | `dbus -y ... /Ac/Energy/Forward GetValue` |
+| `com.victronenergy.pvinverter.mqtt_3` | ET112 micro-inverseurs Pi5 (instance 63) | `dbus -y ... /Ac/Power GetValue` |
+| `com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2` | Onduleur PV AC (Victron direct) | `dbus -y ... /Ac/Energy/Forward GetValue` |
 
 ### Commandes de diagnostic rapide (📍 NanoPi)
 
