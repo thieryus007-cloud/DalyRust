@@ -1,19 +1,21 @@
 //! Boucle de polling Modbus RTU pour le compteur Carlo Gavazzi ET112.
 //!
-//! ## Registres lus (FC=04, FLOAT32 big-endian)
+//! ## Registres lus (FC=04, INT32 little-endian word order)
 //!
-//! | Adresse hex | Description           | Unité |
-//! |-------------|----------------------|-------|
-//! | 0x0000      | Tension L1           | V     |
-//! | 0x0002      | Courant L1           | A     |
-//! | 0x0004      | Puissance active     | W     |
-//! | 0x0006      | Puissance apparente  | VA    |
-//! | 0x0008      | Puissance réactive   | VAr   |
-//! | 0x000A      | Facteur de puissance | —     |
-//! | 0x000C      | Angle de phase       | °     |
-//! | 0x000E      | Fréquence            | Hz    |
-//! | 0x0010      | Énergie import       | Wh    |
-//! | 0x0012      | Énergie export       | Wh    |
+//! Source : dbus-cgwacs Victron (Em112Commands), confirmé par documentation officielle.
+//! Format : INT32 signé, premier registre = LSW, second registre = MSW.
+//!
+//! | Adresse hex | Description           | Unité | Facteur |
+//! |-------------|----------------------|-------|---------|
+//! | 0x0000      | Tension L1           | V     | ×0.1    |
+//! | 0x0002      | Courant L1           | A     | ×0.001  |
+//! | 0x0004      | Puissance active     | W     | ×0.1    |
+//! | 0x0006      | Puissance apparente  | VA    | ×0.1    |
+//! | 0x0008      | Puissance réactive   | VAr   | ×0.1    |
+//! | 0x000A      | Facteur de puissance | —     | ×0.001  |
+//! | 0x000F      | Fréquence            | Hz    | ×0.1 (INT16 simple) |
+//! | 0x0010      | Énergie import       | kWh   | ×0.1    |
+//! | 0x0020      | Énergie export       | kWh   | ×0.1    |
 
 use super::types::Et112Snapshot;
 use crate::config::Et112DeviceConfig;
@@ -24,9 +26,12 @@ use tokio_modbus::prelude::*;
 use tokio_serial::SerialStream;
 use tracing::{debug, error, info, warn};
 
-/// Convertit deux registres u16 (big-endian) en f32 IEEE 754.
-fn regs_to_f32(hi: u16, lo: u16) -> f32 {
-    f32::from_bits(((hi as u32) << 16) | (lo as u32))
+/// Décode deux registres Modbus ET112 en INT32 signé (little-endian word order).
+///
+/// Le ET112 envoie le registre de poids faible (LSW) en premier, poids fort (MSW) en second.
+/// Source : dbus-cgwacs Victron : `(int32_t)(registers[0] | registers[1] << 16)`
+fn regs_to_i32(lo: u16, hi: u16) -> i32 {
+    (lo as i32) | ((hi as i32) << 16)
 }
 
 /// Lance la boucle de polling ET112.
@@ -130,8 +135,8 @@ async fn poll_device(
 
     let mut ctx = rtu::attach_slave(port, Slave(address));
 
-    // Lecture bloc 1 : 0x0000–0x000F → 16 registres (8 × FLOAT32)
-    // voltage, current, power_active, power_apparent, power_reactive, pf, phase_angle, freq
+    // Lecture bloc 1 : 0x0000–0x000F → 16 registres
+    // voltage, current, power_active, power_apparent, power_reactive, pf, (reserved×2), freq(INT16)
     let regs1: Vec<u16> = ctx
         .read_input_registers(0x0000, 16)
         .await
@@ -142,30 +147,42 @@ async fn poll_device(
         anyhow::bail!("ET112 addr={:#04x} réponse trop courte bloc 1 ({})", address, regs1.len());
     }
 
-    // Lecture bloc 2 : 0x0010–0x0013 → 4 registres (2 × FLOAT32)
-    // energy_import, energy_export
+    // Lecture bloc 2 : 0x0010–0x0011 → 2 registres (énergie import, INT32)
     let regs2: Vec<u16> = ctx
-        .read_input_registers(0x0010, 4)
+        .read_input_registers(0x0010, 2)
         .await
         .map_err(|e| anyhow::anyhow!("ET112 addr={:#04x} FC04 read 0x0010: {}", address, e))?
         .map_err(|e| anyhow::anyhow!("ET112 addr={:#04x} exception code: {:?}", address, e))?;
 
-    if regs2.len() < 4 {
+    if regs2.len() < 2 {
         anyhow::bail!("ET112 addr={:#04x} réponse trop courte bloc 2 ({})", address, regs2.len());
     }
 
-    // Décodage FLOAT32 big-endian (2 registres par valeur)
-    let voltage_v          = regs_to_f32(regs1[0],  regs1[1]);
-    let current_a          = regs_to_f32(regs1[2],  regs1[3]);
-    let power_w            = regs_to_f32(regs1[4],  regs1[5]);
-    let apparent_power_va  = regs_to_f32(regs1[6],  regs1[7]);
-    let reactive_power_var = regs_to_f32(regs1[8],  regs1[9]);
-    let power_factor       = regs_to_f32(regs1[10], regs1[11]);
-    // regs1[12..13] = phase_angle (non utilisé pour l'instant)
-    let frequency_hz       = regs_to_f32(regs1[14], regs1[15]);
+    // Lecture bloc 3 : 0x0020–0x0021 → 2 registres (énergie export, INT32)
+    let regs3: Vec<u16> = ctx
+        .read_input_registers(0x0020, 2)
+        .await
+        .map_err(|e| anyhow::anyhow!("ET112 addr={:#04x} FC04 read 0x0020: {}", address, e))?
+        .map_err(|e| anyhow::anyhow!("ET112 addr={:#04x} exception code: {:?}", address, e))?;
 
-    let energy_import_wh   = regs_to_f32(regs2[0],  regs2[1]);
-    let energy_export_wh   = regs_to_f32(regs2[2],  regs2[3]);
+    if regs3.len() < 2 {
+        anyhow::bail!("ET112 addr={:#04x} réponse trop courte bloc 3 ({})", address, regs3.len());
+    }
+
+    // Décodage INT32 little-endian (LSW first) avec facteurs d'échelle Victron cgwacs
+    let voltage_v          = regs_to_i32(regs1[0],  regs1[1])  as f32 * 0.1;
+    let current_a          = regs_to_i32(regs1[2],  regs1[3])  as f32 * 0.001;
+    let power_w            = regs_to_i32(regs1[4],  regs1[5])  as f32 * 0.1;
+    let apparent_power_va  = regs_to_i32(regs1[6],  regs1[7])  as f32 * 0.1;
+    let reactive_power_var = regs_to_i32(regs1[8],  regs1[9])  as f32 * 0.1;
+    let power_factor       = regs_to_i32(regs1[10], regs1[11]) as f32 * 0.001;
+    // regs1[12..13] = phase_angle / reserved (non utilisé)
+    // regs1[15] (0x000F) = fréquence INT16, scale 0.1 → Hz
+    let frequency_hz       = regs1[15] as i16 as f32 * 0.1;
+
+    // Énergie : INT32 × 0.1 = kWh ; ×100 → Wh pour le champ energy_*_wh
+    let energy_import_wh   = regs_to_i32(regs2[0], regs2[1]) as f32 * 100.0;
+    let energy_export_wh   = regs_to_i32(regs3[0], regs3[1]) as f32 * 100.0;
 
     Ok(Et112Snapshot {
         address,

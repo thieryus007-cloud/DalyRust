@@ -221,7 +221,7 @@ ring_buffer_size = 720
 
 [[et112.devices]]
 address     = "0x03"           # Adresse Modbus RTU de l'ET112
-name        = "Micro-inverseurs"
+name        = "Micro Onduleurs"
 mqtt_index  = 3                # → topic santuario/pvinverter/3/venus
 
 # Les ET112 0x01 et 0x02 sont connectés directement sur le Victron (à migrer)
