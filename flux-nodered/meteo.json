@@ -382,7 +382,7 @@
     "id": "vrm_startup_inject",
     "type": "inject",
     "z": "e6e3a16384301f83",
-    "name": "Récupération VRM (démarrage +10s puis toutes les 5 min)",
+    "name": "[DÉSACTIVÉ] Récupération VRM — remplacé par Venus system/Yield/Solar",
     "props": [],
     "repeat": "300",
     "crontab": "",
@@ -395,7 +395,8 @@
       [
         "vrm_restore_fn"
       ]
-    ]
+    ],
+    "d": true
   },
   {
     "id": "vrm_restore_fn",
@@ -415,7 +416,8 @@
       [
         "vrm_query_req"
       ]
-    ]
+    ],
+    "d": true
   },
   {
     "id": "vrm_query_req",
@@ -459,7 +461,8 @@
       [
         "meteo_mqtt_out"
       ]
-    ]
+    ],
+    "d": true
   },
   {
     "id": "influx_comment",
@@ -624,5 +627,35 @@
     "willMsg": {},
     "userProps": "",
     "sessionExpiry": ""
+  },
+  {
+    "id": "solar_yield_in",
+    "type": "mqtt in",
+    "name": "Venus OS Yield/Solar (total MPPT+PVInv)",
+    "topic": "N/c0619ab9929a/system/0/Yield/Solar",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "pi5_mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "wires": [
+      [
+        "solar_yield_fn"
+      ]
+    ]
+  },
+  {
+    "id": "solar_yield_fn",
+    "type": "function",
+    "name": "TodaysYield depuis Venus OS system",
+    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(parseFloat(val))) return null;\n\nconst total = parseFloat(val);\nglobal.set('total_yield_today', total);\nnode.status({fill:'green', shape:'dot', text: 'Solaire Venus: ' + total.toFixed(2) + ' kWh'});\n\n// Publier immédiatement vers Venus OS meteo\nconst irradiance = global.get('irradiance_wm2') || 0;\nconst windSpeed  = global.get('outdoor_wind_speed') || 0;\nconst windDir    = global.get('outdoor_wind_dir') || 0;\nconst temp       = global.get('outdoor_temp') || 0;\n\nconst heatMsg = {\n    topic:   'santuario/heat/1/venus',\n    payload: JSON.stringify({\n        Temperature:     temp,\n        TemperatureType: 4,\n        Humidity:        global.get('outdoor_humidity') || 0,\n        Pressure:        global.get('outdoor_pressure') || 0\n    })\n};\nconst meteoMsg = {\n    topic:   'santuario/meteo/venus',\n    payload: JSON.stringify({\n        Irradiance:    irradiance,\n        TodaysYield:   total,\n        WindSpeed:     windSpeed,\n        WindDirection: windDir\n    })\n};\nreturn [[heatMsg, meteoMsg]];",
+    "outputs": 1,
+    "wires": [
+      [
+        "meteo_mqtt_out"
+      ]
+    ]
   }
 ]
