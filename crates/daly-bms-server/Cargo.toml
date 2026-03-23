@@ -12,6 +12,7 @@ name = "daly-bms-server"
 path = "src/main.rs"
 
 [dependencies]
+rs485-bus     = { workspace = true }
 daly-bms-core = { path = "../daly-bms-core" }
 
 tokio          = { workspace = true }
@@ -37,4 +38,4 @@ uuid           = { workspace = true }
 futures        = { workspace = true }
 bytes          = { workspace = true }
 askama         = "0.12"
-tokio-modbus   = { workspace = true }
+# tokio-modbus supprimé — remplacé par rs485_bus::modbus_rtu (pur Rust)

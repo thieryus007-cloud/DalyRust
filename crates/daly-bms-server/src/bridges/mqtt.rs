@@ -94,7 +94,35 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig, addr_map: HashMap
                 error!("MQTT publish ET112 erreur : {:?}", e);
             }
         }
+
+        // ── Irradiance PRALRAN → santuario/irradiance/raw ────────────────────
+        // Même topic que l'ancien irradiance_reader.py → Node-RED inchangé.
+        if let Some(snap) = state.latest_irradiance().await {
+            if let Err(e) = publish_irradiance(&client, &cfg, snap.irradiance_wm2).await {
+                error!("MQTT publish irradiance erreur : {:?}", e);
+            }
+        }
     }
+}
+
+/// Publie la valeur d'irradiance sur `santuario/irradiance/raw` (retain=true).
+///
+/// Même format que l'ancien `irradiance_reader.py` — entier W/m² en string.
+async fn publish_irradiance(
+    client: &AsyncClient,
+    cfg: &MqttConfig,
+    irradiance_wm2: f32,
+) -> anyhow::Result<()> {
+    let base = cfg.topic_prefix
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix)
+        .unwrap_or("santuario");
+    let topic = format!("{}/irradiance/raw", base);
+    let payload = format!("{:.0}", irradiance_wm2);
+    client
+        .publish(&topic, QoS::AtLeastOnce, true, payload)
+        .await?;
+    Ok(())
 }
 
 /// Publie un snapshot ET112 sur le topic `santuario/pvinverter/{idx}/venus`.

@@ -5,6 +5,7 @@
 
 use crate::config::AppConfig;
 use crate::et112::Et112Snapshot;
+use crate::irradiance::IrradianceSnapshot;
 use daly_bms_core::bus::DalyPort;
 use daly_bms_core::types::BmsSnapshot;
 use serde::Serialize;
@@ -117,6 +118,9 @@ pub struct AppState {
 
     /// Ring buffers ET112 indexés par adresse Modbus.
     pub et112_buffers: Arc<RwLock<BTreeMap<u8, Et112RingBuffer>>>,
+
+    /// Dernière mesure du capteur d'irradiance PRALRAN (None si non configuré).
+    pub irradiance_value: Arc<RwLock<Option<IrradianceSnapshot>>>,
 }
 
 impl AppState {
@@ -145,6 +149,7 @@ impl AppState {
             port: Arc::new(RwLock::new(None)),
             log_buffer,
             et112_buffers: Arc::new(RwLock::new(et112_buffers)),
+            irradiance_value: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -225,5 +230,15 @@ impl AppState {
     pub async fn et112_latest_all(&self) -> Vec<Et112Snapshot> {
         let buffers = self.et112_buffers.read().await;
         buffers.values().filter_map(|b| b.latest().cloned()).collect()
+    }
+
+    /// Enregistre la dernière mesure du capteur d'irradiance.
+    pub async fn on_irradiance_snapshot(&self, snap: IrradianceSnapshot) {
+        *self.irradiance_value.write().await = Some(snap);
+    }
+
+    /// Retourne la dernière mesure d'irradiance (None si jamais reçue).
+    pub async fn latest_irradiance(&self) -> Option<IrradianceSnapshot> {
+        self.irradiance_value.read().await.clone()
     }
 }

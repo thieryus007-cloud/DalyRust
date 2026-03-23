@@ -196,23 +196,33 @@ device_instance = 40      # DeviceInstance Venus OS / VRM
 
 
 # =============================================================================
-# Compteur énergie ET112 Carlo Gavazzi (RS485 Modbus RTU)
+# Capteur irradiance PRALRAN (RS485 Modbus RTU — bus unifié)
 # =============================================================================
-# Matériel : ET112 sur /dev/ttyUSB1 (FTDI FT232 USB-RS485, Bus 004 Device 003)
-# Adresses : 0x03 = micro-inverseurs Pi5 (0x01 et 0x02 connectés directement sur Victron)
+# Matériel : Solar Radiation Sensor PRALRAN, adresse Modbus RTU 0x05
+# Branché sur le BUS UNIFIÉ /dev/ttyUSB0 (même bus que BMS Daly)
+# Registre 0x0000 → irradiance W/m² (FC04, uint16 big-endian)
+# Publie sur MQTT : santuario/irradiance/raw (retain=true)
+# Même topic que l'ancien irradiance_reader.py → Node-RED inchangé
+
+[irradiance]
+address          = "0x05"          # Adresse Modbus RTU du capteur PRALRAN
+name             = "Irradiance PRALRAN"
+poll_interval_ms = 5000            # 5 secondes (identique à l'ancien script Python)
+
+
+# =============================================================================
+# Compteur énergie ET112 Carlo Gavazzi (RS485 Modbus RTU — bus unifié)
+# =============================================================================
+# ARCHITECTURE UNIFIÉE : tous les ET112 partagent le BUS RS485 /dev/ttyUSB0
+# (même bus que les BMS Daly 0x01-0x04 et irradiance 0x05)
+# Les champs port/baud sont supprimés — bus hérité du SharedBus global.
 #
-# Chemins D-Bus pvinverter exposés (via dbus-mqtt-venus sur NanoPi) :
-#   /Ac/Power, /Ac/Energy/Forward
-#   /Ac/L1/{Voltage, Current, Power, Energy/Forward}
-#   /StatusCode=7, /ErrorCode=0, /Position=1, /IsGenericEnergyMeter=1
+# Adresses RS485 (configurées physiquement sur les compteurs) :
+#   0x07 = Micro-onduleurs → D-Bus pvinverter (mqtt_3, instance 63)
+#   0x08 = PAC Chauffe-eau  → D-Bus pvinverter ou acload
+#   0x09 = PAC Climatisation → D-Bus pvinverter ou acload
 
 [et112]
-# Port série USB-RS485 (partagé ou dédié)
-port = "/dev/ttyUSB1"
-
-# Vitesse de communication (ET112 standard = 9600 baud)
-baud = 9600
-
 # Intervalle de polling en millisecondes (5000 = toutes les 5 secondes)
 poll_interval_ms = 5000
 
@@ -220,20 +230,22 @@ poll_interval_ms = 5000
 ring_buffer_size = 720
 
 [[et112.devices]]
-address     = "0x03"           # Adresse Modbus RTU de l'ET112
+address     = "0x07"           # Adresse Modbus RTU — Micro-onduleurs
 name        = "Micro Onduleurs"
 mqtt_index  = 3                # → topic santuario/pvinverter/3/venus
 position    = 1                # 0=AC Input, 1=AC Output
 
-# Les ET112 0x01 et 0x02 sont connectés directement sur le Victron (à migrer)
-# [[et112.devices]]
-# address     = "0x01"
-# name        = "ET112-PV-1"
-# mqtt_index  = 1
-# [[et112.devices]]
-# address     = "0x02"
-# name        = "ET112-PV-2"
-# mqtt_index  = 2
+[[et112.devices]]
+address     = "0x08"           # Adresse Modbus RTU — PAC Chauffe-eau
+name        = "PAC Chauffe-eau"
+mqtt_index  = 4                # → topic santuario/pvinverter/4/venus
+position    = 1                # 0=AC Input, 1=AC Output
+
+[[et112.devices]]
+address     = "0x09"           # Adresse Modbus RTU — PAC Climatisation
+name        = "PAC Climatisation"
+mqtt_index  = 5                # → topic santuario/pvinverter/5/venus
+position    = 1                # 0=AC Input, 1=AC Output
 
 
 [influxdb]

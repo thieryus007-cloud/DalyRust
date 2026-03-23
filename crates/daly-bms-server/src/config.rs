@@ -42,6 +42,10 @@ pub struct AppConfig {
     /// Configuration ET112 (compteurs Carlo Gavazzi RS485)
     #[serde(default)]
     pub et112: Et112Config,
+
+    /// Capteur d'irradiance PRALRAN RS485 (sur le bus unifié)
+    /// Remplace le service Python `irradiance-rs485`.
+    pub irradiance: Option<IrradianceConfig>,
 }
 
 // =============================================================================
@@ -163,24 +167,20 @@ pub struct SerialConfig {
 
 /// Configuration globale pour les compteurs Carlo Gavazzi ET112.
 ///
+/// Bus RS485 unifié : port et baud hérités du SharedBus global (ttyUSB0).
+///
 /// ```toml
 /// [et112]
-/// port             = "/dev/ttyUSB1"
-/// baud             = 9600
 /// poll_interval_ms = 5000
 /// ring_buffer_size = 720       # 1 heure à 1 mesure / 5s
 ///
 /// [[et112.devices]]
-/// address          = "0x03"
+/// address          = "0x07"
 /// name             = "Micro-inverseurs"
 /// mqtt_index       = 3         # → topic santuario/pvinverter/3/venus
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Et112Config {
-    /// Port série (ex: /dev/ttyUSB1)
-    pub port: String,
-    /// Vitesse en bauds (9600 par défaut usine)
-    pub baud: u32,
     /// Intervalle de polling en ms
     pub poll_interval_ms: u64,
     /// Taille du ring buffer par appareil
@@ -193,8 +193,6 @@ pub struct Et112Config {
 impl Default for Et112Config {
     fn default() -> Self {
         Self {
-            port:             "/dev/ttyUSB1".into(),
-            baud:             9600,
             poll_interval_ms: 5000,
             ring_buffer_size: 720,
             devices:          Vec::new(),
@@ -392,4 +390,50 @@ impl Default for AlertThresholds {
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct ReadOnlyConfig {
     pub enabled: bool,
+}
+
+// =============================================================================
+// Configuration capteur irradiance PRALRAN
+// =============================================================================
+
+/// Configuration du capteur d'irradiance solaire PRALRAN RS485.
+///
+/// Le capteur utilise le **bus RS485 unifié** (même port que les BMS Daly).
+/// Aucun `port` / `baud` à configurer ici — ils sont hérités de `[serial]`.
+///
+/// ```toml
+/// [irradiance]
+/// address          = "0x05"
+/// name             = "Irradiance PRALRAN"
+/// poll_interval_ms = 5000
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct IrradianceConfig {
+    /// Adresse Modbus du capteur (ex: "0x05", "5")
+    pub address: String,
+    /// Nom affiché dans les logs et le dashboard
+    #[serde(default = "default_irradiance_name")]
+    pub name: String,
+    /// Intervalle de polling en ms (défaut 5000)
+    #[serde(default = "default_irradiance_interval")]
+    pub poll_interval_ms: u64,
+}
+
+fn default_irradiance_name() -> String {
+    "Irradiance PRALRAN".to_string()
+}
+fn default_irradiance_interval() -> u64 {
+    5000
+}
+
+impl IrradianceConfig {
+    /// Parse l'adresse en u8 (supporte "0x05", "5")
+    pub fn parsed_address(&self) -> u8 {
+        let s = self.address.trim();
+        if s.starts_with("0x") || s.starts_with("0X") {
+            u8::from_str_radix(&s[2..], 16).unwrap_or(5)
+        } else {
+            s.parse::<u8>().unwrap_or(5)
+        }
+    }
 }

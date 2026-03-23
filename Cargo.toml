@@ -4,6 +4,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/rs485-bus",
     "crates/daly-bms-core",
     "crates/daly-bms-server",
     "crates/daly-bms-cli",
@@ -23,6 +24,9 @@ repository  = "https://github.com/thieryus007-cloud/Daly-BMS-Rust"
 # Shared dependencies (referenced as { workspace = true } in each crate)
 # =============================================================================
 [workspace.dependencies]
+
+# ── Crates internes ────────────────────────────────────────────────────────────
+rs485-bus     = { path = "crates/rs485-bus" }
 
 # ── Async runtime ─────────────────────────────────────────────────────────────
 tokio         = { version = "1",    features = ["full"] }

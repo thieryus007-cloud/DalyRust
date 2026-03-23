@@ -27,4 +27,6 @@ pub use types::{
 };
 pub use protocol::{DataId, RequestFrame, ResponseFrame, FRAME_LEN};
 pub use bus::{DalyPort, DalyBusManager};
+// Re-export SharedBus pour les consommateurs du bus unifié
+pub use rs485_bus::SharedBus;
 pub use poll::PollConfig;

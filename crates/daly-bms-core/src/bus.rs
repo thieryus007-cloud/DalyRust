@@ -1,53 +1,79 @@
 //! Gestion du port série RS485 partagé entre plusieurs BMS.
 //!
-//! Le [`DalyPort`] encapsule le port série avec un Mutex pour garantir
-//! qu'une seule commande est en cours à tout moment (bus RS485 half-duplex).
+//! Le [`DalyPort`] encapsule un [`rs485_bus::SharedBus`] et implémente le
+//! protocole Daly par-dessus (framing, checksum, gestion adresse).
 //!
 //! Le [`DalyBusManager`] coordonne plusieurs [`DalyBms`] sur le même bus.
+//!
+//! ## Bus unifié
+//!
+//! Pour partager le même port série avec d'autres drivers (ET112, PRALRAN…) :
+//! ```rust,ignore
+//! let port = DalyPort::open("/dev/ttyUSB0", 9600, 500)?;
+//! let bus  = port.shared_bus();  // Arc<SharedBus> partageable
+//! // passer bus à run_et112_poll_loop(), run_irradiance_poll_loop()…
+//! ```
 
 use crate::error::{DalyError, Result};
 use crate::protocol::{DataId, RequestFrame, ResponseFrame, FRAME_LEN};
+use rs485_bus::SharedBus;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::sync::Mutex;
-use tokio::time::timeout;
 use tracing::{debug, trace, warn};
 
 /// Timeout par défaut pour une réponse BMS.
 pub const DEFAULT_TIMEOUT_MS: u64 = 500;
 
-/// Délai minimum entre deux commandes sur le bus (50 ms selon doc Daly).
+/// Délai minimum entre deux commandes sur le bus (50 ms selon doc Daly V1.21).
 pub const INTER_FRAME_DELAY_MS: u64 = 50;
 
 // =============================================================================
-// DalyPort — port série avec accès exclusif
+// DalyPort — protocole Daly par-dessus SharedBus
 // =============================================================================
 
-/// Port série RS485 asynchrone, sécurisé par un Mutex.
+/// Port RS485 avec implémentation du protocole Daly.
 ///
-/// Utilise `tokio-serial` (wrapper autour de `tokio::io`).
+/// Wraps un [`SharedBus`] et ajoute le framing Daly, la validation
+/// des réponses (checksum, adresse, DataId) et la logique de fallback
+/// (2ème trame si BMS maître répond en premier).
 pub struct DalyPort {
-    inner: Mutex<tokio_serial::SerialStream>,
+    bus: Arc<SharedBus>,
     timeout_ms: u64,
 }
 
 impl DalyPort {
-    /// Ouvre le port série avec les paramètres spécifiés.
+    /// Ouvre le port série et crée un `SharedBus` sous-jacent (8N1).
+    ///
+    /// Compatible avec le comportement précédent : `DalyPort::open(path, baud, timeout_ms)`.
     pub fn open(port_path: &str, baud: u32, timeout_ms: u64) -> Result<Arc<Self>> {
-        use tokio_serial::SerialPortBuilderExt;
-
-        let stream = tokio_serial::new(port_path, baud)
-            .data_bits(tokio_serial::DataBits::Eight)
-            .stop_bits(tokio_serial::StopBits::One)
-            .parity(tokio_serial::Parity::None)
-            .flow_control(tokio_serial::FlowControl::None)
-            .open_native_async()?;
-
-        Ok(Arc::new(Self {
-            inner: Mutex::new(stream),
+        let bus = SharedBus::open(
+            port_path,
+            baud,
+            tokio_serial::Parity::None,
+            INTER_FRAME_DELAY_MS,
             timeout_ms,
-        }))
+        )
+        .map_err(DalyError::Other)?;
+
+        Ok(Arc::new(Self { bus, timeout_ms }))
+    }
+
+    /// Crée un `DalyPort` à partir d'un `SharedBus` existant.
+    ///
+    /// Utilisé quand le bus est déjà ouvert et partagé avec d'autres drivers.
+    pub fn from_bus(bus: Arc<SharedBus>, timeout_ms: u64) -> Arc<Self> {
+        Arc::new(Self { bus, timeout_ms })
+    }
+
+    /// Retourne le `SharedBus` sous-jacent pour le partager avec d'autres drivers.
+    ///
+    /// ```rust,ignore
+    /// let port = DalyPort::open("/dev/ttyUSB0", 9600, 500)?;
+    /// let bus  = port.shared_bus();
+    /// // Passer bus aux drivers ET112 / PRALRAN
+    /// tokio::spawn(run_et112_poll_loop(bus, ...));
+    /// ```
+    pub fn shared_bus(&self) -> Arc<SharedBus> {
+        self.bus.clone()
     }
 
     /// Envoie une commande et attend la réponse correspondante.
@@ -60,27 +86,18 @@ impl DalyPort {
         cmd: DataId,
         data: [u8; 8],
     ) -> Result<ResponseFrame> {
-        // Protocole Daly V1.21 §2.3.1 : les 8 octets data sont réservés (0x00)
-        // pour les commandes de lecture. L'adressage multi-BMS est assuré
-        // uniquement par byte[1] = 0x3F + bms_address (géré dans RequestFrame::new).
-        // Les commandes d'écriture utilisent data tel quel (payload fourni par l'appelant).
         let request = if cmd.is_write() {
             RequestFrame::new(bms_address, cmd, data)
         } else {
             RequestFrame::read(bms_address, cmd)
         };
+
         trace!(
             bms = format!("{:#04x}", bms_address),
             cmd = format!("{:#04x}", cmd as u8),
             "→ envoi trame"
         );
 
-        let mut port = self.inner.lock().await;
-
-        // Vider le buffer de réception avant l'envoi
-        let _ = Self::flush_input(&mut *port).await;
-
-        // Envoi
         let req_bytes = request.as_bytes();
         trace!(
             bms = format!("{:#04x}", bms_address),
@@ -88,112 +105,93 @@ impl DalyPort {
             raw = format!("{:02X?}", req_bytes),
             "→ envoi trame"
         );
-        port.write_all(req_bytes).await?;
-        port.flush().await?;
 
-        // Délai inter-trame (laisser le temps à l'adaptateur RS485 de basculer en RX)
-        tokio::time::sleep(Duration::from_millis(INTER_FRAME_DELAY_MS)).await;
+        // Acquérir le verrou exclusif pour toute la transaction
+        let mut guard = self.bus.acquire().await;
+
+        guard.flush_rx().await;
+        guard.write_all(req_bytes).await?; // std::io::Error → DalyError::Io via #[from]
+        guard.inter_frame_delay().await;
 
         // Réception avec timeout
-        let mut buf = [0u8; FRAME_LEN];
-        let read_result = timeout(
-            Duration::from_millis(self.timeout_ms),
-            port.read_exact(&mut buf),
-        )
-        .await;
-
-        match read_result {
-            Err(_elapsed) => {
-                // Tenter de lire des octets partiels pour le diagnostic
-                let mut partial = [0u8; 32];
-                let n = timeout(
-                    Duration::from_millis(50),
-                    port.read(&mut partial),
-                )
-                .await
-                .ok()
-                .and_then(|r| r.ok())
-                .unwrap_or(0);
-
-                if n > 0 {
+        let buf = match guard.read_exact_with_timeout(FRAME_LEN, self.timeout_ms).await {
+            None => {
+                // Timeout — tenter lecture partielle pour diagnostic
+                let partial = guard.try_read_partial(32).await;
+                if !partial.is_empty() {
                     warn!(
-                        bms = format!("{:#04x}", bms_address),
-                        cmd = format!("{:#04x}", cmd as u8),
-                        partial = format!("{:02X?}", &partial[..n]),
+                        bms     = format!("{:#04x}", bms_address),
+                        cmd     = format!("{:#04x}", cmd as u8),
+                        partial = format!("{:02X?}", partial),
                         "Timeout — réponse partielle reçue (câblage A/B ?, baud rate ?)"
                     );
                 } else {
                     warn!(
                         bms = format!("{:#04x}", bms_address),
                         cmd = format!("{:#04x}", cmd as u8),
-                        "Timeout — aucun octet reçu (BMS hors tension ? câble débranché ? mauvais port COM ?)"
+                        "Timeout — aucun octet reçu (BMS hors tension ? câble débranché ?)"
                     );
                 }
-                Err(DalyError::Timeout { bms_id: bms_address, cmd: cmd as u8 })
+                return Err(DalyError::Timeout { bms_id: bms_address, cmd: cmd as u8 });
             }
-            Ok(Err(e)) => Err(e.into()),
-            Ok(Ok(_)) => {
+            Some(Err(e)) => return Err(DalyError::Io(e)),
+            Some(Ok(b)) => b,
+        };
+
+        trace!(
+            bms = format!("{:#04x}", bms_address),
+            cmd = format!("{:#04x}", cmd as u8),
+            raw = format!("{:02X?}", &buf),
+            "← réponse reçue"
+        );
+
+        let frame = ResponseFrame::parse(&buf)?;
+
+        // Sur un bus RS485 partagé, BMS 0x01 (master) peut répondre en
+        // premier même si la requête cible BMS 0x02. On tente alors de
+        // lire une deuxième trame : BMS 0x02 peut répondre juste après.
+        // Le verrou est toujours maintenu (même BusGuard).
+        if frame.address() != bms_address {
+            warn!(
+                bms    = format!("{:#04x}", bms_address),
+                actual = format!("{:#04x}", frame.address()),
+                "Adresse inattendue — tentative lecture 2ème trame (bus partagé)"
+            );
+            if let Some(Ok(buf2)) = guard.read_exact_with_timeout(FRAME_LEN, self.timeout_ms).await {
                 trace!(
                     bms = format!("{:#04x}", bms_address),
-                    cmd = format!("{:#04x}", cmd as u8),
-                    raw = format!("{:02X?}", &buf),
-                    "← réponse reçue"
+                    raw = format!("{:02X?}", &buf2),
+                    "← 2ème trame reçue"
                 );
-                let frame = ResponseFrame::parse(&buf)?;
-
-                // Sur un bus RS485 partagé, BMS 0x01 (master) peut répondre en
-                // premier même si la requête cible BMS 0x02. On tente alors de
-                // lire une deuxième trame : BMS 0x02 peut répondre juste après.
-                if frame.address() != bms_address {
-                    warn!(
-                        bms    = format!("{:#04x}", bms_address),
-                        actual = format!("{:#04x}", frame.address()),
-                        "Adresse inattendue — tentative lecture 2ème trame (bus partagé)"
-                    );
-                    let mut buf2 = [0u8; FRAME_LEN];
-                    if let Ok(Ok(_)) = timeout(
-                        Duration::from_millis(self.timeout_ms),
-                        port.read_exact(&mut buf2),
-                    )
-                    .await
-                    {
-                        trace!(
+                if let Ok(frame2) = ResponseFrame::parse(&buf2) {
+                    if frame2.validate_for(bms_address, cmd).is_ok() {
+                        debug!(
                             bms = format!("{:#04x}", bms_address),
-                            raw = format!("{:02X?}", &buf2),
-                            "← 2ème trame reçue"
+                            "← 2ème trame OK (BMS répond après le master)"
                         );
-                        if let Ok(frame2) = ResponseFrame::parse(&buf2) {
-                            if frame2.validate_for(bms_address, cmd).is_ok() {
-                                debug!(
-                                    bms = format!("{:#04x}", bms_address),
-                                    "← 2ème trame OK (BMS répond après le master)"
-                                );
-                                return Ok(frame2);
-                            }
-                        }
+                        return Ok(frame2);
                     }
-                    // Aucune 2ème trame valide — retourner l'erreur d'adresse
-                    return Err(DalyError::UnexpectedAddress {
-                        expected: bms_address,
-                        actual:   frame.address(),
-                    });
                 }
-
-                frame.validate_for(bms_address, cmd)?;
-                debug!(
-                    bms = format!("{:#04x}", bms_address),
-                    cmd = format!("{:#04x}", cmd as u8),
-                    "← réponse OK"
-                );
-                Ok(frame)
             }
+            return Err(DalyError::UnexpectedAddress {
+                expected: bms_address,
+                actual:   frame.address(),
+            });
         }
+
+        frame.validate_for(bms_address, cmd)?;
+        debug!(
+            bms = format!("{:#04x}", bms_address),
+            cmd = format!("{:#04x}", cmd as u8),
+            "← réponse OK"
+        );
+        Ok(frame)
     }
 
-    /// Envoie une commande et lit N trames de réponse successives sans flush entre elles.
+    /// Envoie une commande et lit N trames de réponse successives.
     ///
-    /// Utilisé pour les commandes multi-trames (0x95, 0x96) où le BMS envoie toutes
-    /// les trames d'un coup après une seule requête.
+    /// Utilisé pour les commandes multi-trames (0x95, 0x96) où le BMS envoie
+    /// toutes les trames d'un coup après une seule requête.
     pub async fn send_command_multi(
         &self,
         bms_address: u8,
@@ -204,39 +202,26 @@ impl DalyPort {
             return Ok(Vec::new());
         }
 
-        // Protocole Daly V1.21 : data bytes = 0x00 pour les lectures multi-trames.
         let request = RequestFrame::read(bms_address, cmd);
-        let mut port = self.inner.lock().await;
 
-        // Vider le buffer avant l'envoi
-        let _ = Self::flush_input(&mut *port).await;
+        let mut guard = self.bus.acquire().await;
+        guard.flush_rx().await;
 
         let req_bytes = request.as_bytes();
         trace!(
-            bms = format!("{:#04x}", bms_address),
-            cmd = format!("{:#04x}", cmd as u8),
+            bms     = format!("{:#04x}", bms_address),
+            cmd     = format!("{:#04x}", cmd as u8),
             n_frames,
-            raw = format!("{:02X?}", req_bytes),
+            raw     = format!("{:02X?}", req_bytes),
             "→ envoi trame multi"
         );
-        port.write_all(req_bytes).await?;
-        port.flush().await?;
+        guard.write_all(req_bytes).await?;
+        guard.inter_frame_delay().await;
 
-        // Délai TX→RX une seule fois
-        tokio::time::sleep(Duration::from_millis(INTER_FRAME_DELAY_MS)).await;
-
-        // Lire N trames consécutives sans flush entre elles
         let mut frames = Vec::with_capacity(n_frames);
         for frame_idx in 0..n_frames {
-            let mut buf = [0u8; FRAME_LEN];
-            let read_result = timeout(
-                Duration::from_millis(self.timeout_ms),
-                port.read_exact(&mut buf),
-            )
-            .await;
-
-            match read_result {
-                Err(_elapsed) => {
+            let buf = match guard.read_exact_with_timeout(FRAME_LEN, self.timeout_ms).await {
+                None => {
                     warn!(
                         bms   = format!("{:#04x}", bms_address),
                         cmd   = format!("{:#04x}", cmd as u8),
@@ -245,31 +230,24 @@ impl DalyPort {
                     );
                     return Err(DalyError::Timeout { bms_id: bms_address, cmd: cmd as u8 });
                 }
-                Ok(Err(e)) => return Err(e.into()),
-                Ok(Ok(_)) => {
-                    trace!(
-                        bms   = format!("{:#04x}", bms_address),
-                        cmd   = format!("{:#04x}", cmd as u8),
-                        frame = frame_idx,
-                        raw   = format!("{:02X?}", &buf),
-                        "← trame multi reçue"
-                    );
-                    let frame = ResponseFrame::parse(&buf)?;
-                    // Valider adresse et commande (le numéro de trame est dans data[0])
-                    frame.validate_for(bms_address, cmd)?;
-                    frames.push(frame);
-                }
-            }
+                Some(Err(e)) => return Err(DalyError::Io(e)),
+                Some(Ok(b)) => b,
+            };
+
+            trace!(
+                bms   = format!("{:#04x}", bms_address),
+                cmd   = format!("{:#04x}", cmd as u8),
+                frame = frame_idx,
+                raw   = format!("{:02X?}", &buf),
+                "← trame multi reçue"
+            );
+
+            let frame = ResponseFrame::parse(&buf)?;
+            frame.validate_for(bms_address, cmd)?;
+            frames.push(frame);
         }
 
         Ok(frames)
-    }
-
-    /// Vide le buffer de réception (lecture non-bloquante avec timeout court).
-    async fn flush_input(port: &mut tokio_serial::SerialStream) -> std::io::Result<()> {
-        let mut tmp = [0u8; 256];
-        let _ = timeout(Duration::from_millis(10), port.read(&mut tmp)).await;
-        Ok(())
     }
 }
 
@@ -341,7 +319,7 @@ impl DalyBusManager {
                     tracing::debug!("Découverte {:#04x} : erreur {:?}", addr, e);
                 }
             }
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
         }
         found
     }
