@@ -425,26 +425,33 @@ est correcte. C'est un bug d'affichage Venus OS, PAS un bug du code Rust.
 **Statut** : Pas de solution côté code. La valeur existe bien sur D-Bus (utilisable
 par d'autres services). L'affichage restera "-" dans le widget météo Victron.
 
-### Problème : Menu "Setup" absent dans Venus OS pour pvinverter MQTT (⏳ EN COURS)
+### Problème : Menu "Setup" absent dans Venus OS pour pvinverter MQTT (✅ RÉSOLU 2026-03-23)
 
-**Constat** : Le device `com.victronenergy.pvinverter.mqtt_3` n'affiche pas le menu "Setup"
-dans Victron GUI, alors que le device RS485 natif (`cgwacs_ttyUSB0_mb2`) l'affiche.
+**Cause** : Les chemins `/AllowedRoles` et `/Role` étaient absents de `com.victronenergy.pvinverter.mqtt_3`.
+Venus OS GUI conditionne le menu "Setup" à la présence de `/AllowedRoles` (liste des rôles possibles).
 
-**Tentative 1** : Rendre `/Position` writable (`set_value` retourne 0) → sans effet.
-Commit `0841d63` sur `claude/review-venus-integration-35qN7`.
+**Diagnostic** : Comparaison `GetItems` entre cgwacs natif et mqtt_3 :
+```bash
+# Sur NanoPi :
+dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 / GetItems
+# → présent : /AllowedRoles, /Role, /CustomName, /DeviceType, /FirmwareVersion
+dbus -y com.victronenergy.pvinverter.mqtt_3 / GetItems
+# → absent : tout ce qui précède
+```
 
-**Hypothèse principale** : `/IsGenericEnergyMeter=1` supprime le menu Setup dans le QML Venus OS.
-Le device cgwacs natif n'expose probablement pas ce flag (ou le met à 0).
+**Fix** : Commit `7cf720d` — ajout dans `pvinverter_service.rs` :
+- `/AllowedRoles` = `["grid", "pvinverter", "genset", "acload", "evcharger", "heatpump"]` (array D-Bus "as")
+- `/Role` = `"pvinverter"` (writable — Venus OS peut le modifier via Setup)
+- `/CustomName`, `/DeviceType=120`, `/FirmwareVersion="4"`
 
-**À investiguer demain** :
-1. Sur NanoPi : `dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 / GetItems`
-   → comparer les chemins exposés vs notre `mqtt_3`
-2. Essayer `/IsGenericEnergyMeter=0` dans `PvinverterValues::to_items()`
-3. Vérifier le QML Venus OS : `find /opt/victronenergy -name "PagePvInverter*.qml" | xargs grep -l Setup`
-   → identifier la condition exacte qui affiche/cache le menu Setup
+**Détail technique** : `OwnedValue` ne dérive pas `Clone` dans zvariant 4.2.0 sans default-features.
+Solution : `DbusValueKind` enum (Clone-able) qui calcule `OwnedValue` à la demande.
 
-**Fichier à modifier** : `crates/dbus-mqtt-venus/src/pvinverter_service.rs`
-→ struct `PvinverterValues`, méthode `to_items()`, champ `is_generic_energy_meter`
+**À vérifier sur NanoPi** après déploiement :
+```bash
+# Vérifier que le menu Setup apparaît dans Venus OS GUI
+dbus -y com.victronenergy.pvinverter.mqtt_3 / GetItems | grep -E "AllowedRoles|Role|CustomName|DeviceType"
+```
 
 ### Problème : TodaysYield incorrect après reset manuel Node-RED en pleine journée
 

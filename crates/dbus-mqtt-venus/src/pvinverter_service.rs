@@ -17,6 +17,11 @@
 //! /ErrorCode             — 0=No Error
 //! /Position              — 1=AC Output
 //! /IsGenericEnergyMeter  — 1 (ET112 masquerade)
+//! /AllowedRoles          — liste des rôles possibles (active le menu Setup Venus OS)
+//! /Role                  — rôle courant (writable)
+//! /CustomName            — nom personnalisé
+//! /DeviceType            — 120 (Carlo Gavazzi ET112)
+//! /FirmwareVersion       — version firmware
 //! /Connected
 //! /ProductName
 //! /ProductId
@@ -33,7 +38,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tracing::{debug, info, warn};
 use zbus::{connection, object_server::SignalContext, Connection};
-use zvariant::{OwnedValue, Str};
+use zvariant::{Array, OwnedValue, Str, Value};
 
 // =============================================================================
 // Constantes
@@ -41,60 +46,82 @@ use zvariant::{OwnedValue, Str};
 
 const VICTRON_PVINVERTER_PREFIX: &str = "com.victronenergy.pvinverter";
 
+const ALLOWED_ROLES: &[&str] = &[
+    "grid", "pvinverter", "genset", "acload", "evcharger", "heatpump",
+];
+
 // =============================================================================
 // Item D-Bus
 // =============================================================================
 
+/// Valeur D-Bus typée — Clone-able sans dépendre de OwnedValue::Clone.
+#[derive(Debug, Clone)]
+pub enum DbusValueKind {
+    F64(f64),
+    I32(i32),
+    U32(u32),
+    Str(String),
+    /// Tableau de strings D-Bus (signature "as") — ex: /AllowedRoles
+    StringArray(Vec<String>),
+}
+
 #[derive(Debug, Clone)]
 pub struct DbusItem {
-    pub value: serde_json::Value,
-    pub text:  String,
+    pub kind: DbusValueKind,
+    pub text: String,
 }
 
 impl DbusItem {
     pub fn f64(v: f64, unit: &str) -> Self {
-        Self { value: serde_json::Value::from(v), text: format!("{:.2} {}", v, unit) }
+        Self { kind: DbusValueKind::F64(v), text: format!("{:.2} {}", v, unit) }
     }
     pub fn i32(v: i32) -> Self {
-        Self { value: serde_json::Value::from(v), text: v.to_string() }
+        Self { kind: DbusValueKind::I32(v), text: v.to_string() }
     }
     pub fn str(v: &str) -> Self {
-        Self { value: serde_json::Value::from(v), text: v.to_string() }
+        Self { kind: DbusValueKind::Str(v.to_string()), text: v.to_string() }
     }
     pub fn u32(v: u32) -> Self {
-        Self { value: serde_json::Value::from(v), text: v.to_string() }
+        Self { kind: DbusValueKind::U32(v), text: v.to_string() }
+    }
+    pub fn string_array(strs: &[&str]) -> Self {
+        Self {
+            kind: DbusValueKind::StringArray(strs.iter().map(|s| (*s).to_string()).collect()),
+            text: String::new(),
+        }
     }
 }
 
-fn json_to_owned(v: &serde_json::Value) -> OwnedValue {
-    match v {
-        serde_json::Value::Number(n) => {
-            if n.is_f64() {
-                OwnedValue::from(n.as_f64().unwrap_or(0.0))
-            } else if n.is_u64() {
-                OwnedValue::from(n.as_u64().unwrap_or(0) as u32)
-            } else {
-                let i = n.as_i64().unwrap_or(0);
-                if i >= i32::MIN as i64 && i <= i32::MAX as i64 {
-                    OwnedValue::from(i as i32)
-                } else {
-                    OwnedValue::from(i)
-                }
-            }
-        }
-        serde_json::Value::String(s) => OwnedValue::from(Str::from(s.clone())),
-        _ => OwnedValue::from(0i32),
+fn kind_to_owned(kind: &DbusValueKind) -> OwnedValue {
+    match kind {
+        DbusValueKind::F64(v)          => OwnedValue::from(*v),
+        DbusValueKind::I32(v)          => OwnedValue::from(*v),
+        DbusValueKind::U32(v)          => OwnedValue::from(*v),
+        DbusValueKind::Str(s)          => OwnedValue::from(Str::from(s.clone())),
+        DbusValueKind::StringArray(ss) => build_string_array_owned(ss),
     }
 }
 
 fn item_to_inner(item: &DbusItem) -> HashMap<String, OwnedValue> {
     let mut d = HashMap::new();
-    d.insert("Value".to_string(), json_to_owned(&item.value));
+    d.insert("Value".to_string(), kind_to_owned(&item.kind));
     d.insert("Text".to_string(), OwnedValue::from(Str::from(item.text.clone())));
     d
 }
 
 type ItemsDict = HashMap<String, HashMap<String, OwnedValue>>;
+
+// =============================================================================
+// Construction d'un tableau de strings D-Bus
+// =============================================================================
+
+/// Construit un `OwnedValue` contenant un tableau D-Bus de strings (signature "as").
+/// Utilisé pour `/AllowedRoles` qui active le menu "Setup" dans Venus OS GUI.
+fn build_string_array_owned(strings: &[String]) -> OwnedValue {
+    let arr = Array::from(strings.iter().map(String::as_str).collect::<Vec<&str>>());
+    OwnedValue::try_from(Value::Array(arr))
+        .unwrap_or_else(|_| OwnedValue::from(0i32))
+}
 
 // =============================================================================
 // Valeurs courantes
@@ -103,24 +130,27 @@ type ItemsDict = HashMap<String, HashMap<String, OwnedValue>>;
 /// État courant d'un service pvinverter exposé sur D-Bus.
 #[derive(Debug, Clone)]
 pub struct PvinverterValues {
-    pub connected:              i32,
-    pub power:                  f64,
-    pub energy_forward:         f64,
-    pub l1_voltage:             f64,
-    pub l1_current:             f64,
-    pub l1_power:               f64,
-    pub l1_energy_forward:      f64,
-    pub status_code:            i32,
-    pub error_code:             i32,
-    pub position:               i32,
+    pub connected:               i32,
+    pub power:                   f64,
+    pub energy_forward:          f64,
+    pub l1_voltage:              f64,
+    pub l1_current:              f64,
+    pub l1_power:                f64,
+    pub l1_energy_forward:       f64,
+    pub status_code:             i32,
+    pub error_code:              i32,
+    pub position:                i32,
     pub is_generic_energy_meter: i32,
-    pub product_name:           String,
-    pub device_instance:        u32,
-    pub last_update:            Instant,
+    pub product_name:            String,
+    pub custom_name:             String,
+    /// Rôle courant — writable par Venus OS via menu Setup.
+    pub role:                    String,
+    pub device_instance:         u32,
+    pub last_update:             Instant,
 }
 
 impl PvinverterValues {
-    pub fn disconnected(device_instance: u32, product_name: String) -> Self {
+    pub fn disconnected(device_instance: u32, product_name: String, custom_name: String) -> Self {
         Self {
             connected:               0,
             power:                   0.0,
@@ -134,6 +164,8 @@ impl PvinverterValues {
             position:                1,
             is_generic_energy_meter: 1,
             product_name,
+            custom_name,
+            role:                    "pvinverter".to_string(),
             device_instance,
             last_update:             Instant::now(),
         }
@@ -143,6 +175,8 @@ impl PvinverterValues {
         payload:         &PvinverterPayload,
         device_instance: u32,
         product_name:    String,
+        custom_name:     String,
+        current_role:    String,
     ) -> Self {
         let l1 = payload.ac.l1.as_ref();
         Self {
@@ -157,7 +191,9 @@ impl PvinverterValues {
             error_code:              payload.error_code,
             position:                payload.position,
             is_generic_energy_meter: payload.is_generic_energy_meter,
-            product_name,
+            product_name:            payload.product_name.clone().unwrap_or(product_name),
+            custom_name:             payload.custom_name.clone().unwrap_or(custom_name),
+            role:                    current_role,
             device_instance,
             last_update:             Instant::now(),
         }
@@ -174,6 +210,18 @@ impl PvinverterValues {
         m.insert("/ProductName".into(),         DbusItem::str(&self.product_name));
         m.insert("/DeviceInstance".into(),      DbusItem::u32(self.device_instance));
         m.insert("/Connected".into(),           DbusItem::i32(self.connected));
+
+        // Chemins supplémentaires présents dans le device cgwacs natif
+        // → nécessaires pour que le menu "Setup" apparaisse dans Venus OS GUI
+        m.insert("/DeviceType".into(),      DbusItem::i32(120));   // Carlo Gavazzi ET112
+        m.insert("/FirmwareVersion".into(), DbusItem::str("4"));
+        m.insert("/CustomName".into(),      DbusItem::str(&self.custom_name));
+
+        // /AllowedRoles — tableau de strings "as" — condition du menu Setup dans Venus OS
+        m.insert("/AllowedRoles".into(), DbusItem::string_array(ALLOWED_ROLES));
+
+        // /Role — rôle courant, writable (Venus OS écrit via menu Setup)
+        m.insert("/Role".into(), DbusItem::str(&self.role));
 
         // Metadata pvinverter
         m.insert("/StatusCode".into(),            DbusItem::i32(self.status_code));
@@ -240,7 +288,7 @@ impl BusItemLeaf {
     fn get_value(&self) -> OwnedValue {
         let guard = self.values.lock().unwrap();
         match guard.to_items().get(&self.path) {
-            Some(item) => json_to_owned(&item.value),
+            Some(item) => kind_to_owned(&item.kind),
             None       => OwnedValue::from(0i32),
         }
     }
@@ -251,27 +299,51 @@ impl BusItemLeaf {
     }
 
     fn set_value(&self, val: zvariant::Value<'_>) -> i32 {
-        if self.path != "/Position" {
-            return 1;
+        match self.path.as_str() {
+            "/Position" => {
+                let new_pos: i32 = match &val {
+                    zvariant::Value::I32(v) => *v,
+                    zvariant::Value::U32(v) => *v as i32,
+                    zvariant::Value::I64(v) => *v as i32,
+                    zvariant::Value::U64(v) => *v as i32,
+                    _ => return 1,
+                };
+                if !(0..=2).contains(&new_pos) {
+                    return 1;
+                }
+                let items = {
+                    let mut g = self.values.lock().unwrap();
+                    g.position = new_pos;
+                    info!(position = new_pos, "Position pvinverter mise à jour par Venus OS");
+                    g.to_items()
+                };
+                self.emit_items_changed_sync(items);
+                0
+            }
+            "/Role" => {
+                let new_role = match &val {
+                    zvariant::Value::Str(s) => s.to_string(),
+                    _ => return 1,
+                };
+                if !ALLOWED_ROLES.contains(&new_role.as_str()) {
+                    return 1;
+                }
+                let items = {
+                    let mut g = self.values.lock().unwrap();
+                    g.role = new_role.clone();
+                    info!(role = %new_role, "Rôle pvinverter mis à jour par Venus OS");
+                    g.to_items()
+                };
+                self.emit_items_changed_sync(items);
+                0
+            }
+            _ => 1,
         }
-        // Position : 0=AC Input, 1=AC Output
-        let new_pos: i32 = match &val {
-            zvariant::Value::I32(v) => *v,
-            zvariant::Value::U32(v) => *v as i32,
-            zvariant::Value::I64(v) => *v as i32,
-            zvariant::Value::U64(v) => *v as i32,
-            _ => return 1,
-        };
-        if !(0..=2).contains(&new_pos) {
-            return 1;
-        }
-        let items = {
-            let mut g = self.values.lock().unwrap();
-            g.position = new_pos;
-            info!(position = new_pos, "Position pvinverter mise à jour par Venus OS");
-            g.to_items()
-        };
-        // Émettre ItemsChanged (fire-and-forget depuis contexte sync)
+    }
+}
+
+impl BusItemLeaf {
+    fn emit_items_changed_sync(&self, items: HashMap<String, DbusItem>) {
         let conn = self.connection.clone();
         let dict: ItemsDict = items
             .iter()
@@ -282,7 +354,6 @@ impl BusItemLeaf {
                 let _ = PvinverterRootIface::items_changed(&ctx, dict).await;
             }
         });
-        0
     }
 }
 
@@ -296,14 +367,18 @@ pub struct PvinverterServiceHandle {
     pub values:          Arc<Mutex<PvinverterValues>>,
     connection:          Connection,
     pub product_name:    String,
+    pub custom_name:     String,
 }
 
 impl PvinverterServiceHandle {
     pub async fn update(&self, payload: &PvinverterPayload) -> Result<()> {
+        let current_role = { self.values.lock().unwrap().role.clone() };
         let new_values = PvinverterValues::from_payload(
             payload,
             self.device_instance,
             self.product_name.clone(),
+            self.custom_name.clone(),
+            current_role,
         );
         let items = new_values.to_items();
         { *self.values.lock().unwrap() = new_values; }
@@ -354,6 +429,7 @@ pub async fn create_pvinverter_service(
     service_suffix:  &str,
     device_instance: u32,
     product_name:    String,
+    custom_name:     String,
 ) -> Result<PvinverterServiceHandle> {
     let service_name = format!("{}.{}", VICTRON_PVINVERTER_PREFIX, service_suffix);
 
@@ -364,7 +440,7 @@ pub async fn create_pvinverter_service(
     );
 
     let initial_values = Arc::new(Mutex::new(
-        PvinverterValues::disconnected(device_instance, product_name.clone())
+        PvinverterValues::disconnected(device_instance, product_name.clone(), custom_name.clone())
     ));
 
     let root = PvinverterRootIface { values: initial_values.clone() };
@@ -407,5 +483,6 @@ pub async fn create_pvinverter_service(
         values: initial_values,
         connection: conn,
         product_name,
+        custom_name,
     })
 }

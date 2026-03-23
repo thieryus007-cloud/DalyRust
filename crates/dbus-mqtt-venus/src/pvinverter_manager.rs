@@ -79,11 +79,13 @@ impl PvinverterManager {
         let suffix          = format!("{}_{}", self.cfg.service_prefix, idx);
         let device_instance = self.device_instance_for(idx);
         let product_name    = self.product_name_for(idx);
+        let custom_name     = self.custom_name_for(idx);
         create_pvinverter_service(
             &self.cfg.dbus_bus,
             &suffix,
             device_instance,
             product_name,
+            custom_name,
         ).await
     }
 
@@ -99,6 +101,17 @@ impl PvinverterManager {
         for (pos, p) in self.pvinverter_refs.iter().enumerate() {
             let pi = p.mqtt_index.unwrap_or((pos + 1) as u8);
             if pi == idx { if let Some(n) = &p.name { return n.clone(); } }
+        }
+        format!("PV Inverter {}", idx)
+    }
+
+    fn custom_name_for(&self, idx: u8) -> String {
+        for (pos, p) in self.pvinverter_refs.iter().enumerate() {
+            let pi = p.mqtt_index.unwrap_or((pos + 1) as u8);
+            if pi == idx {
+                if let Some(cn) = &p.custom_name { return cn.clone(); }
+                if let Some(n)  = &p.name        { return n.clone(); }
+            }
         }
         format!("PV Inverter {}", idx)
     }

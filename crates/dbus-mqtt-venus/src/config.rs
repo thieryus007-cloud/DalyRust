@@ -367,6 +367,10 @@ pub struct PvinverterRef {
     /// Nom affiché dans Venus OS (`/ProductName`).
     pub name: Option<String>,
 
+    /// Nom personnalisé affiché dans Venus OS (`/CustomName`).
+    /// Si absent, utilise `name` comme fallback.
+    pub custom_name: Option<String>,
+
     /// DeviceInstance Venus OS D-Bus (ex: 63).
     pub device_instance: Option<u32>,
 }
