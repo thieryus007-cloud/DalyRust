@@ -425,6 +425,27 @@ est correcte. C'est un bug d'affichage Venus OS, PAS un bug du code Rust.
 **Statut** : Pas de solution côté code. La valeur existe bien sur D-Bus (utilisable
 par d'autres services). L'affichage restera "-" dans le widget météo Victron.
 
+### Problème : Menu "Setup" absent dans Venus OS pour pvinverter MQTT (⏳ EN COURS)
+
+**Constat** : Le device `com.victronenergy.pvinverter.mqtt_3` n'affiche pas le menu "Setup"
+dans Victron GUI, alors que le device RS485 natif (`cgwacs_ttyUSB0_mb2`) l'affiche.
+
+**Tentative 1** : Rendre `/Position` writable (`set_value` retourne 0) → sans effet.
+Commit `0841d63` sur `claude/review-venus-integration-35qN7`.
+
+**Hypothèse principale** : `/IsGenericEnergyMeter=1` supprime le menu Setup dans le QML Venus OS.
+Le device cgwacs natif n'expose probablement pas ce flag (ou le met à 0).
+
+**À investiguer demain** :
+1. Sur NanoPi : `dbus -y com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2 / GetItems`
+   → comparer les chemins exposés vs notre `mqtt_3`
+2. Essayer `/IsGenericEnergyMeter=0` dans `PvinverterValues::to_items()`
+3. Vérifier le QML Venus OS : `find /opt/victronenergy -name "PagePvInverter*.qml" | xargs grep -l Setup`
+   → identifier la condition exacte qui affiche/cache le menu Setup
+
+**Fichier à modifier** : `crates/dbus-mqtt-venus/src/pvinverter_service.rs`
+→ struct `PvinverterValues`, méthode `to_items()`, champ `is_generic_energy_meter`
+
 ### Problème : TodaysYield incorrect après reset manuel Node-RED en pleine journée
 
 **Cause** : Le "Reset minuit" pose `pvinv_baseline = cumul_actuel`. Si exécuté en journée,
