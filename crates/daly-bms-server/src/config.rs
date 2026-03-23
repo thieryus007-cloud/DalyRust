@@ -208,8 +208,11 @@ pub struct Et112DeviceConfig {
     /// Nom affiché dans le dashboard
     #[serde(default = "default_et112_name")]
     pub name: String,
-    /// Index MQTT → topic `santuario/pvinverter/{mqtt_index}/venus`
+    /// Index MQTT → topic `santuario/{service_type}/{mqtt_index}/venus`
     pub mqtt_index: Option<u8>,
+    /// Type de service D-Bus : "pvinverter" ou "acload" (défaut: "pvinverter")
+    #[serde(default = "default_et112_service_type")]
+    pub service_type: String,
     /// Puissance nominale max (W) — pour l'affichage gauge
     pub max_power_w: Option<f32>,
     /// Position sur le bus AC Victron : 0=AC Input, 1=AC Output (défaut)
@@ -218,6 +221,7 @@ pub struct Et112DeviceConfig {
 }
 
 fn default_et112_position() -> u8 { 1 }
+fn default_et112_service_type() -> String { "pvinverter".to_string() }
 
 fn default_et112_name() -> String {
     "ET112".to_string()

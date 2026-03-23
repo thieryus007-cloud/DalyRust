@@ -81,16 +81,17 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig, addr_map: HashMap
             }
         }
 
-        // ── ET112 snapshots → topic pvinverter/{mqtt_index}/venus ────────────
+        // ── ET112 snapshots → topic {service_type}/{mqtt_index}/venus ──────
         let et112_snaps = state.et112_latest_all().await;
         for snap in &et112_snaps {
-            // Résoudre le mqtt_index et la position depuis la config
+            // Résoudre le mqtt_index, position et service_type depuis la config
             let dev_cfg = state.config.et112.devices
                 .iter()
                 .find(|d| d.parsed_address() == snap.address);
-            let idx      = dev_cfg.and_then(|d| d.mqtt_index).unwrap_or(snap.address);
-            let position = dev_cfg.map(|d| d.position).unwrap_or(1);
-            if let Err(e) = publish_et112_snapshot(&client, &cfg, snap, idx, position).await {
+            let idx          = dev_cfg.and_then(|d| d.mqtt_index).unwrap_or(snap.address);
+            let position     = dev_cfg.map(|d| d.position).unwrap_or(1);
+            let service_type = dev_cfg.map(|d| d.service_type.as_str()).unwrap_or("pvinverter");
+            if let Err(e) = publish_et112_snapshot(&client, &cfg, snap, idx, position, service_type).await {
                 error!("MQTT publish ET112 erreur : {:?}", e);
             }
         }
@@ -125,23 +126,24 @@ async fn publish_irradiance(
     Ok(())
 }
 
-/// Publie un snapshot ET112 sur le topic `santuario/pvinverter/{idx}/venus`.
+/// Publie un snapshot ET112 sur le topic `santuario/{service_type}/{idx}/venus`.
 ///
-/// Format compatible `dbus-mqtt-venus` type pvinverter (com.victronenergy.pvinverter).
+/// service_type = "pvinverter" → topic pvinverter/{idx}/venus
+/// service_type = "acload"     → topic grid/{idx}/venus
 async fn publish_et112_snapshot(
     client: &AsyncClient,
     cfg: &MqttConfig,
     snap: &Et112Snapshot,
     mqtt_index: u8,
     position: u8,
+    service_type: &str,
 ) -> anyhow::Result<()> {
-    // Dériver le topic prefix pvinverter depuis le topic prefix BMS
-    // "santuario/bms" → "santuario/pvinverter"
     let base = cfg.topic_prefix
         .rsplit_once('/')
         .map(|(prefix, _)| prefix)
         .unwrap_or("santuario");
-    let topic = format!("{}/pvinverter/{}/venus", base, mqtt_index);
+    let topic_prefix = if service_type == "acload" { "grid" } else { "pvinverter" };
+    let topic = format!("{}/{}/{}/venus", base, topic_prefix, mqtt_index);
 
     let payload = json!({
         "Ac": {
