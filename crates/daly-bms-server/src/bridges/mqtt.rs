@@ -128,8 +128,9 @@ async fn publish_irradiance(
 
 /// Publie un snapshot ET112 sur le topic `santuario/{service_type}/{idx}/venus`.
 ///
-/// service_type = "pvinverter" → topic pvinverter/{idx}/venus
-/// service_type = "acload"     → topic grid/{idx}/venus
+/// service_type = "pvinverter" → topic pvinverter/{idx}/venus  (PvinverterPayload)
+/// service_type = "acload"     → topic grid/{idx}/venus        (GridPayload)
+/// service_type = "heatpump"   → topic heatpump/{idx}/venus    (HeatpumpPayload)
 async fn publish_et112_snapshot(
     client: &AsyncClient,
     cfg: &MqttConfig,
@@ -142,33 +143,53 @@ async fn publish_et112_snapshot(
         .rsplit_once('/')
         .map(|(prefix, _)| prefix)
         .unwrap_or("santuario");
-    let topic_prefix = if service_type == "acload" { "grid" } else { "pvinverter" };
+
+    let topic_prefix = match service_type {
+        "acload"   => "grid",
+        "heatpump" => "heatpump",
+        _          => "pvinverter",
+    };
     let topic = format!("{}/{}/{}/venus", base, topic_prefix, mqtt_index);
 
-    let payload = json!({
-        "Ac": {
-            "L1": {
-                "Voltage": snap.voltage_v,
-                "Current": snap.current_a,
-                "Power":   snap.power_w,
+    let payload = if service_type == "heatpump" {
+        // HeatpumpPayload — l'ET112 mesure la consommation AC de la PAC
+        json!({
+            "Ac": {
+                "Power":  snap.power_w,
+                "Energy": { "Forward": snap.energy_import_kwh() }
+            },
+            "Position":    position,   // 1=AC Output
+            "State":       0,          // 0=Off/unknown (l'ET112 ne connaît pas l'état)
+            "ProductName": snap.name,
+            "CustomName":  snap.name,
+        })
+    } else {
+        // PvinverterPayload / GridPayload — format complet L1
+        json!({
+            "Ac": {
+                "L1": {
+                    "Voltage": snap.voltage_v,
+                    "Current": snap.current_a,
+                    "Power":   snap.power_w,
+                    "Energy": {
+                        "Forward": snap.energy_import_kwh(),
+                        "Reverse": snap.energy_export_kwh()
+                    }
+                },
+                "Power":  snap.power_w,
                 "Energy": {
                     "Forward": snap.energy_import_kwh(),
                     "Reverse": snap.energy_export_kwh()
                 }
             },
-            "Power":         snap.power_w,
-            "Energy": {
-                "Forward":   snap.energy_import_kwh(),
-                "Reverse":   snap.energy_export_kwh()
-            }
-        },
-        "StatusCode":           7,   // Running
-        "ErrorCode":            0,   // No Error
-        "Position":             position,  // 0=AC Input, 1=AC Output (configurable)
-        "IsGenericEnergyMeter": 1,   // ET112 = generic energy meter
-        "ProductName":          snap.name,
-        "CustomName":           snap.name,
-    });
+            "StatusCode":           7,   // Running
+            "ErrorCode":            0,   // No Error
+            "Position":             position,
+            "IsGenericEnergyMeter": 1,
+            "ProductName":          snap.name,
+            "CustomName":           snap.name,
+        })
+    };
 
     client
         .publish(&topic, QoS::AtLeastOnce, true, serde_json::to_vec(&payload)?)

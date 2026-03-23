@@ -90,14 +90,14 @@ device_instance  = 20
 topic_prefix = "santuario/heatpump"
 
 [[heatpumps]]
-mqtt_index      = 1
-name            = "Chauffe-eau"
+mqtt_index      = 8             # ET112 addr=0x08 (SN: 119215X) — PAC Chauffe-eau branché ✅
+name            = "PAC Chauffe-eau"
 device_instance = 30
 
-# PAC LG (future intégration) :
+# PAC Climatisation (ET112 addr=0x09, SN: 061077X) — non connecté pour le moment :
 # [[heatpumps]]
-# mqtt_index      = 2
-# name            = "PAC LG Climatisation"
+# mqtt_index      = 9
+# name            = "PAC Climatisation"
 # device_instance = 31
 
 # -----------------------------------------------------------------------------
@@ -150,12 +150,6 @@ topic_prefix = "santuario/grid"
 # device_instance = 401
 # service_type    = "grid"     # "grid" ou "acload"
 
-[[grids]]
-mqtt_index      = 9
-name            = "PAC Climatisation"
-device_instance = 31
-service_type    = "acload"   # ET112 addr=0x09 sur bus RS485 ttyUSB0
-
 # Décommenter lors de la migration des ET112 acload depuis le Victron vers Pi5 :
 # [[grids]]
 # mqtt_index      = 4
@@ -192,9 +186,9 @@ service_type    = "acload"   # ET112 addr=0x09 sur bus RS485 ttyUSB0
 topic_prefix = "santuario/pvinverter"
 
 [[pvinverters]]
-mqtt_index      = 3
+mqtt_index      = 7             # ET112 addr=0x07 (SN: 119253X) — Micro-Onduleurs branché ✅
 name            = "Micro Onduleurs"
-device_instance = 63          # remplace cgwacs_ttyUSB0_mb2 après migration
+device_instance = 32
 
 # -----------------------------------------------------------------------------
 # Platform Pi5 — état backup/restore (singleton)

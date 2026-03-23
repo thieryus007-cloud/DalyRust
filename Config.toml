@@ -229,31 +229,29 @@ poll_interval_ms = 5000
 # Taille du ring buffer (720 = 1 heure à 1 mesure/5s)
 ring_buffer_size = 720
 
-# Décommenter au fur et à mesure du branchement physique sur le bus RS485 :
-#
-# [[et112.devices]]              # ← décommenter quand branché (SN: 119253X)
-# address          = "0x07"
-# name             = "Micro Onduleurs"
-# mqtt_index       = 3          # → santuario/pvinverter/3/venus
-# service_type     = "pvinverter"
-# device_instance  = 32
-# position         = 1
-#
-# [[et112.devices]]              # ← décommenter quand branché (SN: 119215X)
-# address          = "0x08"
-# name             = "PAC Chauffe-eau"
-# mqtt_index       = 8          # → santuario/grid/8/venus
-# service_type     = "acload"
-# device_instance  = 30
-# position         = 1
-#
-[[et112.devices]]               # SN: 061077X
-address          = "0x09"
-name             = "PAC Climatisation"
-mqtt_index       = 9
-service_type     = "acload"
-device_instance  = 31
+[[et112.devices]]               # SN: 119253X — branché ✅
+address          = "0x07"
+name             = "Micro Onduleurs"
+mqtt_index       = 7           # → santuario/pvinverter/7/venus
+service_type     = "pvinverter"
+device_instance  = 32
 position         = 1
+
+[[et112.devices]]               # SN: 119215X — branché ✅
+address          = "0x08"
+name             = "PAC Chauffe-eau"
+mqtt_index       = 8           # → santuario/heatpump/8/venus
+service_type     = "heatpump"
+device_instance  = 30
+position         = 1
+
+# [[et112.devices]]              # SN: 061077X — non connecté pour le moment
+# address          = "0x09"
+# name             = "PAC Climatisation"
+# mqtt_index       = 9          # → santuario/heatpump/9/venus
+# service_type     = "heatpump"
+# device_instance  = 31
+# position         = 1
 
 
 [influxdb]
