@@ -231,23 +231,29 @@ ring_buffer_size = 720
 
 # Décommenter au fur et à mesure du branchement physique sur le bus RS485 :
 #
-# [[et112.devices]]
-# address     = "0x07"           # Micro-onduleurs
-# name        = "Micro Onduleurs"
-# mqtt_index  = 3                # → santuario/pvinverter/3/venus
-# position    = 1
+# [[et112.devices]]              # ← décommenter quand branché (SN: 119253X)
+# address          = "0x07"
+# name             = "Micro Onduleurs"
+# mqtt_index       = 3          # → santuario/pvinverter/3/venus
+# service_type     = "pvinverter"
+# device_instance  = 32
+# position         = 1
 #
-# [[et112.devices]]
-# address     = "0x08"           # PAC Chauffe-eau
-# name        = "PAC Chauffe-eau"
-# mqtt_index  = 4                # → santuario/pvinverter/4/venus
-# position    = 1
+# [[et112.devices]]              # ← décommenter quand branché (SN: 119215X)
+# address          = "0x08"
+# name             = "PAC Chauffe-eau"
+# mqtt_index       = 8          # → santuario/grid/8/venus
+# service_type     = "acload"
+# device_instance  = 30
+# position         = 1
 #
-# [[et112.devices]]
-# address     = "0x09"           # PAC Climatisation
-# name        = "PAC Climatisation"
-# mqtt_index  = 5                # → santuario/pvinverter/5/venus
-# position    = 1
+# [[et112.devices]]              # ← décommenter quand branché (SN: 061077X)
+# address          = "0x09"
+# name             = "PAC Climatisation"
+# mqtt_index       = 9          # → santuario/grid/9/venus
+# service_type     = "acload"
+# device_instance  = 31
+# position         = 1
 
 
 [influxdb]
@@ -329,8 +335,8 @@ name            = "BMS-360Ah"
 capacity_ah     = 360.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
-mqtt_index      = 1    # index topic MQTT (santuario/bms/1/venus), même que dbus-mqtt-battery-41
-device_instance = 151  # DeviceInstance Venus OS / VRM (141/142 = dbus-mqtt-battery, 151/152 = dbus-mqtt-venus)
+mqtt_index      = 1
+device_instance = 151
 
 [[bms]]
 address         = "0x02"
@@ -338,8 +344,26 @@ name            = "BMS-320Ah"
 capacity_ah     = 320.0
 max_charge_a    = 200.0
 max_discharge_a = 120.0
-mqtt_index      = 2    # index topic MQTT (santuario/bms/2/venus), même que dbus-mqtt-battery-42
-device_instance = 152  # DeviceInstance Venus OS / VRM
+mqtt_index      = 2
+device_instance = 152
+
+# [[bms]]                          # ← décommenter quand branché
+# address         = "0x03"
+# name            = "BMS-628Ah"
+# capacity_ah     = 628.0
+# max_charge_a    = 200.0
+# max_discharge_a = 120.0
+# mqtt_index      = 3
+# device_instance = 153
+
+# [[bms]]                          # ← décommenter quand branché
+# address         = "0x04"
+# name            = "BMS-4"
+# capacity_ah     = 100.0
+# max_charge_a    = 200.0
+# max_discharge_a = 120.0
+# mqtt_index      = 4
+# device_instance = 154
 
 
 # =============================================================================
