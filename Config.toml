@@ -17,7 +17,7 @@
 # Port série RS485 (USB → /dev/ttyUSB* ou /dev/ttyACM*)
 # Sur Linux : /dev/ttyUSB0 ou /dev/ttyUSB1
 # Sur Windows : laisser vide pour auto-détection, ou spécifier COM5, COM6...
-port = "/dev/ttyUSB1"
+port = ""   # vide = auto-détection au démarrage (scan ttyUSB*)
 
 # Vitesse de communication (Daly standard = 9600)
 baud = 9600
