@@ -247,13 +247,13 @@ ring_buffer_size = 720
 # device_instance  = 30
 # position         = 1
 #
-# [[et112.devices]]              # ← décommenter quand branché (SN: 061077X)
-# address          = "0x09"
-# name             = "PAC Climatisation"
-# mqtt_index       = 9          # → santuario/grid/9/venus
-# service_type     = "acload"
-# device_instance  = 31
-# position         = 1
+[[et112.devices]]               # SN: 061077X
+address          = "0x09"
+name             = "PAC Climatisation"
+mqtt_index       = 9
+service_type     = "acload"
+device_instance  = 31
+position         = 1
 
 
 [influxdb]
