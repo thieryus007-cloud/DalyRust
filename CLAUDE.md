@@ -1096,29 +1096,24 @@ com.victronenergy.pvinverter.mqtt_3 (device instance 63)
 | `Config.toml` | Section `[et112]` + `[[et112.devices]]` |
 | `nanoPi/config-nanopi.toml` | Section `[pvinverter]` + `[[pvinverters]]` |
 
-### Architecture cible : 3 ET112 sur Pi5 (migration depuis Victron)
+### Architecture RS485 unifiée — Bus `/dev/ttyUSB0` (état 2026-03-23) ✅
 
-**Rôle de chaque ET112 (décision 2026-03-22)** :
+**Tous les appareils RS485 sont sur le même bus `/dev/ttyUSB0`** :
 
-| ET112 | Usage | Type D-Bus | Topic MQTT | Device instance |
-|---|---|---|---|---|
-| addr 0x03 (actuel Pi5) | **Micro-inverseurs** | `pvinverter` | `santuario/pvinverter/3/venus` | 63 |
-| addr à définir | **PAC Climatisation** (AC Out 1) | `acload` | `santuario/grid/4/venus` | 501 |
-| addr à définir | **Chauffe-eau** (AC Out 1) | `acload` | `santuario/grid/5/venus` | 502 |
+| Adresse | Appareil | SN | Usage | Type D-Bus | Topic MQTT | Device instance |
+|---|---|---|---|---|---|---|
+| 0x01 | BMS-360Ah | — | Batterie 1 | `battery` | `santuario/bms/1/venus` | 141 |
+| 0x02 | BMS-320Ah | — | Batterie 2 | `battery` | `santuario/bms/2/venus` | 142 |
+| 0x09 | ET112 PAC Climatisation | 061077X | AC Load | `acload` | `santuario/grid/9/venus` | 31 |
 
-**État actuel** :
-- `com.victronenergy.pvinverter.cgwacs_ttyUSB0_mb2` = ET112 micro-inverseurs connecté directement sur le Victron (Modbus addr 0x02)
-- Les 2 ET112 acload (PAC + chauffe-eau) ne sont **pas encore installés**
-- Le ET112 Pi5 (addr 0x03, mqtt_index=3) est **déjà actif** mais pvinverter config pas encore dans config.toml NanoPi
+**État actuel (✅ OPÉRATIONNEL 2026-03-23)** :
+- ET112 addr `0x09` activé dans `Config.toml` (commit `cf4b99a`) — PAC Climatisation
+- `daly-bms-server` poll le bus unifié `/dev/ttyUSB0` pour BMS + ET112
+- Topic `santuario/grid/9/venus` publié → `com.victronenergy.acload.mqtt_9` sur D-Bus NanoPi
 
-**Procédure de migration (quand prêt)** :
-1. Brancher les 3 ET112 sur Pi5 (`/dev/ttyUSB1`, `/dev/ttyUSB2`, `/dev/ttyUSB3`)
-2. Configurer adresses RS485 sur les ET112 : 0x03=micro-inv, 0x04=PAC, 0x05=chauffe-eau (ou selon dispo)
-3. Dans `Config.toml` Pi5 : ajouter `[[et112.devices]]` pour chaque ET112, avec un champ `service_type` ("pvinverter" ou "acload")
-4. Adapter `et112/poll.rs` pour publier sur `santuario/pvinverter/{n}/venus` ou `santuario/grid/{n}/venus` selon `service_type`
-5. Dans `nanoPi/config-nanopi.toml` : décommenter les entrées `[[grids]]` mqtt_index=4 et 5
-6. Débrancher l'ancien câble USB Victron → `cgwacs_ttyUSB0_mb2` disparaît du D-Bus
-7. Déployer `daly-bms-server` (Pi5) + `dbus-mqtt-venus` (NanoPi) + redémarrer
+> **NOTE** : L'architecture initiale prévoyait un port `/dev/ttyUSB1` séparé pour ET112.
+> La réalité terrain : ET112 addr 0x09 est câblé **sur le même bus** que les BMS (`/dev/ttyUSB0`).
+> Le champ `port` dans `[et112]` doit donc pointer vers `/dev/ttyUSB0`.
 
 **Format JSON pour acload ET112** (compatible `GridPayload`) :
 ```json
@@ -1248,6 +1243,7 @@ ssh root@192.168.1.120 "svc -t /service/dbus-mqtt-venus"  # Venus bridge
 ```
 com.victronenergy.battery.mqtt_1                    ← BMS-360Ah (instance 141)
 com.victronenergy.battery.mqtt_2                    ← BMS-320Ah (instance 142)
+com.victronenergy.acload.mqtt_9                     ← ET112 PAC Climatisation (addr 0x09, instance 31) ← ✅ 2026-03-23
 com.victronenergy.temperature.mqtt_1                ← capteur température extérieure (type 4=Outdoor)
 com.victronenergy.heatpump.mqtt_1                   ← PAC / chauffe-eau
 com.victronenergy.switch.*                          ← ATS / relais (si configuré)
@@ -1297,6 +1293,7 @@ git commit -m "chore(nanopi): backup config.toml"
 |---|---|---|
 | `com.victronenergy.battery.mqtt_1` | BMS-360Ah | `dbus -y ... /Soc GetValue` |
 | `com.victronenergy.battery.mqtt_2` | BMS-320Ah | `dbus -y ... /Soc GetValue` |
+| `com.victronenergy.acload.mqtt_9` | ET112 PAC Climatisation (addr 0x09, SN: 061077X) ✅ | `dbus -y ... /Ac/Power GetValue` |
 | `com.victronenergy.temperature.mqtt_1` | Capteur ext. (type 4) | `dbus -y ... /Temperature GetValue` |
 | `com.victronenergy.heatpump.mqtt_1` | PAC / chauffe-eau | `dbus -y ... /State GetValue` |
 | `com.victronenergy.meteo` | Irradiance + TodaysYield | `dbus -y ... /TodaysYield GetValue` |
