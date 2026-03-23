@@ -1,0 +1,329 @@
+[
+    {
+        "id": "d5ab0c6e1ef8eb03",
+        "type": "tab",
+        "label": "Tasmota",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "inject-on",
+        "type": "inject",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "ON",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "payload": "ON",
+        "payloadType": "str",
+        "x": 110,
+        "y": 60,
+        "wires": [
+            [
+                "mqtt-cmd-power"
+            ]
+        ]
+    },
+    {
+        "id": "inject-off",
+        "type": "inject",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "OFF",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "payload": "OFF",
+        "payloadType": "str",
+        "x": 110,
+        "y": 100,
+        "wires": [
+            [
+                "mqtt-cmd-power"
+            ]
+        ]
+    },
+    {
+        "id": "inject-toggle",
+        "type": "inject",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "TOGGLE",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "topic": "",
+        "payload": "TOGGLE",
+        "payloadType": "str",
+        "x": 120,
+        "y": 140,
+        "wires": [
+            [
+                "mqtt-cmd-power"
+            ]
+        ]
+    },
+    {
+        "id": "inject-status",
+        "type": "inject",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "Lire état",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "2",
+        "topic": "",
+        "payload": "",
+        "payloadType": "str",
+        "x": 120,
+        "y": 180,
+        "wires": [
+            [
+                "mqtt-cmd-power"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-cmd-power",
+        "type": "mqtt out",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "cmnd/tongou_3BC764/Power",
+        "topic": "cmnd/tongou_3BC764/Power",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "tasmota-broker",
+        "x": 360,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "mqtt-stat-power",
+        "type": "mqtt in",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "stat/tongou_3BC764/POWER",
+        "topic": "stat/tongou_3BC764/POWER",
+        "qos": "0",
+        "datatype": "auto",
+        "broker": "tasmota-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 220,
+        "wires": [
+            [
+                "fn-etat-power",
+                "debug-power"
+            ]
+        ]
+    },
+    {
+        "id": "fn-etat-power",
+        "type": "function",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "État → global",
+        "func": "const etat = msg.payload;\nconst on = (etat === 'ON');\nflow.set('tongou_sy2_state', on);\nnode.status({fill: on ? 'green' : 'grey', shape: 'dot', text: etat});\nmsg.payload = on;\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 220,
+        "wires": [
+            [
+                "debug-state"
+            ]
+        ]
+    },
+    {
+        "id": "debug-power",
+        "type": "debug",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "POWER état",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "debug-state",
+        "type": "debug",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "État bool",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "mqtt-tele-sensor",
+        "type": "mqtt in",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "tele/tongou_3BC764/SENSOR",
+        "topic": "tele/tongou_3BC764/SENSOR",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "tasmota-broker",
+        "nl": false,
+        "rap": false,
+        "rh": 0,
+        "inputs": 0,
+        "x": 170,
+        "y": 340,
+        "wires": [
+            [
+                "fn-sensor",
+                "debug-sensor"
+            ]
+        ]
+    },
+    {
+        "id": "fn-sensor",
+        "type": "function",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "Énergie → globals",
+        "func": "const d = msg.payload;\nif (d && d.ENERGY) {\n    const e = d.ENERGY;\n    flow.set('tongou_sy2_power_w',   e.Power   || 0);\n    flow.set('tongou_sy2_voltage_v', e.Voltage || 0);\n    flow.set('tongou_sy2_current_a', e.Current || 0);\n    flow.set('tongou_sy2_today_kwh', e.Today   || 0);\n    flow.set('tongou_sy2_total_kwh', e.Total   || 0);\n    node.status({fill:'blue', shape:'dot',\n        text: `${e.Power}W  ${e.Voltage}V  ${e.Current}A`});\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 340,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "debug-sensor",
+        "type": "debug",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "Télémétrie",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 190,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "mqtt-tele-state",
+        "type": "mqtt in",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "tele/tongou_3BC764/STATE",
+        "topic": "tele/tongou_3BC764/STATE",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "tasmota-broker",
+        "nl": false,
+        "rap": false,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 400,
+        "wires": [
+            [
+                "debug-tele-state"
+            ]
+        ]
+    },
+    {
+        "id": "debug-tele-state",
+        "type": "debug",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "STATE complet",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 420,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "03a1e38f1be6bd3f",
+        "type": "comment",
+        "z": "d5ab0c6e1ef8eb03",
+        "name": "tongou_3BC764 Chauffe-eau",
+        "info": "",
+        "x": 360,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "tasmota-broker",
+        "type": "mqtt-broker",
+        "name": "Mosquitto Pi5",
+        "broker": "192.168.1.141",
+        "port": "1883",
+        "clientid": "nodered-tasmota-sy2",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": ""
+    }
+]
