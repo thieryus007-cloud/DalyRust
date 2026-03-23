@@ -102,9 +102,9 @@ ssh-copy-id -i ~/.ssh/id_nanopi.pub root@192.168.1.120
 ## 3. REPOSITORY GIT
 
 - **GitHub** : https://github.com/thieryus007-cloud/Daly-BMS-Rust
-- **Branche principale** : `master`
-- **Branche de travail courante** : `claude/review-venus-integration-35qN7`
-- **Convention branches Claude** : `claude/<description>-<session-id>`
+- **Branche principale** : `main`
+- **Branche de travail courante** : `main`
+- **Convention branches Claude** : travailler directement sur `main`
 
 ### Workflow standard
 
@@ -268,7 +268,7 @@ capacity_ah = 320.0
 # Sur Pi5
 
 # 1. Récupérer derniers changements
-git pull origin claude/migrate-nodered-pi5-91idx
+git pull origin main
 
 # 2. Compiler pour armv7 (Venus OS NanoPi est armv7)
 make build-venus-v7
