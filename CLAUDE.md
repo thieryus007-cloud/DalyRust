@@ -1165,11 +1165,53 @@ dbus -y com.victronenergy.heatpump.mqtt_8 / GetItems
 # API REST
 curl http://192.168.1.141:8080/api/v1/et112/7/status    # Micro-Onduleurs
 curl http://192.168.1.141:8080/api/v1/et112/8/status    # PAC Chauffe-eau
+curl http://192.168.1.141:8080/api/v1/et112/9/status    # PAC Climatisation
 
 # MQTT publié
 mosquitto_sub -h 192.168.1.120 -p 1883 -t 'santuario/pvinverter/7/venus' -v
 mosquitto_sub -h 192.168.1.120 -p 1883 -t 'santuario/heatpump/8/venus' -v
+mosquitto_sub -h 192.168.1.120 -p 1883 -t 'santuario/heatpump/9/venus' -v
+
+# Logs temps réel — erreurs Modbus
+journalctl -u daly-bms -f | grep -E "0x09|PAC Clim|timeout|error|Error"
 ```
+
+### Problème : ET112 "En attente de données" — adresse Modbus incorrecte
+
+**Symptôme** : Le dashboard affiche "En attente du premier snapshot ET112..." pour une adresse donnée.
+
+**Cause la plus fréquente** : L'ET112 a une adresse Modbus différente de celle configurée.
+Les ET112 sortent d'usine avec l'adresse `0x01`. Si l'appareil n'a pas été reprogrammé, il répond sur `0x01` et non sur `0x07`/`0x08`/`0x09`.
+
+**Procédure de diagnostic** :
+
+1. Vérifier les logs pour le type d'erreur :
+```bash
+journalctl -u daly-bms --since "2 minutes ago" | grep -E "0x09|modbus|Modbus|timeout|CRC"
+```
+
+2. Erreurs possibles :
+   - `timeout` → l'appareil ne répond pas sur cette adresse → adresse incorrecte ou câble débranché
+   - `CRC error` → bruit RS485 / terminaison 120Ω manquante en bout de ligne
+   - Pas d'erreur mais pas de données → vérifier que le service a bien redémarré avec la nouvelle config
+
+3. Trouver l'adresse réelle de l'ET112 avec `mbpoll` (installer si absent : `sudo apt install mbpoll`) :
+```bash
+# Scanner les adresses 1 à 15 sur /dev/ttyUSB0 à 9600 baud
+# Lire le registre 0x0000 (tension, FLOAT32 = 2 registres)
+for addr in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    echo -n "addr $addr: "
+    mbpoll -a $addr -b 9600 -P none -t 3:float -r 1 -c 2 /dev/ttyUSB0 2>&1 | tail -1
+done
+```
+
+4. Une fois l'adresse réelle trouvée (ex: `0x01`), la reconfigurer sur l'ET112 via son bouton Setup,
+   ou modifier temporairement `Config.toml` pour utiliser l'adresse réelle.
+
+**Vérification hardware** :
+- LED verte de l'ET112 allumée = alimenté
+- Câbles A/B RS485 connectés sur le même bus que les autres ET112
+- Terminaison 120Ω en bout de ligne si c'est le dernier appareil
 
 ---
 
