@@ -1,0 +1,602 @@
+[
+    {
+        "id": "f9c19fc3b4cd942b",
+        "type": "tab",
+        "label": "Charge Current",
+        "disabled": false,
+        "info": "Migré vers MQTT — Venus OS via bridge MQTT Pi5→NanoPi\nPortal ID: c0619ab9929a",
+        "env": []
+    },
+    {
+        "id": "02d17751f9dd4c7e",
+        "type": "inject",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Check every 2min",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "120",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "0.1",
+        "topic": "R/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
+        "payload": "",
+        "payloadType": "str",
+        "x": 530,
+        "y": 260,
+        "wires": [
+            [
+                "mqtt-out-venus"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-in-acinput",
+        "type": "mqtt in",
+        "z": "f9c19fc3b4cd942b",
+        "name": "AC Input Ignored?",
+        "topic": "N/c0619ab9929a/vebus/275/Ac/State/IgnoreAcIn1",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_fip",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 60,
+        "wires": [
+            [
+                "fn-extract-acinput",
+                "618fb92f7fc92e8e"
+            ]
+        ]
+    },
+    {
+        "id": "fn-extract-acinput",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Extract .value",
+        "func": "var v = msg.payload;\nif (v && v.value !== undefined) {\n    msg.payload = v.value;\n    const label = v.value === 1 ? 'AC ignoré (off-grid)' : 'AC actif (grid)';\n    node.status({fill: v.value === 1 ? 'green' : 'red', shape: 'dot', text: label});\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 260,
+        "y": 120,
+        "wires": [
+            [
+                "2afae9caddde3f98"
+            ]
+        ]
+    },
+    {
+        "id": "2afae9caddde3f98",
+        "type": "switch",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Check AC Input",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "1",
+                "vt": "num"
+            },
+            {
+                "t": "eq",
+                "v": "0",
+                "vt": "num"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 150,
+        "y": 200,
+        "wires": [
+            [
+                "4906e558ab027eac",
+                "dd3accdb04372f4a"
+            ],
+            [
+                "34c82a81db87ae3f",
+                "6bd2a8ad86ff0f25",
+                "fe721c921d8591e0"
+            ]
+        ]
+    },
+    {
+        "id": "4906e558ab027eac",
+        "type": "change",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Set 70A",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "70",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 500,
+        "y": 140,
+        "wires": [
+            [
+                "dca68027e4d330f7"
+            ]
+        ]
+    },
+    {
+        "id": "dd3accdb04372f4a",
+        "type": "change",
+        "z": "f9c19fc3b4cd942b",
+        "name": "PowerAssist ON",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "1",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 180,
+        "y": 280,
+        "wires": [
+            [
+                "fn-wrap-powerassist"
+            ]
+        ]
+    },
+    {
+        "id": "34c82a81db87ae3f",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Set 0A or 4A based on PV excess",
+        "func": "let pvExcess = flow.get('pvExcess') || false;\nlet current = pvExcess ? 4 : 0;\nmsg.payload = current;\nnode.status({fill:\"blue\",shape:\"dot\",text:`Set ${current}A (PV excess: ${pvExcess})`});\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 200,
+        "wires": [
+            [
+                "dca68027e4d330f7"
+            ]
+        ]
+    },
+    {
+        "id": "6bd2a8ad86ff0f25",
+        "type": "change",
+        "z": "f9c19fc3b4cd942b",
+        "name": "PowerAssist OFF",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 190,
+        "y": 340,
+        "wires": [
+            [
+                "fn-wrap-powerassist"
+            ]
+        ]
+    },
+    {
+        "id": "fe721c921d8591e0",
+        "type": "change",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Set Feed-in 0W",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "0",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 180,
+        "y": 400,
+        "wires": [
+            [
+                "fn-wrap-feedin"
+            ]
+        ]
+    },
+    {
+        "id": "dca68027e4d330f7",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Send only if changed",
+        "func": "let lastValue = context.get('lastChargeCurrent') || null;\nlet newValue = msg.payload;\nif (lastValue !== newValue) {\n    context.set('lastChargeCurrent', newValue);\n    node.status({fill:\"green\",shape:\"dot\",text:`Changed to ${newValue}A`});\n    return msg;\n} else {\n    node.status({fill:\"grey\",shape:\"ring\",text:`Unchanged (${newValue}A)`});\n    return null;\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 740,
+        "y": 140,
+        "wires": [
+            [
+                "fn-wrap-maxcharge",
+                "f956a0e409f2744d"
+            ]
+        ]
+    },
+    {
+        "id": "fn-wrap-maxcharge",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "→ W/ MaxChargeCurrent",
+        "func": "msg.topic = 'W/c0619ab9929a/vebus/275/Dc/0/MaxChargeCurrent';\nmsg.payload = {value: msg.payload};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 260,
+        "wires": [
+            [
+                "mqtt-out-venus"
+            ]
+        ]
+    },
+    {
+        "id": "fn-wrap-powerassist",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "→ W/ PowerAssist",
+        "func": "msg.topic = 'W/c0619ab9929a/vebus/275/Settings/PowerAssistEnabled';\nmsg.payload = {value: msg.payload};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 310,
+        "wires": [
+            [
+                "mqtt-out-venus"
+            ]
+        ]
+    },
+    {
+        "id": "fn-wrap-feedin",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "→ W/ MaxFeedInPower",
+        "func": "msg.topic = 'W/c0619ab9929a/settings/0/Settings/CGwacs/MaxFeedInPower';\nmsg.payload = {value: msg.payload};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 410,
+        "y": 400,
+        "wires": [
+            [
+                "mqtt-out-venus"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-out-venus",
+        "type": "mqtt out",
+        "z": "f9c19fc3b4cd942b",
+        "name": "→ Venus MQTT",
+        "topic": "",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "broker": "pi5_mqtt_broker_fip",
+        "x": 760,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "f956a0e409f2744d",
+        "type": "debug",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Value sent",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 770,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "618fb92f7fc92e8e",
+        "type": "debug",
+        "z": "f9c19fc3b4cd942b",
+        "name": "AC Input raw",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 390,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "fded37fac7104bc0",
+        "type": "inject",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Manual: Set 0A",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 1000,
+        "y": 60,
+        "wires": [
+            [
+                "fn-wrap-maxcharge"
+            ]
+        ]
+    },
+    {
+        "id": "a5f745b99cea5bba",
+        "type": "inject",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Manual: Set 70A",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "70",
+        "payloadType": "num",
+        "x": 1000,
+        "y": 120,
+        "wires": [
+            [
+                "fn-wrap-maxcharge"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-in-pvpower",
+        "type": "mqtt in",
+        "z": "f9c19fc3b4cd942b",
+        "name": "PV AC Output Power",
+        "topic": "N/c0619ab9929a/system/0/Ac/PvOnOutput/L1/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_fip",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 520,
+        "wires": [
+            [
+                "fn-extract-pvpower"
+            ]
+        ]
+    },
+    {
+        "id": "fn-extract-pvpower",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Extract PV power",
+        "func": "var v = msg.payload;\nif (v && v.value !== undefined) {\n    msg.payload = v.value;\n    msg.path = '/Ac/PvOnOutput/L1/Power';\n    node.status({fill: 'blue', shape: 'dot', text: v.value + ' W'});\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 520,
+        "wires": [
+            [
+                "37fd5c5a52a45217"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-in-consumption",
+        "type": "mqtt in",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Consumption on Output",
+        "topic": "N/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker_fip",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 580,
+        "wires": [
+            [
+                "fn-extract-consumption"
+            ]
+        ]
+    },
+    {
+        "id": "fn-extract-consumption",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Extract consumption",
+        "func": "var v = msg.payload;\nif (v && v.value !== undefined) {\n    msg.payload = v.value;\n    msg.path = '/Ac/ConsumptionOnOutput/L1/Power';\n    node.status({fill: 'blue', shape: 'dot', text: v.value + ' W'});\n}\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 580,
+        "wires": [
+            [
+                "37fd5c5a52a45217"
+            ]
+        ]
+    },
+    {
+        "id": "37fd5c5a52a45217",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Calculate PV excess",
+        "func": "let pvPower = flow.get('pvPower') || 0;\nlet consumption = flow.get('consumption') || 0;\n\nif (msg.path === '/Ac/PvOnOutput/L1/Power') {\n    pvPower = msg.payload || 0;\n    flow.set('pvPower', pvPower);\n} else if (msg.path === '/Ac/ConsumptionOnOutput/L1/Power') {\n    consumption = msg.payload || 0;\n    flow.set('consumption', consumption);\n}\n\nlet excess = pvPower - consumption;\nlet pvExcess = excess > 50;\nflow.set('pvExcess', pvExcess);\n\nnode.status({\n    fill: pvExcess ? 'green' : 'grey',\n    shape: 'dot',\n    text: `PV: ${pvPower}W | Cons: ${consumption}W | Excess: ${excess}W | Flag: ${pvExcess}`\n});\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 700,
+        "y": 560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "475fcec1d46d1554",
+        "type": "inject",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Set AcExportLimit 0",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "0",
+        "payloadType": "num",
+        "x": 410,
+        "y": 460,
+        "wires": [
+            [
+                "fn-wrap-acexport"
+            ]
+        ]
+    },
+    {
+        "id": "fn-wrap-acexport",
+        "type": "function",
+        "z": "f9c19fc3b4cd942b",
+        "name": "→ W/ AcExportLimit",
+        "func": "msg.topic = 'W/c0619ab9929a/settings/0/Settings/CGwacs/AcExportLimit';\nmsg.payload = {value: msg.payload};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 640,
+        "y": 460,
+        "wires": [
+            [
+                "mqtt-out-venus"
+            ]
+        ]
+    },
+    {
+        "id": "c6153ca324cb499a",
+        "type": "comment",
+        "z": "f9c19fc3b4cd942b",
+        "name": "Logique: Grid connecté + excédent PV>50W → 4A | Grid connecté + pas excédent → 0A | Grid déconnecté → 70A",
+        "info": "Venus MQTT bridge: Pi5 Mosquitto ↔ NanoPi 192.168.1.120\nN/ = données Venus (in), W/ = commandes Venus (out)\nPortal ID: c0619ab9929a | VEBus instance: 275",
+        "x": 430,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "pi5_mqtt_broker_fip",
+        "type": "mqtt-broker",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
+        "port": "1883",
+        "clientid": "nodered_feedinpower",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]
