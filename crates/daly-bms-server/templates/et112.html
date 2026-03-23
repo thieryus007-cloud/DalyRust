@@ -166,8 +166,9 @@ async function loadHistory() {
         const resp = await fetch(`${API}/history?limit=120`);
         if (!resp.ok) return;
         const d = await resp.json();
-        const xs = d.history.map(s => new Date(s.timestamp).toLocaleTimeString());
-        const ys = d.history.map(s => s.power_w.toFixed(1));
+        const hist = d.history.slice().reverse();
+        const xs = hist.map(s => new Date(s.timestamp).toLocaleTimeString());
+        const ys = hist.map(s => s.power_w.toFixed(1));
         myChart.setOption({ xAxis: { data: xs }, series: [{ data: ys }] });
     } catch(e) {}
 }
