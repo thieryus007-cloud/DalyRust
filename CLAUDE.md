@@ -684,6 +684,7 @@ mosquitto_sub -h localhost -p 1883 -t 'santuario/persist/pvinv_baseline' -C 1
 | 3 | Baseline PVInverter perdue après reset mid-journée | `fix-pvinv-baseline.json` (flow Node-RED) | `3ce46de` |
 | 4 | Documentation manquante | CLAUDE.md inventaire D-Bus + procédures | `b8087d2` |
 | 5 | Capteur irradiance RS485 (PRALRAN) non intégré | Service systemd + flow Node-RED + fix apt | `bbb5ef8` |
+| 6 | `/CustomName` et `/FirmwareVersion` absents de heatpump et switch | Ajout dans `heatpump_service.rs`, `switch_service.rs`, `config.rs`, managers | `eada5fd` |
 
 ### État final widget météo Victron (Capteur [40]) — vérifié 2026-03-22 ✅
 
@@ -711,6 +712,100 @@ Dernière màj     : 4 minutes ago    ← keepalive 25s actif
 2. ✅ Connectivité MQTT vérifiée (broker 192.168.1.120:1883)
 3. ✅ Node-RED arrêté sur NanoPi
 4. ✅ ~100 MB RAM libérée sur NanoPi
+
+---
+
+## 15f. VARIABLES D-BUS HEATPUMP ET SWITCH — COMPLÉTÉES (2026-03-23) ✅
+
+**Branche** : `claude/review-venus-integration-35qN7` — Commit `eada5fd`
+
+### Problème
+
+Les services `com.victronenergy.heatpump` et `com.victronenergy.switch` étaient fonctionnels
+mais manquaient de deux chemins D-Bus attendus par Venus OS GUI/VRM pour une intégration
+native complète :
+
+- `/CustomName` : label utilisateur affiché dans Venus OS GUI et VRM portal
+- `/FirmwareVersion` : attendu par Venus OS pour cohérence avec les appareils natifs Victron
+
+### Chemins D-Bus exposés après correction
+
+**`com.victronenergy.heatpump.mqtt_{n}`**
+
+```text
+/Mgmt/ProcessName       — "dbus-mqtt-venus"
+/Mgmt/ProcessVersion    — version du binaire (CARGO_PKG_VERSION)
+/Mgmt/Connection        — "MQTT"
+/ProductId              — 0
+/ProductName            — nom du produit (depuis config `name`)
+/CustomName             — nom personnalisé Venus OS GUI/VRM (depuis config `custom_name` → fallback `name`)
+/FirmwareVersion        — "1"
+/DeviceInstance         — numéro d'instance unique
+/Connected              — 0 ou 1
+/State                  — état PAC (enum Victron)
+/Position               — 0=AC Output, 1=AC Input
+/Ac/Power               — puissance consommée W
+/Ac/Energy/Forward      — énergie totale consommée kWh
+/Temperature            — température eau courante °C (0.0 si absent)
+/TargetTemperature      — température cible °C (0.0 si absente)
+```
+
+**`com.victronenergy.switch.mqtt_{n}`**
+
+```text
+/Mgmt/ProcessName       — "dbus-mqtt-venus"
+/Mgmt/ProcessVersion    — version du binaire
+/Mgmt/Connection        — "MQTT"
+/ProductId              — 0
+/ProductName            — nom du produit (depuis config `name`)
+/CustomName             — nom personnalisé Venus OS GUI/VRM (depuis config `custom_name` → fallback `name`)
+/FirmwareVersion        — "1"
+/DeviceInstance         — numéro d'instance unique
+/Connected              — 0 ou 1
+/Position               — 0=AC1 (réseau), 1=AC2 (générateur/onduleur)
+/State                  — 0=inactive, 1=active, 2=alerted
+```
+
+### Champ `custom_name` dans config.toml
+
+Les sections `[[heatpumps]]` et `[[switches]]` acceptent désormais un champ optionnel `custom_name` :
+
+```toml
+[[heatpumps]]
+mqtt_index      = 1
+name            = "PAC LG"
+custom_name     = "Chauffe-eau Ballon"   # ← affiché dans Venus OS GUI/VRM
+device_instance = 201
+
+[[switches]]
+mqtt_index      = 1
+name            = "ATS CHINT"
+custom_name     = "Commutation Réseau/Groupe"  # ← affiché dans Venus OS GUI/VRM
+device_instance = 301
+```
+
+**Règle de fallback** (par ordre de priorité) :
+1. `custom_name` si défini dans config.toml
+2. `name` si `custom_name` absent
+3. Valeur générée : `"Heat Pump {n}"` / `"Switch {n}"` si ni l'un ni l'autre
+
+### Fichiers modifiés
+
+| Fichier | Modification |
+|---|---|
+| `crates/dbus-mqtt-venus/src/heatpump_service.rs` | `/CustomName`, `/FirmwareVersion` dans `to_items()` ; champ `custom_name` dans `HeatpumpValues` et `HeatpumpServiceHandle` |
+| `crates/dbus-mqtt-venus/src/switch_service.rs` | Idem pour `SwitchValues` et `SwitchServiceHandle` |
+| `crates/dbus-mqtt-venus/src/config.rs` | Champ `custom_name: Option<String>` dans `HeatpumpRef` et `SwitchRef` |
+| `crates/dbus-mqtt-venus/src/heatpump_manager.rs` | Méthode `custom_name_for()` + passage au constructeur |
+| `crates/dbus-mqtt-venus/src/switch_manager.rs` | Idem |
+
+### Vérification D-Bus (📍 NanoPi)
+
+```bash
+# Après déploiement dbus-mqtt-venus :
+dbus -y com.victronenergy.heatpump.mqtt_1 / GetItems | grep -E "CustomName|FirmwareVersion"
+dbus -y com.victronenergy.switch.mqtt_1   / GetItems | grep -E "CustomName|FirmwareVersion"
+```
 
 ---
 
@@ -767,6 +862,8 @@ device_instance = 102         # n° unique dans VRM/Victron
 [[heatpumps]]
 mqtt_index      = 2
 name            = "PAC Climatisation"
+custom_name     = "Chauffe-eau Ballon"   # optionnel — affiché dans Venus OS GUI/VRM (/CustomName)
+                                          # Si absent, utilise `name` comme fallback
 device_instance = 202
 ```
 
@@ -775,6 +872,8 @@ device_instance = 202
 [[switches]]
 mqtt_index      = 2
 name            = "ATS Groupe"
+custom_name     = "Commutation Réseau/Groupe"  # optionnel — affiché dans Venus OS GUI/VRM (/CustomName)
+                                                 # Si absent, utilise `name` comme fallback
 device_instance = 302
 ```
 
