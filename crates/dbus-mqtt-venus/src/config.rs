@@ -206,6 +206,10 @@ pub struct HeatpumpRef {
     /// Nom affiché dans Venus OS (`/ProductName`).
     pub name: Option<String>,
 
+    /// Nom personnalisé affiché dans Venus OS (`/CustomName`).
+    /// Si absent, utilise `name` comme fallback.
+    pub custom_name: Option<String>,
+
     /// DeviceInstance Venus OS D-Bus.
     pub device_instance: Option<u32>,
 }
@@ -291,6 +295,10 @@ pub struct SwitchRef {
 
     /// Nom affiché dans Venus OS (`/ProductName`).
     pub name: Option<String>,
+
+    /// Nom personnalisé affiché dans Venus OS (`/CustomName`).
+    /// Si absent, utilise `name` comme fallback.
+    pub custom_name: Option<String>,
 
     /// DeviceInstance Venus OS D-Bus.
     pub device_instance: Option<u32>,

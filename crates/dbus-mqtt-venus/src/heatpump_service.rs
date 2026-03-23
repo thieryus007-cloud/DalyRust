@@ -111,12 +111,13 @@ pub struct HeatpumpValues {
     pub ac_energy_forward:  f64,
     pub position:           i32,
     pub product_name:       String,
+    pub custom_name:        String,
     pub device_instance:    u32,
     pub last_update:        Instant,
 }
 
 impl HeatpumpValues {
-    pub fn disconnected(device_instance: u32, product_name: String) -> Self {
+    pub fn disconnected(device_instance: u32, product_name: String, custom_name: String) -> Self {
         Self {
             connected:          0,
             state:              0,
@@ -126,6 +127,7 @@ impl HeatpumpValues {
             ac_energy_forward:  0.0,
             position:           0,
             product_name,
+            custom_name,
             device_instance,
             last_update:        Instant::now(),
         }
@@ -135,6 +137,7 @@ impl HeatpumpValues {
         payload:         &HeatpumpPayload,
         device_instance: u32,
         product_name:    String,
+        custom_name:     String,
     ) -> Self {
         let ac_power         = payload.ac.as_ref().map(|a| a.power).unwrap_or(0.0);
         let ac_energy_forward = payload.ac.as_ref()
@@ -151,6 +154,7 @@ impl HeatpumpValues {
             ac_energy_forward,
             position: payload.position,
             product_name,
+            custom_name,
             device_instance,
             last_update: Instant::now(),
         }
@@ -167,6 +171,8 @@ impl HeatpumpValues {
         m.insert("/ProductName".into(),         DbusItem::str(&self.product_name));
         m.insert("/DeviceInstance".into(),      DbusItem::u32(self.device_instance));
         m.insert("/Connected".into(),           DbusItem::i32(self.connected));
+        m.insert("/CustomName".into(),          DbusItem::str(&self.custom_name));
+        m.insert("/FirmwareVersion".into(),     DbusItem::str("1"));
 
         // Heatpump (chemins officiels wiki Victron)
         m.insert("/State".into(),    DbusItem::i32(self.state));
@@ -251,6 +257,7 @@ pub struct HeatpumpServiceHandle {
     pub values:          Arc<Mutex<HeatpumpValues>>,
     connection:          Connection,
     pub product_name:    String,
+    pub custom_name:     String,
 }
 
 impl HeatpumpServiceHandle {
@@ -259,6 +266,7 @@ impl HeatpumpServiceHandle {
             payload,
             self.device_instance,
             self.product_name.clone(),
+            self.custom_name.clone(),
         );
         let items = new_values.to_items();
         { *self.values.lock().unwrap() = new_values; }
@@ -304,6 +312,7 @@ pub async fn create_heatpump_service(
     service_suffix:  &str,
     device_instance: u32,
     product_name:    String,
+    custom_name:     String,
 ) -> Result<HeatpumpServiceHandle> {
     let service_name = format!("{}.{}", VICTRON_HEATPUMP_PREFIX, service_suffix);
 
@@ -314,7 +323,7 @@ pub async fn create_heatpump_service(
     );
 
     let initial_values = Arc::new(Mutex::new(
-        HeatpumpValues::disconnected(device_instance, product_name.clone())
+        HeatpumpValues::disconnected(device_instance, product_name.clone(), custom_name.clone())
     ));
 
     let root = HeatpumpRootIface { values: initial_values.clone() };
@@ -353,5 +362,6 @@ pub async fn create_heatpump_service(
         values: initial_values,
         connection: conn,
         product_name,
+        custom_name,
     })
 }

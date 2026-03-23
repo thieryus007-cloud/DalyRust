@@ -99,17 +99,19 @@ pub struct SwitchValues {
     pub position:        i32,
     pub state:           i32,
     pub product_name:    String,
+    pub custom_name:     String,
     pub device_instance: u32,
     pub last_update:     Instant,
 }
 
 impl SwitchValues {
-    pub fn disconnected(device_instance: u32, product_name: String) -> Self {
+    pub fn disconnected(device_instance: u32, product_name: String, custom_name: String) -> Self {
         Self {
             connected:       0,
             position:        0,
             state:           0,
             product_name,
+            custom_name,
             device_instance,
             last_update:     Instant::now(),
         }
@@ -119,12 +121,14 @@ impl SwitchValues {
         payload:         &SwitchPayload,
         device_instance: u32,
         product_name:    String,
+        custom_name:     String,
     ) -> Self {
         Self {
             connected:       1,
             position:        payload.position,
             state:           payload.state,
             product_name,
+            custom_name,
             device_instance,
             last_update:     Instant::now(),
         }
@@ -141,6 +145,8 @@ impl SwitchValues {
         m.insert("/ProductName".into(),         DbusItem::str(&self.product_name));
         m.insert("/DeviceInstance".into(),      DbusItem::u32(self.device_instance));
         m.insert("/Connected".into(),           DbusItem::i32(self.connected));
+        m.insert("/CustomName".into(),          DbusItem::str(&self.custom_name));
+        m.insert("/FirmwareVersion".into(),     DbusItem::str("1"));
 
         // Switch (chemins officiels wiki Victron)
         m.insert("/Position".into(), DbusItem::i32(self.position));
@@ -217,6 +223,7 @@ pub struct SwitchServiceHandle {
     pub values:          Arc<Mutex<SwitchValues>>,
     connection:          Connection,
     pub product_name:    String,
+    pub custom_name:     String,
 }
 
 impl SwitchServiceHandle {
@@ -225,6 +232,7 @@ impl SwitchServiceHandle {
             payload,
             self.device_instance,
             self.product_name.clone(),
+            self.custom_name.clone(),
         );
         let items = new_values.to_items();
         { *self.values.lock().unwrap() = new_values; }
@@ -270,6 +278,7 @@ pub async fn create_switch_service(
     service_suffix:  &str,
     device_instance: u32,
     product_name:    String,
+    custom_name:     String,
 ) -> Result<SwitchServiceHandle> {
     let service_name = format!("{}.{}", VICTRON_SWITCH_PREFIX, service_suffix);
 
@@ -280,7 +289,7 @@ pub async fn create_switch_service(
     );
 
     let initial_values = Arc::new(Mutex::new(
-        SwitchValues::disconnected(device_instance, product_name.clone())
+        SwitchValues::disconnected(device_instance, product_name.clone(), custom_name.clone())
     ));
 
     let root = SwitchRootIface { values: initial_values.clone() };
@@ -319,5 +328,6 @@ pub async fn create_switch_service(
         values: initial_values,
         connection: conn,
         product_name,
+        custom_name,
     })
 }

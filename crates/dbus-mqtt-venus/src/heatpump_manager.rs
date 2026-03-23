@@ -79,7 +79,8 @@ impl HeatpumpManager {
         let suffix          = format!("{}_{}", self.cfg.service_prefix, idx);
         let device_instance = self.device_instance_for(idx);
         let product_name    = self.product_name_for(idx);
-        create_heatpump_service(&self.cfg.dbus_bus, &suffix, device_instance, product_name).await
+        let custom_name     = self.custom_name_for(idx);
+        create_heatpump_service(&self.cfg.dbus_bus, &suffix, device_instance, product_name, custom_name).await
     }
 
     fn device_instance_for(&self, idx: u8) -> u32 {
@@ -94,6 +95,17 @@ impl HeatpumpManager {
         for (pos, h) in self.heatpump_refs.iter().enumerate() {
             let hi = h.mqtt_index.unwrap_or((pos + 1) as u8);
             if hi == idx { if let Some(n) = &h.name { return n.clone(); } }
+        }
+        format!("Heat Pump {}", idx)
+    }
+
+    fn custom_name_for(&self, idx: u8) -> String {
+        for (pos, h) in self.heatpump_refs.iter().enumerate() {
+            let hi = h.mqtt_index.unwrap_or((pos + 1) as u8);
+            if hi == idx {
+                if let Some(cn) = &h.custom_name { return cn.clone(); }
+                if let Some(n)  = &h.name        { return n.clone(); }
+            }
         }
         format!("Heat Pump {}", idx)
     }
