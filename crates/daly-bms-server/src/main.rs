@@ -16,6 +16,7 @@
 mod autodetect;
 mod config;
 mod et112;
+mod irradiance;
 mod state;
 mod api;
 mod bridges;
@@ -144,15 +145,16 @@ async fn main() -> anyhow::Result<()> {
             eprintln!("Config non trouvée ({}) — utilisation des valeurs par défaut", e);
             config_from_file = false;
             AppConfig {
-                serial:    config::SerialConfig::default(),
-                api:       config::ApiConfig::default(),
-                logging:   config::LoggingConfig::default(),
-                mqtt:      config::MqttConfig::default(),
-                influxdb:  config::InfluxConfig::default(),
-                alerts:    config::AlertsConfig::default(),
-                read_only: config::ReadOnlyConfig::default(),
-                bms:       Vec::new(),
-                et112:     config::Et112Config::default(),
+                serial:      config::SerialConfig::default(),
+                api:         config::ApiConfig::default(),
+                logging:     config::LoggingConfig::default(),
+                mqtt:        config::MqttConfig::default(),
+                influxdb:    config::InfluxConfig::default(),
+                alerts:      config::AlertsConfig::default(),
+                read_only:   config::ReadOnlyConfig::default(),
+                bms:         Vec::new(),
+                et112:       config::Et112Config::default(),
+                irradiance:  None,
             }
         }
     };
@@ -224,30 +226,10 @@ async fn main() -> anyhow::Result<()> {
         async move { alerts::run_alert_engine(s, c).await }
     });
 
-    // ── Bridge ET112 polling (tâche indépendante) ──────────────────────────────
-    if !config.et112.devices.is_empty() {
-        info!(
-            port  = %config.et112.port,
-            count = config.et112.devices.len(),
-            "Démarrage polling ET112"
-        );
-        let state_et = state.clone();
-        let et112_cfg = config.et112.clone();
-        tokio::spawn(async move {
-            et112::run_et112_poll_loop(
-                et112_cfg.port,
-                et112_cfg.baud,
-                et112_cfg.devices,
-                std::time::Duration::from_millis(et112_cfg.poll_interval_ms),
-                move |snap| {
-                    let state = state_et.clone();
-                    tokio::spawn(async move {
-                        state.on_et112_snapshot(snap).await;
-                    });
-                },
-            ).await;
-        });
-    }
+    // NOTE : ET112 et PRALRAN utilisent désormais le bus RS485 UNIFIÉ.
+    // Leur lancement est déplacé dans le bloc hardware, après l'ouverture du DalyPort,
+    // afin de partager le même Arc<SharedBus>.
+    // En mode simulation, ET112 et PRALRAN ne sont pas lancés (pas de port réel).
 
     // ── Mode SIMULATION ou HARDWARE ────────────────────────────────────────────
     if args.simulate {
@@ -300,11 +282,58 @@ async fn main() -> anyhow::Result<()> {
             };
             match dal_port {
                 Ok(port) => {
-                    info!("Port série {} ouvert à {} baud", resolved_port, config.serial.baud);
+                    info!("Port série {} ouvert à {} baud — bus RS485 unifié", resolved_port, config.serial.baud);
                     state.polling_active.store(true, Ordering::Relaxed);
 
                     // Rendre le port disponible pour les commandes d'écriture
                     state.set_port(port.clone()).await;
+
+                    // ── Bus RS485 partagé avec ET112 et PRALRAN ────────────────
+                    let shared_bus = port.shared_bus();
+
+                    // ── ET112 sur bus unifié ───────────────────────────────────
+                    if !config.et112.devices.is_empty() {
+                        info!(
+                            count = config.et112.devices.len(),
+                            "Démarrage polling ET112 (bus RS485 unifié)"
+                        );
+                        let state_et  = state.clone();
+                        let bus_et    = shared_bus.clone();
+                        let et112_cfg = config.et112.clone();
+                        tokio::spawn(async move {
+                            et112::run_et112_poll_loop(
+                                bus_et,
+                                et112_cfg.devices,
+                                std::time::Duration::from_millis(et112_cfg.poll_interval_ms),
+                                move |snap| {
+                                    let s = state_et.clone();
+                                    tokio::spawn(async move { s.on_et112_snapshot(snap).await });
+                                },
+                            )
+                            .await;
+                        });
+                    }
+
+                    // ── PRALRAN irradiance sur bus unifié ──────────────────────
+                    if let Some(irrad_cfg) = config.irradiance.clone() {
+                        info!(
+                            addr = %irrad_cfg.address,
+                            "Démarrage polling irradiance PRALRAN (bus RS485 unifié)"
+                        );
+                        let state_irrad = state.clone();
+                        let bus_irrad   = shared_bus.clone();
+                        tokio::spawn(async move {
+                            irradiance::run_irradiance_poll_loop(
+                                bus_irrad,
+                                irrad_cfg,
+                                move |snap| {
+                                    let s = state_irrad.clone();
+                                    tokio::spawn(async move { s.on_irradiance_snapshot(snap).await });
+                                },
+                            )
+                            .await;
+                        });
+                    }
 
                     // ── 2. Résoudre les adresses BMS (auto-découverte ou config) ──
                     let addresses = if auto_discover_addrs {

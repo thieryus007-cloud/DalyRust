@@ -1,0 +1,15 @@
+[package]
+name        = "rs485-bus"
+description = "Bus RS485 partagé — SharedBus + framing Modbus RTU pur Rust"
+version.workspace    = true
+edition.workspace    = true
+authors.workspace    = true
+license.workspace    = true
+rust-version.workspace = true
+
+[dependencies]
+tokio        = { workspace = true }
+tokio-serial = { workspace = true }
+anyhow       = { workspace = true }
+thiserror    = { workspace = true }
+tracing      = { workspace = true }

@@ -8,6 +8,7 @@ license.workspace   = true
 rust-version.workspace = true
 
 [dependencies]
+rs485-bus     = { workspace = true }
 tokio         = { workspace = true }
 tokio-serial  = { workspace = true }
 tokio-util    = { workspace = true }

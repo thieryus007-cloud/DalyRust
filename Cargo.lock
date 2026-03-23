@@ -698,6 +698,7 @@ dependencies = [
  "bytes",
  "chrono",
  "futures",
+ "rs485-bus",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -733,13 +734,13 @@ dependencies = [
  "influxdb2-structmap",
  "lettre",
  "reqwest 0.12.28",
+ "rs485-bus",
  "rumqttc",
  "rusqlite",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
- "tokio-modbus",
  "tokio-serial",
  "toml",
  "tower 0.4.13",
@@ -2366,6 +2367,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs485-bus"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-serial",
+ "tracing",
+]
+
+[[package]]
 name = "rumqttc"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3023,24 +3035,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "tokio-modbus"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "033b1b9843d693c3543e6b9c656a566ea45d2564e72ad5447e83233b9e2f3fe1"
-dependencies = [
- "async-trait",
- "byteorder",
- "bytes",
- "futures-core",
- "futures-util",
- "log",
- "smallvec",
- "thiserror 1.0.69",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]
