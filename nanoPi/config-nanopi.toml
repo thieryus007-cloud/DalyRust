@@ -150,6 +150,12 @@ topic_prefix = "santuario/grid"
 # device_instance = 401
 # service_type    = "grid"     # "grid" ou "acload"
 
+[[grids]]
+mqtt_index      = 9
+name            = "PAC Climatisation"
+device_instance = 31
+service_type    = "acload"   # ET112 addr=0x09 sur bus RS485 ttyUSB0
+
 # Décommenter lors de la migration des ET112 acload depuis le Victron vers Pi5 :
 # [[grids]]
 # mqtt_index      = 4
