@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}DalyBMS{% endblock %}</title>
+  <title>{% block title %}Monitoring{% endblock %}</title>
   <style>
     /* ─── Variables ───────────────────────────────────────────────────── */
     :root {
@@ -545,10 +545,10 @@
 <body>
 
 <nav class="nav">
-  <div class="nav-brand">⚡ Daly<span>BMS</span></div>
+  <div class="nav-brand">⚡ <span>Monitoring</span></div>
   <div class="nav-links">
-    <a href="/dashboard">Vue d'ensemble</a>
-    <a href="/dashboard/et112">⚡ ET112</a>
+    <a href="/dashboard">🔋 BMS</a>
+    <a href="/dashboard/et112">⚡ Compteurs ET112</a>
     <a href="/dashboard/settings">Paramètres</a>
     <a href="/dashboard/logs">Logs</a>
     <a href="/api/v1/system/status" target="_blank">API</a>
@@ -564,7 +564,7 @@
 </main>
 
 <footer>
-  DalyBMS Rust Edition &nbsp;·&nbsp;
+  Monitoring &nbsp;·&nbsp;
   <a href="/api/v1/system/status">API status</a> &nbsp;·&nbsp;
   <a href="/ws/bms/stream">WebSocket</a>
 </footer>

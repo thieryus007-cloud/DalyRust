@@ -535,12 +535,14 @@
     "type": "function",
     "z": "e6e3a16384301f83",
     "name": "Restaurer yield_yesterday",
-    "func": "const raw = msg.payload;\nif (raw === '' || raw === null || raw === undefined) {\n    global.set('yield_yesterday', 0);\n    node.status({fill:'grey', shape:'ring', text:'Pas de yield_yesterday (1er jour)'});\n    return null;\n}\nconst val = parseFloat(raw);\nif (!isNaN(val) && val >= 0) {\n    global.set('yield_yesterday', val);\n    node.status({fill:'yellow', shape:'dot', text:'Hier: ' + val.toFixed(2) + ' kWh'});\n}\nreturn null;",
+    "func": "const raw = msg.payload;\nif (raw === '' || raw === null || raw === undefined) {\n    global.set('yield_yesterday', 0);\n    node.status({fill:'grey', shape:'ring', text:'Pas de yield_yesterday (1er jour)'});\n    return null;\n}\nconst val = parseFloat(raw);\n// Seuil raisonnable : production max journalière ~50 kWh sur cette installation\nconst MAX_DAILY_KWH = 50;\nif (!isNaN(val) && val >= 0 && val <= MAX_DAILY_KWH) {\n    global.set('yield_yesterday', val);\n    node.status({fill:'yellow', shape:'dot', text:'Hier: ' + val.toFixed(2) + ' kWh'});\n} else if (!isNaN(val) && val > MAX_DAILY_KWH) {\n    // Valeur aberrante (cumul brut) — réinitialiser et nettoyer le retained\n    global.set('yield_yesterday', 0);\n    node.status({fill:'orange', shape:'ring', text:'Valeur aberrante ignorée: ' + val.toFixed(1) + ' kWh → reset'});\n    // Publier 0 pour écraser le retained incorrect\n    return {payload: '0', topic: 'santuario/persist/yield_yesterday', retain: true};\n}\nreturn null;",
     "outputs": 1,
     "x": 480,
     "y": 680,
     "wires": [
-      []
+      [
+        "yield_yesterday_persist_out"
+      ]
     ]
   }
 ]

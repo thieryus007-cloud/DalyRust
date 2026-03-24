@@ -382,6 +382,29 @@ pub async fn dashboard_settings(State(state): State<AppState>) -> Response {
 // Dashboard ET112
 // =============================================================================
 
+/// Résumé d'un ET112 pour la page d'ensemble.
+#[derive(Debug, Clone)]
+pub struct Et112DeviceSummary {
+    pub name:              String,
+    pub address:           u8,
+    pub addr_hex:          String,
+    pub connected:         bool,
+    pub power_w:           f32,
+    pub voltage_v:         f32,
+    pub current_a:         f32,
+    pub energy_import_kwh: f32,
+    pub energy_export_kwh: f32,
+    pub last_ts:           String,
+    pub service_type:      String,
+}
+
+#[derive(Template)]
+#[template(path = "et112_all.html")]
+struct Et112AllTemplate {
+    devices:      Vec<Et112DeviceSummary>,
+    device_count: usize,
+}
+
 #[derive(Template)]
 #[template(path = "et112.html")]
 struct Et112Template {
@@ -455,14 +478,48 @@ pub async fn dashboard_et112(
     })
 }
 
-/// Liste des ET112 configurés (page d'accueil redirige vers premier ET112).
+/// Page d'ensemble — tous les ET112 configurés.
 pub async fn dashboard_et112_list(State(state): State<AppState>) -> Response {
-    let devices = &state.config.et112.devices;
-    if let Some(first) = devices.first() {
-        let addr = first.parsed_address();
-        return Redirect::temporary(&format!("/dashboard/et112/{}", addr)).into_response();
+    let configs = &state.config.et112.devices;
+    if configs.is_empty() {
+        return (StatusCode::NOT_FOUND, "Aucun ET112 configuré").into_response();
     }
-    (StatusCode::NOT_FOUND, "Aucun ET112 configuré").into_response()
+
+    let mut devices: Vec<Et112DeviceSummary> = Vec::new();
+    for cfg in configs {
+        let addr = cfg.parsed_address();
+        let snap_opt = state.et112_latest_for(addr).await;
+        let connected = snap_opt.is_some();
+        let (power_w, voltage_v, current_a, energy_import_kwh, energy_export_kwh, last_ts) =
+            if let Some(ref s) = snap_opt {
+                (
+                    s.power_w,
+                    s.voltage_v,
+                    s.current_a,
+                    s.energy_import_kwh(),
+                    s.energy_export_kwh(),
+                    s.timestamp.format("%H:%M:%S").to_string(),
+                )
+            } else {
+                (0.0, 0.0, 0.0, 0.0, 0.0, "—".to_string())
+            };
+        devices.push(Et112DeviceSummary {
+            name:              cfg.name.clone(),
+            address:           addr,
+            addr_hex:          format!("{:#04x}", addr),
+            connected,
+            power_w,
+            voltage_v,
+            current_a,
+            energy_import_kwh,
+            energy_export_kwh,
+            last_ts,
+            service_type:      cfg.service_type.clone(),
+        });
+    }
+
+    let device_count = devices.len();
+    render(Et112AllTemplate { devices, device_count })
 }
 
 /// Construit le routeur du dashboard (à fusionner dans le routeur principal).
