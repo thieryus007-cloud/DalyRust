@@ -157,6 +157,7 @@ async fn main() -> anyhow::Result<()> {
                 et112:       config::Et112Config::default(),
                 irradiance:  None,
                 tasmota:     config::TasmotaConfig::default(),
+                shelly:      config::ShellyConfig::default(),
             }
         }
     };

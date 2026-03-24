@@ -511,3 +511,39 @@ pub struct TasmotaDeviceConfig {
 
 fn default_tasmota_name()         -> String { "Tasmota".to_string() }
 fn default_tasmota_service_type() -> String { "switch".to_string() }
+fn default_shelly_name()          -> String { "Shelly".to_string() }
+
+// =============================================================================
+// Configuration Shelly (stub — implémentation future)
+// =============================================================================
+
+/// Configuration des compteurs d'énergie Shelly EM (MQTT natif Shelly).
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ShellyConfig {
+    /// Taille du ring buffer par appareil
+    pub ring_buffer_size: usize,
+    /// Liste des appareils Shelly configurés
+    #[serde(default)]
+    pub devices: Vec<ShellyDeviceConfig>,
+}
+
+impl Default for ShellyConfig {
+    fn default() -> Self {
+        Self {
+            ring_buffer_size: 720,
+            devices:          Vec::new(),
+        }
+    }
+}
+
+/// Configuration d'un appareil Shelly individuel (stub).
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct ShellyDeviceConfig {
+    /// Identifiant interne unique
+    pub id: u8,
+    /// Identifiant du device Shelly dans les topics MQTT (ex: "shellyem-A1B2C3")
+    pub shelly_id: String,
+    /// Nom affiché dans le dashboard
+    #[serde(default = "default_shelly_name")]
+    pub name: String,
+}

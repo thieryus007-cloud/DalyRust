@@ -1,7 +1,8 @@
 # =============================================================================
 # DalyBMS — Stack complète Docker Compose
 # =============================================================================
-# Inclut : Mosquitto · InfluxDB · Grafana · daly-bms-server (simulé)
+# Inclut : Mosquitto · InfluxDB · daly-bms-server · Node-RED
+# (Grafana supprimé — dashboard intégré dans daly-bms-server via ECharts)
 #
 # Prérequis :
 #   cp .env.docker .env && nano .env   # adapter les secrets
@@ -11,9 +12,9 @@
 #   docker compose logs -f dalybms-server
 #
 # URLs après démarrage :
+#   Dashboard  → http://localhost:8000/dashboard
 #   API REST   → http://localhost:8000/api/v1/bms
 #   WebSocket  → ws://localhost:8000/ws/bms/stream
-#   Grafana    → http://localhost:3001  (admin / GRAFANA_ADMIN_PASSWORD)
 #   InfluxDB   → http://localhost:8086
 #   Node-RED   → http://localhost:1880
 #
@@ -79,46 +80,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 20s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - dalybms-net
-
-  # ── Visualisation Grafana ────────────────────────────────────────────────────
-  grafana:
-    image: grafana/grafana:11.6.0
-    container_name: dalybms-grafana
-    restart: unless-stopped
-    ports:
-      - "3001:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER:     ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD manquant dans .env}
-      GF_USERS_ALLOW_SIGN_UP:     "false"
-      GF_AUTH_ANONYMOUS_ENABLED:  "false"
-      # Passer le token InfluxDB pour le provisioning datasource
-      INFLUX_TOKEN:               ${INFLUX_TOKEN}
-      INFLUX_ORG:                 ${INFLUX_ORG:-santuario}
-      INFLUX_BUCKET:              ${INFLUX_BUCKET:-daly_bms}
-      # Plugins supplémentaires (séparés par des virgules)
-      GF_INSTALL_PLUGINS:         ""
-      # Timezone
-      GF_DEFAULT_TIMEZONE:        "browser"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on:
-      influxdb:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
     logging:
       driver: "json-file"
       options:
@@ -241,8 +202,6 @@ volumes:
     name: dalybms-influxdb-data
   influxdb-config:
     name: dalybms-influxdb-config
-  grafana-data:
-    name: dalybms-grafana-data
   nodered-data:
     name: dalybms-nodered-data
   dalybms-alerts:
