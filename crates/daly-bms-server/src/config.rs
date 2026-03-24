@@ -46,6 +46,10 @@ pub struct AppConfig {
     /// Capteur d'irradiance PRALRAN RS485 (sur le bus unifié)
     /// Remplace le service Python `irradiance-rs485`.
     pub irradiance: Option<IrradianceConfig>,
+
+    /// Prises connectées Tasmota (MQTT natif Tasmota)
+    #[serde(default)]
+    pub tasmota: TasmotaConfig,
 }
 
 // =============================================================================
@@ -441,3 +445,65 @@ impl IrradianceConfig {
         }
     }
 }
+
+// =============================================================================
+// Configuration prises Tasmota
+// =============================================================================
+
+/// Configuration globale pour les prises connectées Tasmota.
+///
+/// Tasmota publie nativement via MQTT :
+///   tele/{tasmota_id}/SENSOR  → énergie, puissance, tension, courant
+///   stat/{tasmota_id}/POWER   → état relais ON/OFF
+///
+/// ```toml
+/// [tasmota]
+/// ring_buffer_size = 720
+///
+/// [[tasmota.devices]]
+/// id           = 1
+/// tasmota_id   = "tasmota_01"
+/// name         = "Prise Salon"
+/// mqtt_index   = 1
+/// service_type = "switch"
+/// device_instance = 500
+/// ```
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TasmotaConfig {
+    /// Taille du ring buffer par appareil
+    pub ring_buffer_size: usize,
+    /// Liste des prises Tasmota configurées
+    #[serde(default)]
+    pub devices: Vec<TasmotaDeviceConfig>,
+}
+
+impl Default for TasmotaConfig {
+    fn default() -> Self {
+        Self {
+            ring_buffer_size: 720,
+            devices:          Vec::new(),
+        }
+    }
+}
+
+/// Configuration d'une prise Tasmota individuelle.
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct TasmotaDeviceConfig {
+    /// Identifiant interne unique (clé du ring buffer, ex: 1)
+    pub id: u8,
+    /// Nom du device Tasmota dans les topics MQTT (ex: "tasmota_01")
+    pub tasmota_id: String,
+    /// Nom affiché dans le dashboard
+    #[serde(default = "default_tasmota_name")]
+    pub name: String,
+    /// Index MQTT → forward vers Venus OS : `santuario/{service_type}/{mqtt_index}/venus`
+    pub mqtt_index: Option<u8>,
+    /// Type de service D-Bus : "switch" (défaut) ou "acload"
+    #[serde(default = "default_tasmota_service_type")]
+    pub service_type: String,
+    /// Instance D-Bus Venus OS (ex: 500)
+    pub device_instance: Option<u16>,
+}
+
+fn default_tasmota_name()         -> String { "Tasmota".to_string() }
+fn default_tasmota_service_type() -> String { "switch".to_string() }

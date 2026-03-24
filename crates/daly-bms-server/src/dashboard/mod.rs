@@ -22,6 +22,7 @@ use axum::{
 use daly_bms_core::types::BmsSnapshot;
 use std::sync::atomic::Ordering;
 use tracing::error;
+use crate::tasmota::TasmotaSnapshot;
 
 // =============================================================================
 // Filtres Askama pour le formatage des nombres
@@ -522,14 +523,184 @@ pub async fn dashboard_et112_list(State(state): State<AppState>) -> Response {
     render(Et112AllTemplate { devices, device_count })
 }
 
+// =============================================================================
+// Dashboard Tasmota
+// =============================================================================
+
+/// Résumé d'une prise Tasmota pour la page d'ensemble.
+#[derive(Debug, Clone)]
+pub struct TasmotaDeviceSummary {
+    pub id:                   u8,
+    pub name:                 String,
+    pub tasmota_id:           String,
+    pub connected:            bool,
+    pub power_on:             bool,
+    pub power_w:              f32,
+    pub voltage_v:            f32,
+    pub current_a:            f32,
+    pub power_factor:         f32,
+    pub energy_today_kwh:     f32,
+    pub energy_yesterday_kwh: f32,
+    pub energy_total_kwh:     f32,
+    pub rssi:                 Option<i32>,
+    pub last_ts:              String,
+    pub service_type:         String,
+}
+
+#[derive(Template)]
+#[template(path = "tasmota_all.html")]
+struct TasmotaAllTemplate {
+    devices:      Vec<TasmotaDeviceSummary>,
+    device_count: usize,
+}
+
+#[derive(Template)]
+#[template(path = "tasmota.html")]
+struct TasmotaTemplate {
+    id:                   u8,
+    name:                 String,
+    tasmota_id:           String,
+    connected:            bool,
+    last_ts:              String,
+    power_on:             bool,
+    power_w:              f32,
+    voltage_v:            f32,
+    current_a:            f32,
+    apparent_power_va:    f32,
+    power_factor:         f32,
+    energy_today_kwh:     f32,
+    energy_yesterday_kwh: f32,
+    energy_total_kwh:     f32,
+    rssi:                 String,
+    service_type:         String,
+}
+
+fn summary_from_tasmota(cfg: &crate::config::TasmotaDeviceConfig, snap_opt: Option<TasmotaSnapshot>) -> TasmotaDeviceSummary {
+    let connected = snap_opt.is_some();
+    if let Some(s) = snap_opt {
+        TasmotaDeviceSummary {
+            id:                   s.id,
+            name:                 s.name.clone(),
+            tasmota_id:           s.tasmota_id.clone(),
+            connected,
+            power_on:             s.power_on,
+            power_w:              s.power_w,
+            voltage_v:            s.voltage_v,
+            current_a:            s.current_a,
+            power_factor:         s.power_factor,
+            energy_today_kwh:     s.energy_today_kwh,
+            energy_yesterday_kwh: s.energy_yesterday_kwh,
+            energy_total_kwh:     s.energy_total_kwh,
+            rssi:                 s.rssi,
+            last_ts:              s.timestamp.format("%H:%M:%S").to_string(),
+            service_type:         cfg.service_type.clone(),
+        }
+    } else {
+        TasmotaDeviceSummary {
+            id:                   cfg.id,
+            name:                 cfg.name.clone(),
+            tasmota_id:           cfg.tasmota_id.clone(),
+            connected:            false,
+            power_on:             false,
+            power_w:              0.0,
+            voltage_v:            0.0,
+            current_a:            0.0,
+            power_factor:         0.0,
+            energy_today_kwh:     0.0,
+            energy_yesterday_kwh: 0.0,
+            energy_total_kwh:     0.0,
+            rssi:                 None,
+            last_ts:              "—".to_string(),
+            service_type:         cfg.service_type.clone(),
+        }
+    }
+}
+
+/// Page d'ensemble — toutes les prises Tasmota configurées.
+pub async fn dashboard_tasmota_list(State(state): State<AppState>) -> Response {
+    let configs = &state.config.tasmota.devices;
+    if configs.is_empty() {
+        return (StatusCode::NOT_FOUND, "Aucune prise Tasmota configurée").into_response();
+    }
+
+    let mut devices: Vec<TasmotaDeviceSummary> = Vec::new();
+    for cfg in configs {
+        let snap_opt = state.tasmota_latest_for(cfg.id).await;
+        devices.push(summary_from_tasmota(cfg, snap_opt));
+    }
+
+    let device_count = devices.len();
+    render(TasmotaAllTemplate { devices, device_count })
+}
+
+/// Page de détail d'une prise Tasmota.
+pub async fn dashboard_tasmota(
+    State(state): State<AppState>,
+    Path(id_str): Path<String>,
+) -> Response {
+    let id = match id_str.trim().parse::<u8>() {
+        Ok(v)  => v,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    let cfg_opt = state.config.tasmota.devices.iter().find(|d| d.id == id);
+    let name = cfg_opt.map(|d| d.name.clone()).unwrap_or_else(|| format!("Tasmota {}", id));
+    let tasmota_id = cfg_opt.map(|d| d.tasmota_id.clone()).unwrap_or_default();
+    let service_type = cfg_opt.map(|d| d.service_type.clone()).unwrap_or_else(|| "switch".to_string());
+
+    let snap_opt  = state.tasmota_latest_for(id).await;
+    let connected = snap_opt.is_some();
+
+    let (last_ts, power_on, power_w, voltage_v, current_a, apparent_power_va,
+         power_factor, energy_today_kwh, energy_yesterday_kwh, energy_total_kwh, rssi_str) =
+        if let Some(ref s) = snap_opt {
+            (
+                s.timestamp.format("%H:%M:%S").to_string(),
+                s.power_on,
+                s.power_w,
+                s.voltage_v,
+                s.current_a,
+                s.apparent_power_va,
+                s.power_factor,
+                s.energy_today_kwh,
+                s.energy_yesterday_kwh,
+                s.energy_total_kwh,
+                s.rssi.map(|v| format!("{} dBm", v)).unwrap_or_else(|| "—".to_string()),
+            )
+        } else {
+            ("—".to_string(), false, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, "—".to_string())
+        };
+
+    render(TasmotaTemplate {
+        id,
+        name,
+        tasmota_id,
+        connected,
+        last_ts,
+        power_on,
+        power_w,
+        voltage_v,
+        current_a,
+        apparent_power_va,
+        power_factor,
+        energy_today_kwh,
+        energy_yesterday_kwh,
+        energy_total_kwh,
+        rssi: rssi_str,
+        service_type,
+    })
+}
+
 /// Construit le routeur du dashboard (à fusionner dans le routeur principal).
 pub fn build_dashboard_router() -> Router<AppState> {
     Router::new()
-        .route("/",                          get(redirect_root))
-        .route("/dashboard",                 get(dashboard_index))
-        .route("/dashboard/bms/:id",         get(dashboard_bms))
-        .route("/dashboard/logs",            get(dashboard_logs))
-        .route("/dashboard/settings",        get(dashboard_settings))
-        .route("/dashboard/et112",           get(dashboard_et112_list))
-        .route("/dashboard/et112/:addr",     get(dashboard_et112))
+        .route("/",                            get(redirect_root))
+        .route("/dashboard",                   get(dashboard_index))
+        .route("/dashboard/bms/:id",           get(dashboard_bms))
+        .route("/dashboard/logs",              get(dashboard_logs))
+        .route("/dashboard/settings",          get(dashboard_settings))
+        .route("/dashboard/et112",             get(dashboard_et112_list))
+        .route("/dashboard/et112/:addr",       get(dashboard_et112))
+        .route("/dashboard/tasmota",           get(dashboard_tasmota_list))
+        .route("/dashboard/tasmota/:id",       get(dashboard_tasmota))
 }

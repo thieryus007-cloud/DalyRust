@@ -17,6 +17,7 @@ mod autodetect;
 mod config;
 mod et112;
 mod irradiance;
+mod tasmota;
 mod state;
 mod api;
 mod bridges;
@@ -155,6 +156,7 @@ async fn main() -> anyhow::Result<()> {
                 bms:         Vec::new(),
                 et112:       config::Et112Config::default(),
                 irradiance:  None,
+                tasmota:     config::TasmotaConfig::default(),
             }
         }
     };
@@ -225,6 +227,28 @@ async fn main() -> anyhow::Result<()> {
         let (s, c) = (state.clone(), config.alerts.clone());
         async move { alerts::run_alert_engine(s, c).await }
     });
+
+    // ── Tasmota MQTT subscriber ────────────────────────────────────────────────
+    if !config.tasmota.devices.is_empty() {
+        info!(
+            count = config.tasmota.devices.len(),
+            "Démarrage Tasmota MQTT subscriber"
+        );
+        let state_ta = state.clone();
+        let devs_ta  = config.tasmota.devices.clone();
+        let mqtt_ta  = config.mqtt.clone();
+        tokio::spawn(async move {
+            tasmota::run_tasmota_mqtt_loop(
+                devs_ta,
+                mqtt_ta,
+                move |snap| {
+                    let s = state_ta.clone();
+                    tokio::spawn(async move { s.on_tasmota_snapshot(snap).await });
+                },
+            )
+            .await;
+        });
+    }
 
     // NOTE : ET112 et PRALRAN utilisent désormais le bus RS485 UNIFIÉ.
     // Leur lancement est déplacé dans le bloc hardware, après l'ouverture du DalyPort,

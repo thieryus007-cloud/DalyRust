@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}{{ name }} — Tasmota{% endblock %}
+
+{% block content %}
+
+{# ─── En-tête ────────────────────────────────────────────────────────────── #}
+<div class="info-bar">
+  <strong>🔌 {{ name }}</strong>
+  <span>
+    {% if connected %}
+      {% if power_on %}<span style="color:var(--green);font-weight:600">ON</span>{% else %}<span style="color:var(--red);font-weight:600">OFF</span>{% endif %}
+    {% else %}
+      <span style="color:var(--muted)">Hors ligne</span>
+    {% endif %}
+    — {{ tasmota_id }} — Màj : {{ last_ts }}
+  </span>
+  <a href="/dashboard/tasmota" style="font-size:0.8rem">← Retour liste</a>
+</div>
+
+{% if !connected %}
+<div style="margin:2rem auto;max-width:500px;padding:2rem;background:var(--surface);border-radius:var(--radius);text-align:center;color:var(--muted);box-shadow:var(--shadow);">
+  <div style="font-size:2rem;margin-bottom:1rem">⏳</div>
+  <div>En attente du premier message MQTT…</div>
+  <div style="font-size:0.8rem;margin-top:0.5rem">
+    Vérifier que <code>tele/{{ tasmota_id }}/SENSOR</code> est publié sur le broker.
+  </div>
+</div>
+{% else %}
+
+{# ─── Puissance instantanée ───────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1rem;">
+
+  <div class="bms-card-ng" style="padding:1rem;">
+    <div class="kpi4-lbl">Puissance active</div>
+    <div class="kpi4-val" style="font-size:2rem;color:var(--accent)" id="pw">{{ power_w|f1 }} W</div>
+  </div>
+
+  <div class="bms-card-ng" style="padding:1rem;">
+    <div class="kpi4-lbl">Tension</div>
+    <div class="kpi4-val" style="font-size:2rem;" id="vv">{{ voltage_v|f1 }} V</div>
+  </div>
+
+  <div class="bms-card-ng" style="padding:1rem;">
+    <div class="kpi4-lbl">Courant</div>
+    <div class="kpi4-val" style="font-size:2rem;" id="iv">{{ current_a|f2 }} A</div>
+  </div>
+
+  <div class="bms-card-ng" style="padding:1rem;">
+    <div class="kpi4-lbl">Puissance apparente</div>
+    <div class="kpi4-val" style="font-size:2rem;" id="pva">{{ apparent_power_va|f1 }} VA</div>
+  </div>
+
+  <div class="bms-card-ng" style="padding:1rem;">
+    <div class="kpi4-lbl">Facteur de puissance</div>
+    <div class="kpi4-val" style="font-size:2rem;" id="pf">{{ power_factor|f2 }}</div>
+  </div>
+
+  <div class="bms-card-ng" style="padding:1rem;">
+    <div class="kpi4-lbl">Signal WiFi</div>
+    <div class="kpi4-val" style="font-size:2rem;color:var(--muted)" id="rssi">{{ rssi }}</div>
+  </div>
+
+</div>
+
+{# ─── Énergie ─────────────────────────────────────────────────────────────── #}
+<div class="bms-card-ng" style="margin-bottom:1rem;">
+  <div class="bms-hdr" style="background:#1a5f8a;">
+    <div class="bms-hdr-title">Énergie consommée</div>
+    <div class="bms-hdr-right"><span>{{ service_type }}</span></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;">
+    <div style="padding:1rem;border-right:1px solid var(--border);">
+      <div class="kpi4-lbl">Aujourd'hui</div>
+      <div class="kpi4-val" style="font-size:1.8rem;color:var(--accent)" id="etd">{{ energy_today_kwh|f3 }} kWh</div>
+    </div>
+    <div style="padding:1rem;border-right:1px solid var(--border);">
+      <div class="kpi4-lbl">Hier</div>
+      <div class="kpi4-val" style="font-size:1.8rem;color:var(--muted)" id="eyd">{{ energy_yesterday_kwh|f3 }} kWh</div>
+    </div>
+    <div style="padding:1rem;">
+      <div class="kpi4-lbl">Total</div>
+      <div class="kpi4-val" style="font-size:1.8rem;" id="etot">{{ energy_total_kwh|f1 }} kWh</div>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+
+{# ─── Mise à jour automatique ─────────────────────────────────────────────── #}
+<script>
+const TASMOTA_ID = {{ id }};
+
+async function update() {
+    try {
+        const resp = await fetch(`/api/v1/tasmota/${TASMOTA_ID}/status`);
+        if (!resp.ok) return;
+        const d = await resp.json();
+        const el = (id) => document.getElementById(id);
+        if (el('pw'))   el('pw').textContent   = d.power_w.toFixed(1) + ' W';
+        if (el('vv'))   el('vv').textContent   = d.voltage_v.toFixed(1) + ' V';
+        if (el('iv'))   el('iv').textContent   = d.current_a.toFixed(2) + ' A';
+        if (el('pva'))  el('pva').textContent  = d.apparent_power_va.toFixed(1) + ' VA';
+        if (el('pf'))   el('pf').textContent   = d.power_factor.toFixed(2);
+        if (el('etd'))  el('etd').textContent  = d.energy_today_kwh.toFixed(3) + ' kWh';
+        if (el('eyd'))  el('eyd').textContent  = d.energy_yesterday_kwh.toFixed(3) + ' kWh';
+        if (el('etot')) el('etot').textContent = d.energy_total_kwh.toFixed(1) + ' kWh';
+        if (el('rssi') && d.rssi != null) el('rssi').textContent = d.rssi + ' dBm';
+    } catch(e) {}
+}
+
+update();
+setInterval(update, 5000);
+</script>
+
+{% endblock %}

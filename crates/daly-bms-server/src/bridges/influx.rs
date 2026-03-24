@@ -7,6 +7,7 @@
 use crate::config::InfluxConfig;
 use crate::et112::Et112Snapshot;
 use crate::state::AppState;
+use crate::tasmota::TasmotaSnapshot;
 use daly_bms_core::types::BmsSnapshot;
 use influxdb2::Client;
 use influxdb2::models::DataPoint;
@@ -32,9 +33,11 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
     let mut rx = state.subscribe_ws();
     let flush_interval = Duration::from_secs_f64(cfg.batch_flush_interval_sec.max(1.0));
     let mut flush_ticker = tokio::time::interval(flush_interval);
-    // Ticker séparé pour polling ET112 (état est dans state, pas dans channel broadcast)
+    // Ticker séparé pour polling ET112 + Tasmota (état est dans state)
     let et112_interval = Duration::from_secs(10);
     let mut et112_ticker = tokio::time::interval(et112_interval);
+    let tasmota_interval = Duration::from_secs(10);
+    let mut tasmota_ticker = tokio::time::interval(tasmota_interval);
 
     loop {
         tokio::select! {
@@ -59,6 +62,17 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
                     flush_batch(&client, &cfg.bucket, &mut batch).await;
                 }
             }
+            _ = tasmota_ticker.tick() => {
+                let tasmota_snaps = state.tasmota_latest_all().await;
+                for snap in tasmota_snaps {
+                    if let Ok(p) = tasmota_snapshot_to_point(&snap) {
+                        batch.push(p);
+                    }
+                }
+                if !batch.is_empty() {
+                    flush_batch(&client, &cfg.bucket, &mut batch).await;
+                }
+            }
             _ = flush_ticker.tick() => {
                 if !batch.is_empty() {
                     flush_batch(&client, &cfg.bucket, &mut batch).await;
@@ -66,6 +80,32 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
             }
         }
     }
+}
+
+/// Convertit un [`TasmotaSnapshot`] en un point InfluxDB.
+///
+/// Measurement : `tasmota_status`
+/// Tags : `id`, `name`, `tasmota_id`
+fn tasmota_snapshot_to_point(snap: &TasmotaSnapshot) -> anyhow::Result<DataPoint> {
+    let ts_ns = snap.timestamp.timestamp_nanos_opt().unwrap_or(0);
+
+    let point = DataPoint::builder("tasmota_status")
+        .tag("id",         snap.id.to_string())
+        .tag("name",       snap.name.clone())
+        .tag("tasmota_id", snap.tasmota_id.clone())
+        .field("power_on",            snap.power_on as i64)
+        .field("power_w",             snap.power_w as f64)
+        .field("voltage_v",           snap.voltage_v as f64)
+        .field("current_a",           snap.current_a as f64)
+        .field("apparent_power_va",   snap.apparent_power_va as f64)
+        .field("power_factor",        snap.power_factor as f64)
+        .field("energy_today_kwh",    snap.energy_today_kwh as f64)
+        .field("energy_yesterday_kwh",snap.energy_yesterday_kwh as f64)
+        .field("energy_total_kwh",    snap.energy_total_kwh as f64)
+        .timestamp(ts_ns)
+        .build()?;
+
+    Ok(point)
 }
 
 /// Flush le batch vers InfluxDB et vide le vecteur.

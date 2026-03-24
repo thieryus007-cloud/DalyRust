@@ -247,6 +247,35 @@ device_instance  = 31
 position         = 1
 
 
+# =============================================================================
+# Prises connectées Tasmota (MQTT natif Tasmota)
+# =============================================================================
+# Tasmota publie automatiquement via MQTT :
+#   tele/{tasmota_id}/SENSOR  → mesures énergie (puissance, tension, courant, kWh)
+#   stat/{tasmota_id}/POWER   → état relais ON/OFF
+#
+# Prérequis :
+#   - Tasmota configuré pour publier sur le broker MQTT (mqtt.host / mqtt.port)
+#   - Dans l'interface Tasmota : Configuration → MQTT → Host + User + Password
+#   - Option "Full Topic" recommandée : %prefix%/%topic%/ (défaut Tasmota)
+#
+# service_type = "switch" → forward vers Venus OS com.victronenergy.switch (si mqtt_index défini)
+# service_type = "acload" → forward vers Venus OS com.victronenergy.grid (acload)
+
+[tasmota]
+# Taille du ring buffer par prise (720 = 1 heure si SENSOR toutes les 5s)
+ring_buffer_size = 720
+
+# Décommenter et adapter pour chaque prise Tasmota :
+# [[tasmota.devices]]
+# id           = 1           # Identifiant interne unique (clé du ring buffer)
+# tasmota_id   = "tasmota_01" # Nom du device Tasmota dans les topics MQTT
+# name         = "Prise Salon"
+# mqtt_index   = 1            # Optionnel — forward Venus OS switch/1/venus
+# service_type = "switch"     # "switch" (défaut) ou "acload"
+# device_instance = 500       # Optionnel — instance D-Bus Venus OS
+
+
 [influxdb]
 # true  = activer l'écriture InfluxDB (Docker infra doit être démarré)
 # false = désactiver (pas de Docker, ou test sans InfluxDB)

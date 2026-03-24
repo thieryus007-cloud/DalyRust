@@ -5,6 +5,7 @@
 pub mod system;
 pub mod bms;
 pub mod et112;
+pub mod tasmota;
 
 use crate::dashboard;
 use crate::state::AppState;
@@ -62,6 +63,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/et112",                   get(et112::list_et112))
         .route("/api/v1/et112/:addr/status",      get(et112::get_et112_status))
         .route("/api/v1/et112/:addr/history",     get(et112::get_et112_history))
+
+        // ── Tasmota ──────────────────────────────────────────────────────────
+        .route("/api/v1/tasmota",                 get(tasmota::list_tasmota))
+        .route("/api/v1/tasmota/:id/status",      get(tasmota::get_tasmota_status))
+        .route("/api/v1/tasmota/:id/history",     get(tasmota::get_tasmota_history))
 
         // ── WebSocket ─────────────────────────────────────────────────────────
         .route("/ws/bms/stream",         get(bms::ws_all))

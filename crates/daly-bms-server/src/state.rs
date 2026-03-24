@@ -6,6 +6,7 @@
 use crate::config::AppConfig;
 use crate::et112::Et112Snapshot;
 use crate::irradiance::IrradianceSnapshot;
+use crate::tasmota::TasmotaSnapshot;
 use daly_bms_core::bus::DalyPort;
 use daly_bms_core::types::BmsSnapshot;
 use serde::Serialize;
@@ -95,6 +96,36 @@ impl Et112RingBuffer {
     }
 }
 
+// =============================================================================
+// Ring buffer Tasmota
+// =============================================================================
+
+/// Ring buffer de snapshots Tasmota pour une prise.
+pub struct TasmotaRingBuffer {
+    pub buffer:   VecDeque<TasmotaSnapshot>,
+    pub capacity: usize,
+}
+
+impl TasmotaRingBuffer {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            buffer:   VecDeque::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    pub fn push(&mut self, snap: TasmotaSnapshot) {
+        if self.buffer.len() >= self.capacity {
+            self.buffer.pop_front();
+        }
+        self.buffer.push_back(snap);
+    }
+
+    pub fn latest(&self) -> Option<&TasmotaSnapshot> {
+        self.buffer.back()
+    }
+}
+
 /// État global partagé de l'application.
 #[derive(Clone)]
 pub struct AppState {
@@ -121,6 +152,9 @@ pub struct AppState {
 
     /// Dernière mesure du capteur d'irradiance PRALRAN (None si non configuré).
     pub irradiance_value: Arc<RwLock<Option<IrradianceSnapshot>>>,
+
+    /// Ring buffers Tasmota indexés par id de device.
+    pub tasmota_buffers: Arc<RwLock<BTreeMap<u8, TasmotaRingBuffer>>>,
 }
 
 impl AppState {
@@ -141,6 +175,13 @@ impl AppState {
             et112_buffers.insert(dev.parsed_address(), Et112RingBuffer::new(et112_ring_size));
         }
 
+        // Pré-allouer les ring buffers Tasmota
+        let tasmota_ring_size = config.tasmota.ring_buffer_size;
+        let mut tasmota_buffers = BTreeMap::new();
+        for dev in &config.tasmota.devices {
+            tasmota_buffers.insert(dev.id, TasmotaRingBuffer::new(tasmota_ring_size));
+        }
+
         Self {
             config: Arc::new(config),
             buffers: Arc::new(RwLock::new(buffers)),
@@ -150,6 +191,7 @@ impl AppState {
             log_buffer,
             et112_buffers: Arc::new(RwLock::new(et112_buffers)),
             irradiance_value: Arc::new(RwLock::new(None)),
+            tasmota_buffers: Arc::new(RwLock::new(tasmota_buffers)),
         }
     }
 
@@ -240,5 +282,36 @@ impl AppState {
     /// Retourne la dernière mesure d'irradiance (None si jamais reçue).
     pub async fn latest_irradiance(&self) -> Option<IrradianceSnapshot> {
         self.irradiance_value.read().await.clone()
+    }
+
+    /// Enregistre un snapshot Tasmota dans le ring buffer correspondant.
+    pub async fn on_tasmota_snapshot(&self, snap: TasmotaSnapshot) {
+        let mut buffers = self.tasmota_buffers.write().await;
+        buffers
+            .entry(snap.id)
+            .or_insert_with(|| TasmotaRingBuffer::new(self.config.tasmota.ring_buffer_size))
+            .push(snap);
+    }
+
+    /// Retourne le dernier snapshot Tasmota pour un id donné.
+    pub async fn tasmota_latest_for(&self, id: u8) -> Option<TasmotaSnapshot> {
+        let buffers = self.tasmota_buffers.read().await;
+        buffers.get(&id)?.latest().cloned()
+    }
+
+    /// Retourne les `n` derniers snapshots Tasmota (pour historique).
+    pub async fn tasmota_history_for(&self, id: u8, limit: usize) -> Vec<TasmotaSnapshot> {
+        let buffers = self.tasmota_buffers.read().await;
+        if let Some(buf) = buffers.get(&id) {
+            buf.buffer.iter().rev().take(limit).cloned().collect()
+        } else {
+            vec![]
+        }
+    }
+
+    /// Retourne tous les derniers snapshots Tasmota.
+    pub async fn tasmota_latest_all(&self) -> Vec<TasmotaSnapshot> {
+        let buffers = self.tasmota_buffers.read().await;
+        buffers.values().filter_map(|b| b.latest().cloned()).collect()
     }
 }

@@ -16,6 +16,7 @@
 use crate::config::MqttConfig;
 use crate::et112::Et112Snapshot;
 use crate::state::AppState;
+use crate::tasmota::TasmotaSnapshot;
 use daly_bms_core::types::BmsSnapshot;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
 use serde_json::json;
@@ -101,6 +102,22 @@ pub async fn run_mqtt_bridge(state: AppState, cfg: MqttConfig, addr_map: HashMap
         if let Some(snap) = state.latest_irradiance().await {
             if let Err(e) = publish_irradiance(&client, &cfg, snap.irradiance_wm2).await {
                 error!("MQTT publish irradiance erreur : {:?}", e);
+            }
+        }
+
+        // ── Tasmota → forward Venus OS switch/acload si mqtt_index défini ──
+        let tasmota_snaps = state.tasmota_latest_all().await;
+        for snap in &tasmota_snaps {
+            let dev_cfg = state.config.tasmota.devices
+                .iter()
+                .find(|d| d.id == snap.id);
+            if let Some(dev) = dev_cfg {
+                if let Some(idx) = dev.mqtt_index {
+                    let svc = dev.service_type.as_str();
+                    if let Err(e) = publish_tasmota_snapshot(&client, &cfg, snap, idx, svc).await {
+                        error!("MQTT publish Tasmota erreur : {:?}", e);
+                    }
+                }
             }
         }
     }
@@ -193,6 +210,51 @@ async fn publish_et112_snapshot(
 
     client
         .publish(&topic, QoS::AtLeastOnce, true, serde_json::to_vec(&payload)?)
+        .await?;
+
+    Ok(())
+}
+
+/// Publie un snapshot Tasmota vers Venus OS.
+///
+/// service_type = "switch" → topic `santuario/switch/{idx}/venus`  (SwitchPayload)
+/// service_type = "acload" → topic `santuario/grid/{idx}/venus`    (GridPayload)
+async fn publish_tasmota_snapshot(
+    client: &AsyncClient,
+    cfg: &MqttConfig,
+    snap: &TasmotaSnapshot,
+    mqtt_index: u8,
+    service_type: &str,
+) -> anyhow::Result<()> {
+    let base = cfg.topic_prefix
+        .rsplit_once('/')
+        .map(|(prefix, _)| prefix)
+        .unwrap_or("santuario");
+
+    let (topic_prefix, payload) = if service_type == "acload" {
+        let topic = format!("{}/grid/{}/venus", base, mqtt_index);
+        let p = json!({
+            "Ac/L1/Power":   snap.power_w,
+            "Ac/L1/Voltage": snap.voltage_v,
+            "Ac/L1/Current": snap.current_a,
+            "ProductName":   snap.name,
+            "CustomName":    snap.name,
+        });
+        (topic, p)
+    } else {
+        // switch (défaut)
+        let topic = format!("{}/switch/{}/venus", base, mqtt_index);
+        let p = json!({
+            "State":       if snap.power_on { 1 } else { 0 },
+            "Position":    1,
+            "ProductName": snap.name,
+            "CustomName":  snap.name,
+        });
+        (topic, p)
+    };
+
+    client
+        .publish(&topic_prefix, QoS::AtLeastOnce, true, serde_json::to_vec(&payload)?)
         .await?;
 
     Ok(())
