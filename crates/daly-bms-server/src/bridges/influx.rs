@@ -6,6 +6,7 @@
 
 use crate::config::InfluxConfig;
 use crate::et112::Et112Snapshot;
+use crate::irradiance::IrradianceSnapshot;
 use crate::state::AppState;
 use crate::tasmota::TasmotaSnapshot;
 use daly_bms_core::types::BmsSnapshot;
@@ -33,11 +34,13 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
     let mut rx = state.subscribe_ws();
     let flush_interval = Duration::from_secs_f64(cfg.batch_flush_interval_sec.max(1.0));
     let mut flush_ticker = tokio::time::interval(flush_interval);
-    // Ticker séparé pour polling ET112 + Tasmota (état est dans state)
+    // Ticker séparé pour polling ET112 + Tasmota + irradiance (état est dans state)
     let et112_interval = Duration::from_secs(10);
     let mut et112_ticker = tokio::time::interval(et112_interval);
     let tasmota_interval = Duration::from_secs(10);
     let mut tasmota_ticker = tokio::time::interval(tasmota_interval);
+    let irradiance_interval = Duration::from_secs(30);
+    let mut irradiance_ticker = tokio::time::interval(irradiance_interval);
 
     loop {
         tokio::select! {
@@ -66,6 +69,16 @@ pub async fn run_influx_bridge(state: AppState, cfg: InfluxConfig) {
                 let tasmota_snaps = state.tasmota_latest_all().await;
                 for snap in tasmota_snaps {
                     if let Ok(p) = tasmota_snapshot_to_point(&snap) {
+                        batch.push(p);
+                    }
+                }
+                if !batch.is_empty() {
+                    flush_batch(&client, &cfg.bucket, &mut batch).await;
+                }
+            }
+            _ = irradiance_ticker.tick() => {
+                if let Some(snap) = state.latest_irradiance().await {
+                    if let Ok(p) = irradiance_snapshot_to_point(&snap) {
                         batch.push(p);
                     }
                 }
@@ -102,6 +115,24 @@ fn tasmota_snapshot_to_point(snap: &TasmotaSnapshot) -> anyhow::Result<DataPoint
         .field("energy_today_kwh",    snap.energy_today_kwh as f64)
         .field("energy_yesterday_kwh",snap.energy_yesterday_kwh as f64)
         .field("energy_total_kwh",    snap.energy_total_kwh as f64)
+        .timestamp(ts_ns)
+        .build()?;
+
+    Ok(point)
+}
+
+/// Convertit un [`IrradianceSnapshot`] en un point InfluxDB.
+///
+/// Measurement : `irradiance_status`
+/// Tags : `address` (hex), `name`
+fn irradiance_snapshot_to_point(snap: &IrradianceSnapshot) -> anyhow::Result<DataPoint> {
+    let addr_tag = format!("{:#04x}", snap.address);
+    let ts_ns = snap.timestamp.timestamp_nanos_opt().unwrap_or(0);
+
+    let point = DataPoint::builder("irradiance_status")
+        .tag("address", addr_tag)
+        .tag("name",    snap.name.clone())
+        .field("irradiance_wm2", snap.irradiance_wm2 as f64)
         .timestamp(ts_ns)
         .build()?;
 

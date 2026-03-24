@@ -83,6 +83,31 @@ pub async fn get_logs(
     Json(json!({ "logs": logs, "total": buf.len() }))
 }
 
+/// GET /api/v1/irradiance/status
+///
+/// Retourne la dernière mesure du capteur d'irradiance PRALRAN.
+pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoResponse {
+    match state.latest_irradiance().await {
+        Some(snap) => (
+            StatusCode::OK,
+            Json(json!({
+                "connected": true,
+                "address": format!("{:#04x}", snap.address),
+                "name": snap.name,
+                "irradiance_wm2": snap.irradiance_wm2,
+                "timestamp": snap.timestamp.to_rfc3339(),
+            })),
+        ),
+        None => (
+            StatusCode::OK,
+            Json(json!({
+                "connected": false,
+                "irradiance_wm2": 0.0,
+            })),
+        ),
+    }
+}
+
 /// GET /api/v1/discover
 ///
 /// Lance une découverte live sur le bus RS485.

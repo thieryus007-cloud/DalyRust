@@ -691,11 +691,70 @@ pub async fn dashboard_tasmota(
     })
 }
 
+// =============================================================================
+// Dashboard Overview — vue système unifiée
+// =============================================================================
+
+/// Résumé d'un ET112 pour la page overview.
+#[derive(Debug, Clone)]
+pub struct OverviewEt112 {
+    pub name:         String,
+    pub addr_hex:     String,
+    pub address:      u8,
+    pub service_type: String,
+    pub power_w:      f32,
+    pub energy_kwh:   f32,
+    pub connected:    bool,
+}
+
+#[derive(Template)]
+#[template(path = "overview.html")]
+struct OverviewTemplate {
+    bms_list:       Vec<BmsSummary>,
+    et112_list:     Vec<OverviewEt112>,
+    irradiance_wm2: Option<f32>,
+    irradiance_ts:  String,
+}
+
+/// Page vue d'ensemble unifiée : batteries + compteurs + irradiance.
+pub async fn dashboard_overview(State(state): State<AppState>) -> Response {
+    let snaps   = state.latest_snapshots().await;
+    let bms_list = snaps.iter().map(BmsSummary::from_snapshot).collect();
+
+    let mut et112_list: Vec<OverviewEt112> = Vec::new();
+    for cfg in &state.config.et112.devices {
+        let addr = cfg.parsed_address();
+        let snap_opt = state.et112_latest_for(addr).await;
+        let connected = snap_opt.is_some();
+        let (power_w, energy_kwh) = snap_opt
+            .as_ref()
+            .map(|s| (s.power_w, s.energy_import_kwh()))
+            .unwrap_or((0.0, 0.0));
+        et112_list.push(OverviewEt112 {
+            name:         cfg.name.clone(),
+            addr_hex:     format!("{:#04x}", addr),
+            address:      addr,
+            service_type: cfg.service_type.clone(),
+            power_w,
+            energy_kwh,
+            connected,
+        });
+    }
+
+    let (irradiance_wm2, irradiance_ts) = match state.latest_irradiance().await {
+        Some(s) => (Some(s.irradiance_wm2), s.timestamp.format("%H:%M:%S").to_string()),
+        None    => (None, "—".to_string()),
+    };
+
+    render(OverviewTemplate { bms_list, et112_list, irradiance_wm2, irradiance_ts })
+}
+
 /// Construit le routeur du dashboard (à fusionner dans le routeur principal).
 pub fn build_dashboard_router() -> Router<AppState> {
     Router::new()
         .route("/",                            get(redirect_root))
         .route("/dashboard",                   get(dashboard_index))
+        .route("/dashboard/overview",          get(dashboard_overview))
         .route("/dashboard/bms/:id",           get(dashboard_bms))
         .route("/dashboard/logs",              get(dashboard_logs))
         .route("/dashboard/settings",          get(dashboard_settings))

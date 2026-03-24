@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}Vue d'ensemble — Système ESS{% endblock %}
+
+{% block content %}
+
+{# ─── En-tête ────────────────────────────────────────────────────────────── #}
+<div class="info-bar" style="margin-bottom:1.25rem;">
+  <strong style="font-size:1rem;">Vue d'ensemble — Système ESS</strong>
+  <div id="ov-ts" style="margin-left:auto;font-size:0.72rem;color:var(--muted)">Mise à jour : —</div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 1 — BATTERIES
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="card-title" style="margin-bottom:0.6rem;">🔋 Batteries</div>
+<div id="bms-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(480px,1fr));gap:1rem;margin-bottom:1.5rem;">
+
+{% for bms in bms_list %}
+<div class="bms-card-ng {% if bms.any_alarm %}alarm{% endif %}" id="bms-card-{{ bms.address }}">
+
+  {# En-tête bleu #}
+  <div class="bms-hdr">
+    <div class="bms-hdr-title">
+      <div class="bms-live-dot"></div>
+      {{ bms.name }}
+    </div>
+    <div class="bms-hdr-right">
+      <span class="bms-can-badge">{{ bms.can_id }}</span>
+      <span class="bms-hdr-ts" id="ts-{{ bms.address }}">{{ bms.last_update }}</span>
+    </div>
+  </div>
+
+  {# KPI 4 colonnes #}
+  <div class="kpi4">
+    <div class="kpi4-cell kpi4-v">
+      <div class="kpi4-lbl">Tension</div>
+      <div class="kpi4-val" id="v-{{ bms.address }}">{{ bms.voltage|f2 }} V</div>
+    </div>
+    <div class="kpi4-cell kpi4-soc">
+      <div class="kpi4-lbl">SOC</div>
+      <div class="kpi4-val {% if bms.soc > 60.0 %}chg{% else if bms.soc > 20.0 %}{% else %}dch{% endif %}" id="soc-{{ bms.address }}">{{ bms.soc|f1 }} %</div>
+    </div>
+    <div class="kpi4-cell kpi4-i">
+      <div class="kpi4-lbl">Courant</div>
+      <div class="kpi4-val {% if bms.current > 0.0 %}chg{% else %}dch{% endif %}" id="i-{{ bms.address }}">{{ bms.current|sign }} A</div>
+    </div>
+    <div class="kpi4-cell kpi4-p">
+      <div class="kpi4-lbl">Puissance</div>
+      <div class="kpi4-val {% if bms.power > 0.0 %}chg{% else %}dch{% endif %}" id="p-{{ bms.address }}">{{ bms.power|f0 }} W</div>
+    </div>
+  </div>
+
+  {# Barre SOC #}
+  <div class="soc-bar-row">
+    <span>0%</span>
+    <div class="soc-bar-wrap">
+      <div class="soc-bar-fill" id="bar-{{ bms.address }}"
+           style="width:{{ bms.soc|f0 }}%;background:{% if bms.soc > 60.0 %}var(--green){% else if bms.soc > 25.0 %}var(--yellow){% else %}var(--red){% endif %}"></div>
+    </div>
+    <span>100%</span>
+  </div>
+
+  {# Températures + Cycles #}
+  <div class="temp4">
+    <div class="temp4-cell">
+      <span class="temp4-lbl">T° Max</span>
+      <span class="temp4-val" id="tmax-{{ bms.address }}">{{ bms.temp_max|f1 }} °C</span>
+    </div>
+    <div class="temp4-cell">
+      <span class="temp4-lbl">T° Min</span>
+      <span class="temp4-val" id="tmin-{{ bms.address }}">{{ bms.temp_min|f1 }} °C</span>
+    </div>
+    <div class="temp4-cell">
+      <span class="temp4-lbl">Delta</span>
+      <span class="temp4-val" id="dlt-{{ bms.address }}">{{ bms.cell_delta_mv|f1 }} mV</span>
+    </div>
+    <div class="temp4-cell">
+      <span class="temp4-lbl">Cycles</span>
+      <span class="temp4-val">{{ bms.cycles }}</span>
+    </div>
+  </div>
+
+  {# MOS + lien détail #}
+  <div class="info4">
+    <div class="info4-cell">
+      <span class="info4-lbl">MOS Charge</span>
+      <span class="info4-val {% if bms.charge_ok %}a-ok{% else %}a-bad{% endif %}">
+        {% if bms.charge_ok %}ON{% else %}OFF{% endif %}
+      </span>
+    </div>
+    <div class="info4-cell">
+      <span class="info4-lbl">MOS Décharge</span>
+      <span class="info4-val {% if bms.discharge_ok %}a-ok{% else %}a-bad{% endif %}">
+        {% if bms.discharge_ok %}ON{% else %}OFF{% endif %}
+      </span>
+    </div>
+    <div class="info4-cell">
+      <span class="info4-lbl">Alarmes</span>
+      <span class="info4-val {% if bms.any_alarm %}a-bad{% else %}a-ok{% endif %}">
+        {% if bms.any_alarm %}ALARME{% else %}OK{% endif %}
+      </span>
+    </div>
+    <div class="info4-cell" style="display:flex;align-items:center;justify-content:flex-end;padding-right:0.75rem;">
+      <a href="/dashboard/bms/{{ bms.address }}" class="link-detail">Détail →</a>
+    </div>
+  </div>
+
+</div>
+{% endfor %}
+
+{% if bms_list.is_empty() %}
+<div class="card" style="text-align:center;padding:2rem;color:var(--muted)">
+  <div>⏳ En attente des données BMS…</div>
+</div>
+{% endif %}
+
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 2 — COMPTEURS ÉNERGIE (ET112)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="card-title" style="margin-bottom:0.6rem;">⚡ Compteurs énergie</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;">
+
+{% for dev in et112_list %}
+<div class="card" style="padding:0;">
+
+  {# En-tête par type #}
+  <div style="background:{% if dev.service_type == "pvinverter" %}#1a5f2a{% else %}#5a3a8a{% endif %};padding:0.55rem 0.9rem;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;">
+    <span style="font-weight:700;color:#fff;font-size:0.9rem;">{% if dev.service_type == "pvinverter" %}☀{% else %}🌡{% endif %} {{ dev.name }}</span>
+    <span style="font-size:0.65rem;color:rgba(255,255,255,0.7);font-family:monospace;">{{ dev.addr_hex }}</span>
+  </div>
+
+  <div style="padding:0.75rem;">
+    {% if dev.connected %}
+
+    {# Puissance instantanée — grand chiffre #}
+    <div style="text-align:center;margin-bottom:0.75rem;">
+      <div id="et112-chart-{{ dev.address }}" style="height:130px;"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+      <div class="kpi">
+        <span class="kpi-label">Puissance</span>
+        <span class="kpi-value blue" id="et112-pow-{{ dev.address }}">{{ dev.power_w|f0 }} W</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Énergie cumulée</span>
+        <span class="kpi-value green" id="et112-energy-{{ dev.address }}">{{ dev.energy_kwh|f2 }} kWh</span>
+      </div>
+    </div>
+
+    <div style="margin-top:0.5rem;text-align:right;">
+      <a href="/dashboard/et112/{{ dev.address }}" style="font-size:0.72rem;color:var(--accent);">Détail →</a>
+    </div>
+
+    {% else %}
+    <div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:0.8rem;">
+      ⏳ En attente de données…
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endfor %}
+
+{% if et112_list.is_empty() %}
+<div class="card" style="text-align:center;padding:2rem;color:var(--muted)">
+  <div>Aucun ET112 configuré.</div>
+</div>
+{% endif %}
+
+</div>
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SECTION 3 — IRRADIANCE
+   ═══════════════════════════════════════════════════════════════════════════ #}
+<div class="card-title" style="margin-bottom:0.6rem;">🌤 Irradiance solaire</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem;">
+
+  <div class="card" style="padding:0;">
+    <div style="background:#7a5c00;padding:0.55rem 0.9rem;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-weight:700;color:#fff;font-size:0.9rem;">☀ Capteur PRALRAN</span>
+      <span style="font-size:0.65rem;color:rgba(255,255,255,0.7);">Dernière : <span id="irr-ts">{{ irradiance_ts }}</span></span>
+    </div>
+    <div style="padding:1rem;text-align:center;">
+      {% if let Some(wm2) = irradiance_wm2 %}
+      <div id="irr-gauge" style="height:160px;"></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:0.5rem;">W/m²</div>
+      {% else %}
+      <div style="padding:2rem;color:var(--muted);font-size:0.8rem;">⏳ En attente de données…</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Courbe historique irradiance #}
+  <div class="card" style="padding:1rem;">
+    <div style="font-size:0.75rem;font-weight:600;color:var(--muted);margin-bottom:0.5rem;">Irradiance (W/m²) — temps réel</div>
+    <div id="irr-history-chart" style="height:160px;"></div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// Vue d'ensemble — mise à jour temps réel
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── BMS via WebSocket ──────────────────────────────────────────────────────
+window.onBmsUpdate = function(snaps) {
+  const now = new Date().toLocaleTimeString();
+  document.getElementById('ov-ts').textContent = 'Mise à jour : ' + now;
+
+  snaps.forEach(function(s) {
+    const addr = s.address;
+    function set(id, val) {
+      const el = document.getElementById(id + '-' + addr);
+      if (el) el.textContent = val;
+    }
+
+    const v    = s.dc ? s.dc.voltage   : (s.voltage  || 0);
+    const i    = s.dc ? s.dc.current   : (s.current  || 0);
+    const p    = s.dc ? s.dc.power     : (s.power    || 0);
+    const soc  = s.soc || 0;
+    const tmax = s.system ? s.system.max_cell_temperature : (s.temp_max || 0);
+    const tmin = s.system ? s.system.min_cell_temperature : (s.temp_min || 0);
+    const dlt  = s.system ? ((s.system.max_cell_voltage - s.system.min_cell_voltage) * 1000) : 0;
+
+    set('v',   v.toFixed(2) + ' V');
+    set('soc', soc.toFixed(1) + ' %');
+    set('i',   (i >= 0 ? '+' : '') + i.toFixed(1) + ' A');
+    set('p',   p.toFixed(0) + ' W');
+    set('tmax',tmax.toFixed(1) + ' °C');
+    set('tmin',tmin.toFixed(1) + ' °C');
+    set('dlt', dlt.toFixed(1) + ' mV');
+    set('ts',  now);
+
+    // Barre SOC
+    const bar = document.getElementById('bar-' + addr);
+    if (bar) {
+      bar.style.width = Math.min(100, Math.max(0, soc)).toFixed(0) + '%';
+      bar.style.background = soc > 60 ? 'var(--green)' : soc > 25 ? 'var(--yellow)' : 'var(--red)';
+    }
+    // Couleur courant
+    const iEl = document.getElementById('i-' + addr);
+    if (iEl) { iEl.className = 'kpi4-val ' + (i >= 0 ? 'chg' : 'dch'); }
+    const pEl = document.getElementById('p-' + addr);
+    if (pEl) { pEl.className = 'kpi4-val ' + (p >= 0 ? 'chg' : 'dch'); }
+  });
+};
+
+// ── ET112 gauges ECharts ───────────────────────────────────────────────────
+const et112Charts = {};
+
+// Liste des ET112 configurés (adresse → service_type)
+const ET112_DEVICES = [
+{% for dev in et112_list %}
+  { addr: {{ dev.address }}, type: "{{ dev.service_type }}" },
+{% endfor %}
+];
+
+ET112_DEVICES.forEach(function(dev) {
+  const domId = 'et112-chart-' + dev.addr;
+  const dom   = document.getElementById(domId);
+  if (!dom) return;
+
+  const color = dev.type === 'pvinverter' ? '#1a7f37' : '#6f42c1';
+  const chart = echarts.init(dom);
+  chart.setOption({
+    series: [{
+      type: 'gauge',
+      radius: '95%',
+      min: 0, max: 3000,
+      axisLine: { lineStyle: { width: 10, color: [[0.33, '#1a7f37'], [0.66, '#9a6700'], [1, '#cf222e']] } },
+      pointer: { length: '60%', width: 4 },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { show: false },
+      detail: {
+        formatter: '{value} W',
+        fontSize: 16,
+        fontWeight: 700,
+        color: color,
+        offsetCenter: [0, '65%'],
+      },
+      data: [{ value: 0, name: '' }],
+    }],
+  });
+  et112Charts[dev.addr] = chart;
+  window.addEventListener('resize', () => chart.resize());
+});
+
+async function updateEt112() {
+  for (const dev of ET112_DEVICES) {
+    try {
+      const resp = await fetch('/api/v1/et112/' + dev.addr + '/status');
+      if (!resp.ok) continue;
+      const d = await resp.json();
+
+      const powEl    = document.getElementById('et112-pow-'    + dev.addr);
+      const energyEl = document.getElementById('et112-energy-' + dev.addr);
+      if (powEl)    powEl.textContent    = d.power_w.toFixed(0) + ' W';
+      if (energyEl) energyEl.textContent = (d.energy_import_wh / 1000).toFixed(2) + ' kWh';
+
+      if (et112Charts[dev.addr]) {
+        et112Charts[dev.addr].setOption({ series: [{ data: [{ value: d.power_w.toFixed(1) }] }] });
+      }
+    } catch(e) {}
+  }
+}
+
+// ── Irradiance gauge ECharts ───────────────────────────────────────────────
+const irrHistory = { xs: [], ys: [] };
+let irrGauge = null;
+let irrHistChart = null;
+
+const irrGaugeDom = document.getElementById('irr-gauge');
+if (irrGaugeDom) {
+  irrGauge = echarts.init(irrGaugeDom);
+  irrGauge.setOption({
+    series: [{
+      type: 'gauge',
+      radius: '95%',
+      min: 0, max: 1200,
+      axisLine: { lineStyle: { width: 10, color: [[0.25, '#57606a'], [0.65, '#9a6700'], [1, '#cf222e']] } },
+      pointer: { length: '65%', width: 4 },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      axisLabel: { show: false },
+      detail: {
+        formatter: '{value}',
+        fontSize: 20,
+        fontWeight: 700,
+        color: '#9a6700',
+        offsetCenter: [0, '65%'],
+      },
+      data: [{ value: {% if let Some(wm2) = irradiance_wm2 %}{{ wm2|f0 }}{% else %}0{% endif %} }],
+    }],
+  });
+  window.addEventListener('resize', () => irrGauge.resize());
+}
+
+const irrHistDom = document.getElementById('irr-history-chart');
+if (irrHistDom) {
+  irrHistChart = echarts.init(irrHistDom);
+  irrHistChart.setOption({
+    tooltip: { trigger: 'axis', formatter: p => p[0].name + '<br/>Irradiance: <b>' + p[0].value + ' W/m²</b>' },
+    xAxis: { type: 'category', data: [], axisLabel: { fontSize: 10 }, boundaryGap: false },
+    yAxis: { type: 'value', name: 'W/m²', nameTextStyle: { fontSize: 10 }, min: 0 },
+    series: [{
+      type: 'line',
+      data: [],
+      smooth: true,
+      lineStyle: { color: '#9a6700', width: 2 },
+      areaStyle: { opacity: 0.15, color: '#9a6700' },
+      symbol: 'none',
+    }],
+    grid: { left: 45, right: 10, top: 10, bottom: 25 },
+  });
+  window.addEventListener('resize', () => irrHistChart.resize());
+}
+
+async function updateIrradiance() {
+  try {
+    const resp = await fetch('/api/v1/irradiance/status');
+    if (!resp.ok) return;
+    const d = await resp.json();
+    if (!d.connected) return;
+
+    const wm2 = d.irradiance_wm2;
+    document.getElementById('irr-ts').textContent = new Date(d.timestamp).toLocaleTimeString();
+
+    if (irrGauge) {
+      irrGauge.setOption({ series: [{ data: [{ value: wm2.toFixed(0) }] }] });
+    }
+
+    // Historique local (glissant 60 points = 10 min à 10s)
+    const t = new Date(d.timestamp).toLocaleTimeString();
+    irrHistory.xs.push(t);
+    irrHistory.ys.push(wm2.toFixed(1));
+    if (irrHistory.xs.length > 60) {
+      irrHistory.xs.shift();
+      irrHistory.ys.shift();
+    }
+    if (irrHistChart) {
+      irrHistChart.setOption({ xAxis: { data: irrHistory.xs }, series: [{ data: irrHistory.ys }] });
+    }
+  } catch(e) {}
+}
+
+// ── Démarrage ─────────────────────────────────────────────────────────────
+updateEt112();
+updateIrradiance();
+setInterval(updateEt112, 5000);
+setInterval(updateIrradiance, 10000);
+</script>
+{% endblock %}
