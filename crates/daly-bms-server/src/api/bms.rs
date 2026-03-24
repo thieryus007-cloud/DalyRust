@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum::extract::ws::{Message, WebSocket};
-use daly_bms_core::types::{BmsSettings, BmsSnapshot};
+use daly_bms_core::types::BmsSnapshot;
 use futures::{SinkExt, StreamExt};
 use serde::Deserialize;
 use serde_json::{json, Value};

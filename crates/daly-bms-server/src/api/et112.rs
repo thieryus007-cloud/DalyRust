@@ -13,7 +13,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Parse une adresse Modbus depuis un segment de chemin ("3", "0x03").
 fn parse_addr(s: &str) -> Option<u8> {
@@ -23,14 +23,6 @@ fn parse_addr(s: &str) -> Option<u8> {
     } else {
         s.parse::<u8>().ok()
     }
-}
-
-/// Réponse JSON liste des ET112 configurés.
-#[derive(Serialize)]
-pub struct Et112ListItem {
-    pub address: u8,
-    pub name: String,
-    pub mqtt_index: Option<u8>,
 }
 
 /// GET /api/v1/et112 — liste de tous les ET112 + dernier snapshot
