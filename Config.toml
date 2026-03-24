@@ -266,12 +266,20 @@ position         = 1
 # Taille du ring buffer par prise (720 = 1 heure si SENSOR toutes les 5s)
 ring_buffer_size = 720
 
-# Décommenter et adapter pour chaque prise Tasmota :
+[[tasmota.devices]]
+id              = 1                  # Identifiant interne unique (clé du ring buffer)
+tasmota_id      = "tongou_3BC764"    # Topics : tele/tongou_3BC764/STATE, stat/tongou_3BC764/POWER
+name            = "Tongou Switch"
+mqtt_index      = 2                  # → forward santuario/switch/2/venus → D-Bus switch.mqtt_2
+service_type    = "switch"
+device_instance = 61                 # Instance D-Bus Venus OS (60=ATS CHINT, 61=Tongou)
+
+# Décommenter et adapter pour chaque prise Tasmota supplémentaire :
 # [[tasmota.devices]]
-# id           = 1           # Identifiant interne unique (clé du ring buffer)
+# id           = 2           # Identifiant interne unique (clé du ring buffer)
 # tasmota_id   = "tasmota_01" # Nom du device Tasmota dans les topics MQTT
 # name         = "Prise Salon"
-# mqtt_index   = 1            # Optionnel — forward Venus OS switch/1/venus
+# mqtt_index   = 3            # Optionnel — forward Venus OS switch/3/venus
 # service_type = "switch"     # "switch" (défaut) ou "acload"
 # device_instance = 500       # Optionnel — instance D-Bus Venus OS
 

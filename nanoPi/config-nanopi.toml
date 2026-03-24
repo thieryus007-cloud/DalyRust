@@ -125,6 +125,11 @@ mqtt_index      = 1
 name            = "ATS CHINT"
 device_instance = 60
 
+[[switches]]
+mqtt_index      = 2                  # Tasmota tongou_3BC764 — forward depuis daly-bms-server
+name            = "Tongou Switch"
+device_instance = 61
+
 # -----------------------------------------------------------------------------
 # Compteurs réseau / consommation AC
 # Topics : santuario/grid/{mqtt_index}/venus
