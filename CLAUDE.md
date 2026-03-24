@@ -103,23 +103,99 @@ ssh-copy-id -i ~/.ssh/id_nanopi.pub root@192.168.1.120
 
 - **GitHub** : https://github.com/thieryus007-cloud/Daly-BMS-Rust
 - **Branche principale** : `main`
-- **Branche de travail courante** : `main`
-- **Convention branches Claude** : travailler directement sur `main`
+- **Branche de travail Claude** : `claude/review-venus-integration-35qN7`
+- **Règle branches** : **2 branches maximum** — `main` + 1 branche Claude active
 
-### Workflow standard
+### Rôles des machines
+
+| Machine | Rôle Git | Opérations autorisées |
+|---------|----------|----------------------|
+| **Claude Code** (CI) | Développement | commit, push, création branches |
+| **Pi5** | Déploiement seul | `make sync` uniquement — jamais de commit local |
+
+> **RÈGLE ABSOLUE** : Le Pi5 ne doit **jamais** avoir de commits locaux.
+> Toute modification de code se fait dans Claude Code, puis déployée via `make sync`.
+
+### Sur Pi5 — synchronisation (remplace git pull)
 
 ```bash
-# Sur Pi5 — récupérer les changements avant toute action
-git pull origin <branche-courante>
+# TOUJOURS utiliser make sync — jamais git pull ni git pull --rebase
+make sync
 
-# Après modification — toujours commit + push
-git add <fichiers>
-git commit -m "type(scope): description"
-git push -u origin <branche>
+# Équivalent exact :
+git fetch origin claude/review-venus-integration-35qN7
+git reset --hard origin/claude/review-venus-integration-35qN7
 ```
 
-> **CRITIQUE** : Toujours faire `git pull` sur le Pi5 avant `make install-venus-v7`
-> sinon l'ancien script est exécuté.
+> **Pourquoi `make sync` et pas `git pull` ?**
+> `git pull --rebase` crée des conflits si le Pi5 a des fichiers modifiés localement.
+> `make sync` écrase tout sans créer de commits — le Pi5 reste toujours propre.
+
+### Workflow développement (Claude Code → GitHub → Pi5)
+
+```
+1. Claude Code développe sur claude/review-venus-integration-35qN7
+   git add <fichiers>
+   git commit -m "type(scope): description"
+   git push -u origin claude/review-venus-integration-35qN7
+
+2. Pi5 récupère les changements
+   make sync
+
+3. Pi5 déploie
+   make build-venus-v7 && make install-venus-v7   ← NanoPi
+   make build-arm && sudo systemctl restart daly-bms  ← Pi5 lui-même
+```
+
+### Fusion dans main (quand une feature est terminée)
+
+```bash
+# Via GitHub — merger le PR depuis l'interface web
+# Ou depuis Claude Code :
+git checkout main
+git merge --no-ff claude/review-venus-integration-35qN7
+git push origin main
+```
+
+### Gestion des branches — règle des 2 branches
+
+```
+main                                  ← production stable, jamais de commit direct
+claude/review-venus-integration-35qN7 ← développement actif (38 commits ahead)
+```
+
+- **Créer une nouvelle branche** uniquement si nouvelle feature majeure indépendante
+- **Supprimer** une branche dès qu'elle est mergée dans main
+- **Jamais** laisser des branches orphelines > 2 semaines
+
+### Nettoyage branches obsolètes
+
+```bash
+# Depuis Pi5 ou Claude Code
+git push origin --delete <nom-branche-obsolete>
+
+# Si "remote ref does not exist" → la branche est déjà supprimée sur GitHub
+# Nettoyer le cache local :
+git fetch --prune
+```
+
+### Convention commits
+
+```
+feat(scope):    nouvelle fonctionnalité
+fix(scope):     correction de bug
+chore(scope):   maintenance, config, dépendances
+docs(scope):    documentation
+refactor(scope): refactoring sans changement fonctionnel
+```
+
+Exemples :
+```
+feat(tasmota): add MQTT subscriber and dashboard page
+fix(et112): correct Modbus address for PAC climatisation
+chore(makefile): add sync target for Pi5 deployment
+docs(claude): update git workflow and branch policy
+```
 
 ---
 
