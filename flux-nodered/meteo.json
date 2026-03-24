@@ -315,47 +315,6 @@
     "wires": []
   },
   {
-    "id": "pvinv_persist_in",
-    "type": "mqtt in",
-    "z": "e6e3a16384301f83",
-    "name": "Restore pvinv_baseline (au démarrage)",
-    "topic": "santuario/persist/pvinv_baseline",
-    "qos": "1",
-    "datatype": "auto",
-    "broker": "pi5_mqtt_broker",
-    "nl": false,
-    "rap": true,
-    "rh": 0,
-    "inputs": 0,
-    "x": 230,
-    "y": 760,
-    "wires": [
-      [
-        "restore_baseline_fn"
-      ]
-    ],
-    "d": true
-  },
-  {
-    "id": "restore_baseline_fn",
-    "type": "function",
-    "z": "e6e3a16384301f83",
-    "name": "Restaurer pvinv_baseline",
-    "func": "const raw = msg.payload;\n\n// Payload vide = reset minuit (retained effacé), ou pas de baseline stockée\nif (raw === '' || raw === null || raw === undefined) {\n    global.set('pvinv_baseline', null);\n    node.status({fill:'grey', shape:'ring', text:'Pas de baseline (reset ou 1er jour)'});\n    return null;\n}\n\nconst baseline = parseFloat(raw);\nif (isNaN(baseline) || baseline <= 0) {\n    node.status({fill:'red', shape:'ring', text:'Baseline invalide: ' + raw});\n    return null;\n}\n\nglobal.set('pvinv_baseline', baseline);\nnode.status({fill:'yellow', shape:'dot', text:'Baseline restaurée: ' + baseline.toFixed(1) + ' kWh'});\nreturn null;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 570,
-    "y": 760,
-    "wires": [
-      []
-    ],
-    "d": true
-  },
-  {
     "id": "pvinv_persist_out",
     "type": "mqtt out",
     "z": "e6e3a16384301f83",
