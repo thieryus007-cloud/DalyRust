@@ -65,6 +65,10 @@ impl SwitchManager {
 
     async fn handle_event(&mut self, evt: SwitchMqttEvent) -> Result<()> {
         let idx = evt.mqtt_index;
+        if !self.is_configured(idx) {
+            warn!(index = idx, "Message switch reçu pour index non configuré — ignoré (retained MQTT fantôme ?)");
+            return Ok(());
+        }
         if !self.services.contains_key(&idx) {
             let handle = self.create_service(idx).await?;
             self.services.insert(idx, handle);
@@ -73,6 +77,12 @@ impl SwitchManager {
             svc.update(&evt.payload).await?;
         }
         Ok(())
+    }
+
+    fn is_configured(&self, idx: u8) -> bool {
+        self.switch_refs.iter().enumerate().any(|(pos, s)| {
+            s.mqtt_index.unwrap_or((pos + 1) as u8) == idx
+        })
     }
 
     async fn create_service(&self, idx: u8) -> Result<SwitchServiceHandle> {

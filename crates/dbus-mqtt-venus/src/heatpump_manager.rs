@@ -65,6 +65,10 @@ impl HeatpumpManager {
 
     async fn handle_event(&mut self, evt: HeatpumpMqttEvent) -> Result<()> {
         let idx = evt.mqtt_index;
+        if !self.is_configured(idx) {
+            warn!(index = idx, "Message heatpump reçu pour index non configuré — ignoré (retained MQTT fantôme ?)");
+            return Ok(());
+        }
         if !self.services.contains_key(&idx) {
             let handle = self.create_service(idx).await?;
             self.services.insert(idx, handle);
@@ -73,6 +77,12 @@ impl HeatpumpManager {
             svc.update(&evt.payload).await?;
         }
         Ok(())
+    }
+
+    fn is_configured(&self, idx: u8) -> bool {
+        self.heatpump_refs.iter().enumerate().any(|(pos, h)| {
+            h.mqtt_index.unwrap_or((pos + 1) as u8) == idx
+        })
     }
 
     async fn create_service(&self, idx: u8) -> Result<HeatpumpServiceHandle> {

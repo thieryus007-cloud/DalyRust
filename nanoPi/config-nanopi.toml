@@ -94,11 +94,10 @@ mqtt_index      = 8             # ET112 addr=0x08 (SN: 119215X) — PAC Chauffe-
 name            = "PAC Chauffe-eau"
 device_instance = 30
 
-# PAC Climatisation (ET112 addr=0x09, SN: 061077X) — non connecté pour le moment :
-# [[heatpumps]]
-# mqtt_index      = 9
-# name            = "PAC Climatisation"
-# device_instance = 31
+[[heatpumps]]
+mqtt_index      = 9             # ET112 addr=0x09 (SN: 061077X) — PAC Climatisation branché ✅
+name            = "PAC Climatisation"
+device_instance = 31
 
 # -----------------------------------------------------------------------------
 # Capteur météo / irradiance (singleton — un seul capteur)
