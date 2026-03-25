@@ -1,153 +1,175 @@
 {% extends "base.html" %}
 
-{% block title %}BMS {{ detail.summary.address_hex }} — Monitoring{% endblock %}
+{% block title %}BMS {{ detail.summary.address_hex }} — {{ detail.summary.name }}{% endblock %}
+{% block page_title %}{{ detail.summary.name }}{% endblock %}
+{% block nav_bms %}active{% endblock %}
+
+{% block head %}
+<style>
+  .detail-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .kpi-box-lg {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.9rem 1rem;
+  }
+  .kpi-box-lg .kpi-lbl { font-size: 0.58rem; margin-bottom: 0.3rem; }
+  .kpi-box-lg .kpi-val { font-size: 1.2rem; }
+</style>
+{% endblock %}
 
 {% block content %}
 
-{# ─── En-tête ─────────────────────────────────────────────────────────────── #}
-<div class="detail-header">
-  <a href="/dashboard" class="back-link">← Retour</a>
-  <h1>BMS {{ detail.summary.address_hex }}</h1>
-  <span class="badge {% if detail.summary.any_alarm %}alarm{% else %}ok{% endif %}" style="font-size:0.85rem">
+{# ─── Back + header ────────────────────────────────────────────────────── #}
+<div class="page-hdr" style="margin-bottom:1.25rem">
+  <a href="/dashboard" class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.7rem;">← Retour</a>
+  <h1>🔋 {{ detail.summary.name }}</h1>
+  <span class="badge {% if detail.summary.any_alarm %}alarm{% else %}ok{% endif %}">
     {% if detail.summary.any_alarm %}⚠ ALARME{% else %}✓ Normal{% endif %}
   </span>
-  <span style="margin-left:auto;font-size:0.75rem;color:var(--muted)">
-    Dernier snapshot : <span id="last-ts">{{ detail.summary.last_update }}</span>
-  </span>
-</div>
-
-{# ─── KPIs ────────────────────────────────────────────────────────────────── #}
-<div class="card" style="margin-bottom:1rem;padding:1rem">
-  <div style="display:flex;flex-direction:column;gap:0.75rem">
-    <div class="kpi-row">
-      <div class="kpi">
-        <span class="kpi-label">Tension pack</span>
-        <span class="kpi-value blue" id="kpi-v">{{ detail.summary.voltage|f1 }} V</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Courant</span>
-        <span class="kpi-value {% if detail.summary.current > 0.0 %}green{% else if detail.summary.current < -0.1 %}blue{% endif %}"
-              id="kpi-i">{{ detail.summary.current|sign }} A</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Puissance</span>
-        <span class="kpi-value" id="kpi-p">{{ detail.summary.power|f0 }} W</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Temp. max</span>
-        <span class="kpi-value {% if detail.summary.temp_max > 45.0 %}red{% else if detail.summary.temp_max > 35.0 %}yellow{% endif %}"
-              id="kpi-t">{{ detail.summary.temp_max|f1 }} °C</span>
-      </div>
-    </div>
-
-    <div class="kpi-row">
-      <div class="kpi">
-        <span class="kpi-label">SOC</span>
-        <span class="kpi-value {% if detail.summary.soc < 15.0 %}red{% else if detail.summary.soc < 25.0 %}orange{% else if detail.summary.soc < 40.0 %}yellow{% else %}green{% endif %}"
-              id="kpi-soc">{{ detail.summary.soc|f1 }} %</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">SOH</span>
-        <span class="kpi-value {% if detail.soh < 70.0 %}red{% else if detail.soh < 85.0 %}yellow{% else %}green{% endif %}">
-          {{ detail.soh|f1 }} %</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Δ cellules</span>
-        <span class="kpi-value {% if detail.summary.cell_delta_mv > 100.0 %}red{% else if detail.summary.cell_delta_mv > 50.0 %}yellow{% endif %}"
-              id="kpi-d">{{ detail.summary.cell_delta_mv|mv }} mV</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Restant (SOC)</span>
-        <span class="kpi-value" id="kpi-c">{{ detail.summary.capacity_ah|f1 }} Ah</span>
-      </div>
-    </div>
-
-    <div class="kpi-row">
-      <div class="kpi">
-        <span class="kpi-label">Cap. BMS</span>
-        <span class="kpi-value" id="kpi-bms-c">{{ detail.summary.bms_capacity_ah|f1 }} Ah</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Cycles</span>
-        <span class="kpi-value">{{ detail.cycles }}</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Autonomie</span>
-        <span class="kpi-value" id="kpi-ttg">
-          {% if detail.time_to_go_h > 0.0 %}{{ detail.time_to_go_h|f1 }} h{% else %}—{% endif %}
-        </span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">Cellules</span>
-        <span class="kpi-value">{{ detail.cell_count }}</span>
-      </div>
-      <div class="kpi">
-        <span class="kpi-label">MOS CHG/DCH</span>
-        <span class="kpi-value" style="font-size:0.9rem">
-          {% if detail.summary.charge_ok %}<span style="color:var(--green)">C✓</span>{% else %}<span style="color:var(--red)">C✗</span>{% endif %}
-          &nbsp;
-          {% if detail.summary.discharge_ok %}<span style="color:var(--green)">D✓</span>{% else %}<span style="color:var(--red)">D✗</span>{% endif %}
-        </span>
-      </div>
-    </div>
-
-    {# Min/Max cellules #}
-    <div style="display:flex;gap:0.75rem;font-size:0.8rem;color:var(--muted);padding:0 0.25rem">
-      <span>Min : <strong style="color:var(--text)">{{ detail.min_cell_id }}</strong> = <span id="kpi-vmin">{{ detail.min_cell_v|f3 }}</span> V</span>
-      <span>Max : <strong style="color:var(--text)">{{ detail.max_cell_id }}</strong> = <span id="kpi-vmax">{{ detail.max_cell_v|f3 }}</span> V</span>
-    </div>
+  <div class="page-hdr-meta" style="margin-left:auto">
+    <span>{{ detail.summary.address_hex }}</span>
+    <span class="sep">·</span>
+    <span>{{ detail.summary.can_id }}</span>
+    <span class="sep">·</span>
+    <span>Dernier snapshot : <span id="last-ts">{{ detail.summary.last_update }}</span></span>
   </div>
 </div>
 
-{# ─── Tensions des cellules (pleine largeur) ──────────────────────────────── #}
-<div class="chart-section">
-  <h3>Tensions cellules
-    <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
-      MIN <span style="color:var(--red)">&#9632;</span>
-      &nbsp;MAX <span style="color:var(--green)">&#9632;</span>
-      &nbsp;autres <span style="color:var(--accent)">&#9632;</span>
+{# ─── KPIs principaux ─────────────────────────────────────────────────── #}
+<div class="detail-kpi-grid" style="margin-bottom:1rem">
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Tension pack</div>
+    <div class="kpi-val blue" id="kpi-v">{{ detail.summary.voltage|f1 }} V</div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Courant</div>
+    <div class="kpi-val {% if detail.summary.current > 0.0 %}green{% else if detail.summary.current < -0.1 %}blue{% endif %}" id="kpi-i">
+      {{ detail.summary.current|sign }} A
+    </div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Puissance</div>
+    <div class="kpi-val" id="kpi-p">{{ detail.summary.power|f0 }} W</div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">SOC</div>
+    <div class="kpi-val {% if detail.summary.soc < 15.0 %}red{% else if detail.summary.soc < 25.0 %}orange{% else if detail.summary.soc < 40.0 %}yellow{% else %}green{% endif %}" id="kpi-soc">
+      {{ detail.summary.soc|f1 }}%
+    </div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">SOH</div>
+    <div class="kpi-val {% if detail.soh < 70.0 %}red{% else if detail.soh < 85.0 %}yellow{% else %}green{% endif %}">
+      {{ detail.soh|f1 }}%
+    </div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">T° max</div>
+    <div class="kpi-val {% if detail.summary.temp_max > 45.0 %}red{% else if detail.summary.temp_max > 35.0 %}yellow{% endif %}" id="kpi-t">
+      {{ detail.summary.temp_max|f1 }} °C
+    </div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Δ cellules</div>
+    <div class="kpi-val {% if detail.summary.cell_delta_mv > 100.0 %}red{% else if detail.summary.cell_delta_mv > 50.0 %}yellow{% endif %}" id="kpi-d">
+      {{ detail.summary.cell_delta_mv|mv }} mV
+    </div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Capacité SOC</div>
+    <div class="kpi-val" id="kpi-c">{{ detail.summary.capacity_ah|f1 }} Ah</div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Cap. BMS</div>
+    <div class="kpi-val muted" id="kpi-bms-c">{{ detail.summary.bms_capacity_ah|f1 }} Ah</div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Autonomie</div>
+    <div class="kpi-val" id="kpi-ttg">
+      {% if detail.time_to_go_h > 0.0 %}{{ detail.time_to_go_h|f1 }} h{% else %}—{% endif %}
+    </div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Cycles</div>
+    <div class="kpi-val muted">{{ detail.cycles }}</div>
+  </div>
+  <div class="kpi-box-lg">
+    <div class="kpi-lbl">Cellules</div>
+    <div class="kpi-val muted">{{ detail.cell_count }}S</div>
+  </div>
+</div>
+
+{# MOS + min/max #}
+<div class="card" style="padding:0.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700">MOS</span>
+    <span style="font-size:0.82rem;font-weight:700;color:{% if detail.summary.charge_ok %}var(--green){% else %}var(--red){% endif %}">
+      CHG {% if detail.summary.charge_ok %}✓{% else %}✗{% endif %}
     </span>
-  </h3>
-  <div class="chart-box">
-    <div id="chart-cells" style="height:240px"></div>
-  </div>
-</div>
-
-{# ─── Boxplot distribution historique par cellule ────────────────────────── #}
-<div class="chart-section">
-  <h3>Boxplot cellules — distribution historique
-    <span style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-left:0.5rem">
-      ┤min · Q1 · médiane · Q3 · max├ &nbsp;
-      MIN <span style="color:var(--red)">&#9632;</span>
-      &nbsp;MAX <span style="color:var(--green)">&#9632;</span>
-      &nbsp;autres <span style="color:var(--accent)">&#9632;</span>
-      &nbsp;&#9670; balancing
+    <span style="font-size:0.82rem;font-weight:700;color:{% if detail.summary.discharge_ok %}var(--green){% else %}var(--red){% endif %}">
+      DCH {% if detail.summary.discharge_ok %}✓{% else %}✗{% endif %}
     </span>
-  </h3>
-  <div class="chart-box">
-    <div id="chart-boxplot" style="height:240px"></div>
+  </div>
+  <div style="font-size:0.75rem;color:var(--muted);">
+    Min : <strong style="color:var(--text);font-family:'JetBrains Mono',monospace">{{ detail.min_cell_id }}</strong>
+    = <span id="kpi-vmin" style="font-family:'JetBrains Mono',monospace;color:var(--red)">{{ detail.min_cell_v|f3 }}</span> V
+  </div>
+  <div style="font-size:0.75rem;color:var(--muted);">
+    Max : <strong style="color:var(--text);font-family:'JetBrains Mono',monospace">{{ detail.max_cell_id }}</strong>
+    = <span id="kpi-vmax" style="font-family:'JetBrains Mono',monospace;color:var(--yellow)">{{ detail.max_cell_v|f3 }}</span> V
   </div>
 </div>
 
-{# ─── Tableau des alarmes ─────────────────────────────────────────────────── #}
-<div class="card chart-section">
-  <div class="card-title">État des alarmes</div>
+{# ─── Graphique tensions cellules ─────────────────────────────────────── #}
+<div class="chart-card" style="margin-bottom:1rem">
+  <div class="chart-hdr">
+    <span class="chart-hdr-title">Tensions cellules</span>
+    <span class="chart-hdr-meta">
+      MIN <span style="color:var(--red)">█</span>&nbsp;
+      MAX <span style="color:var(--green)">█</span>&nbsp;
+      Autres <span style="color:var(--accent)">█</span>
+    </span>
+  </div>
+  <div id="chart-cells" style="height:240px"></div>
+</div>
+
+{# ─── Boxplot ─────────────────────────────────────────────────────────── #}
+<div class="chart-card" style="margin-bottom:1rem">
+  <div class="chart-hdr">
+    <span class="chart-hdr-title">Distribution historique par cellule</span>
+    <span class="chart-hdr-meta">min · Q1 · médiane · Q3 · max — 30 dernières secondes</span>
+  </div>
+  <div id="chart-boxplot" style="height:240px"></div>
+</div>
+
+{# ─── Alarmes ─────────────────────────────────────────────────────────── #}
+<div class="chart-card" style="margin-bottom:1rem">
+  <div class="chart-hdr">
+    <span class="chart-hdr-title">État des alarmes</span>
+    <span class="chart-hdr-meta">{{ detail.alarms|length }} alarmes surveillées</span>
+  </div>
   <table>
     <thead>
       <tr>
         <th>Alarme</th>
-        <th style="text-align:center">État</th>
+        <th style="text-align:center;width:120px">État</th>
       </tr>
     </thead>
     <tbody>
     {% for alarm in detail.alarms %}
       <tr>
-        <td>{{ alarm.name }}</td>
+        <td style="color:var(--text2)">{{ alarm.name }}</td>
         <td style="text-align:center">
           {% if alarm.active %}
             <span class="badge alarm">⚠ ACTIF</span>
           {% else %}
-            <span class="badge ok">OK</span>
+            <span class="badge ok">✓ OK</span>
           {% endif %}
         </td>
       </tr>
@@ -156,148 +178,65 @@
   </table>
 </div>
 
-{# ─── Actions BMS ─────────────────────────────────────────────────────────── #}
-<div class="card chart-section" style="margin-bottom:1rem">
+{# ─── Actions BMS ─────────────────────────────────────────────────────── #}
+<div class="card card-p" style="margin-bottom:1rem">
   <div class="card-title">Actions BMS</div>
   <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
-    <button onclick="openSocModal()" class="btn-action">⚡ Calibrer SOC</button>
-    <button onclick="openResetModal()" class="btn-action btn-danger">⚠ Reset BMS</button>
-    <span style="font-size:0.7rem;color:var(--muted)">
-      Mot de passe Daly requis &nbsp;·&nbsp; Inopérant en mode simulateur
-    </span>
+    <button onclick="openSocModal()" class="btn btn-outline">⚡ Calibrer SOC</button>
+    <button onclick="openResetModal()" class="btn btn-danger">⚠ Reset BMS</button>
+    <span style="font-size:0.7rem;color:var(--muted)">Mot de passe Daly requis · Inopérant en mode simulateur</span>
   </div>
 </div>
 
-{# ─── Modal Calibration SOC ───────────────────────────────────────────────── #}
+{# ─── Modal SOC ───────────────────────────────────────────────────────── #}
 <div id="modal-soc" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeSocModal()">
   <div class="modal-box">
     <div class="modal-title">⚡ Calibration SOC</div>
     <div class="modal-body">
-      <label class="modal-label">Nouvelle valeur SOC (%)</label>
-      <input type="number" id="soc-value" min="0" max="100" step="0.1" value="100" class="modal-input">
-      <label class="modal-label" style="margin-top:0.75rem">Mot de passe Daly</label>
-      <input type="password" id="soc-password" value="12345678" class="modal-input" autocomplete="off">
-      <div id="soc-result" style="margin-top:0.6rem;min-height:1.2em;font-size:0.75rem"></div>
+      <div>
+        <label class="modal-label">Nouvelle valeur SOC (%)</label>
+        <input type="number" id="soc-value" min="0" max="100" step="0.1" value="100" class="modal-input">
+      </div>
+      <div>
+        <label class="modal-label">Mot de passe Daly</label>
+        <input type="password" id="soc-password" value="12345678" class="modal-input" autocomplete="off">
+      </div>
+      <div id="soc-result" style="min-height:1.2em;font-size:0.75rem"></div>
     </div>
     <div class="modal-footer">
-      <button onclick="closeSocModal()" class="btn-modal-cancel">Annuler</button>
-      <button onclick="submitSoc()" class="btn-modal-confirm">Envoyer</button>
+      <button onclick="closeSocModal()" class="btn btn-cancel">Annuler</button>
+      <button onclick="submitSoc()" class="btn btn-confirm">Envoyer</button>
     </div>
   </div>
 </div>
 
-{# ─── Modal Reset BMS ─────────────────────────────────────────────────────── #}
+{# ─── Modal Reset ─────────────────────────────────────────────────────── #}
 <div id="modal-reset" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeResetModal()">
   <div class="modal-box">
     <div class="modal-title" style="color:var(--red)">⚠ Reset BMS {{ detail.summary.address_hex }}</div>
     <div class="modal-body">
-      <p style="color:var(--red);font-size:0.8rem;background:rgba(207,34,46,0.07);border:1px solid rgba(207,34,46,0.25);border-radius:4px;padding:0.6rem 0.75rem;margin-bottom:0.75rem">
-        Cette opération réinitialise le BMS. Les paramètres de fonctionnement sont conservés par le BMS mais la communication sera interrompue quelques secondes.
+      <p style="color:var(--red);font-size:0.78rem;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.2);border-radius:6px;padding:0.6rem 0.75rem;">
+        Cette opération réinitialise le BMS. La communication sera interrompue quelques secondes.
       </p>
-      <label class="modal-label">Mot de passe Daly</label>
-      <input type="password" id="reset-password" value="12345678" class="modal-input" autocomplete="off">
-      <label class="modal-label" style="margin-top:0.75rem;display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+      <div>
+        <label class="modal-label">Mot de passe Daly</label>
+        <input type="password" id="reset-password" value="12345678" class="modal-input" autocomplete="off">
+      </div>
+      <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;color:var(--text2);cursor:pointer">
         <input type="checkbox" id="reset-confirm" style="width:auto">
         Je confirme le reset du BMS {{ detail.summary.address_hex }}
       </label>
-      <div id="reset-result" style="margin-top:0.6rem;min-height:1.2em;font-size:0.75rem"></div>
+      <div id="reset-result" style="min-height:1.2em;font-size:0.75rem"></div>
     </div>
     <div class="modal-footer">
-      <button onclick="closeResetModal()" class="btn-modal-cancel">Annuler</button>
-      <button onclick="submitReset()" class="btn-modal-confirm" style="background:var(--red)">Reset</button>
+      <button onclick="closeResetModal()" class="btn btn-cancel">Annuler</button>
+      <button onclick="submitReset()" class="btn btn-confirm red">Reset</button>
     </div>
   </div>
 </div>
 
-{# JSON ECharts (cachés) #}
 <script type="application/json" id="opt-cells">{{ detail.cells_bar_json|safe }}</script>
 <script type="application/json" id="opt-boxplot">{{ detail.cells_boxplot_json|safe }}</script>
-
-<style>
-  .btn-action {
-    padding: 0.45rem 1rem;
-    border: 1px solid var(--accent);
-    background: var(--surface);
-    color: var(--accent);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: background 0.15s;
-  }
-  .btn-action:hover { background: rgba(9,105,218,0.08); }
-  .btn-danger { border-color: var(--red); color: var(--red); }
-  .btn-danger:hover { background: rgba(207,34,46,0.08); }
-
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  .modal-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-    width: min(440px, 92vw);
-    padding: 1.5rem;
-  }
-  .modal-title {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  .modal-body { display: flex; flex-direction: column; }
-  .modal-label {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin-bottom: 0.25rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .modal-input {
-    width: 100%;
-    padding: 0.45rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 0.875rem;
-    background: var(--surface2);
-    color: var(--text);
-  }
-  .modal-input:focus { outline: 2px solid var(--accent); border-color: transparent; }
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1.25rem;
-  }
-  .btn-modal-cancel {
-    padding: 0.4rem 1rem;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-  }
-  .btn-modal-confirm {
-    padding: 0.4rem 1rem;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-  .btn-modal-confirm:hover { opacity: 0.88; }
-  .btn-modal-cancel:hover  { background: var(--border); }
-</style>
 
 {% endblock %}
 
@@ -305,79 +244,78 @@
 <script>
 (function() {
   const BMS_ADDR = {{ detail.summary.address }};
-  window._bmsAddr = BMS_ADDR;  // exposé pour les fonctions globales (modals)
+  window._bmsAddr = BMS_ADDR;
 
-  // ─── Initialisation des graphiques ────────────────────────────────────────
+  // ── ECharts dark theme ─────────────────────────────────────────────
+  echarts.registerTheme('dark-ess', {
+    backgroundColor: 'transparent',
+    textStyle: { color: '#8b949e' },
+    axisLine:  { lineStyle: { color: '#30363d' } },
+    splitLine: { lineStyle: { color: '#21262d' } },
+  });
+
   function initChart(domId, optId) {
     const dom = document.getElementById(domId);
     const opt = document.getElementById(optId);
     if (!dom || !opt) return null;
-    const c = echarts.init(dom, null, { renderer: 'svg' });
-    c.setOption(JSON.parse(opt.textContent));
+    const c = echarts.init(dom, 'dark-ess', { renderer: 'svg' });
+    const parsed = JSON.parse(opt.textContent);
+    // Injecter les couleurs dark dans les options de base
+    if (parsed.xAxis) { parsed.xAxis.axisLabel = Object.assign({ color: '#6e7681', fontSize: 10 }, parsed.xAxis.axisLabel); }
+    if (parsed.yAxis) { parsed.yAxis.axisLabel = Object.assign({ color: '#6e7681', fontSize: 10 }, parsed.yAxis.axisLabel); }
+    if (parsed.title) { parsed.title.textStyle = Object.assign({ color: '#c9d1d9', fontSize: 11 }, parsed.title.textStyle); }
+    c.setOption(parsed);
     return c;
   }
 
   const cCells   = initChart('chart-cells',   'opt-cells');
   const cBoxplot = initChart('chart-boxplot', 'opt-boxplot');
 
-  // ─── Resize automatique ────────────────────────────────────────────────────
   window.addEventListener('resize', function() {
     [cCells, cBoxplot].forEach(function(c) { if (c) c.resize(); });
   });
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
-  function set(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  }
-  function fmt1(n) { return (+n).toFixed(1); }
-  function fmt0(n) { return (+n).toFixed(0); }
-  function fmt3(n) { return (+n).toFixed(3); }
+  function set(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+  function f1(n) { return (+n).toFixed(1); }
+  function f0(n) { return (+n).toFixed(0); }
+  function f3(n) { return (+n).toFixed(3); }
 
-  // ─── État courant MIN/MAX/balance (mis à jour par WS, utilisé par boxplot) ─
   var currentMinCell  = '';
   var currentMaxCell  = '';
   var currentBalances = {};
 
-  // ─── Mise à jour en temps-réel (WebSocket) ─────────────────────────────────
+  // ── WebSocket update ───────────────────────────────────────────────
   window.onBmsUpdate = function(snaps) {
     const s = snaps.find(function(x) { return x.address === BMS_ADDR; });
     if (!s) return;
 
-    // Mémoriser pour le boxplot dynamique
     currentMinCell  = (s.System && s.System.MinVoltageCellId) || '';
     currentMaxCell  = (s.System && s.System.MaxVoltageCellId) || '';
     currentBalances = s.Balances || {};
 
-    // KPIs texte
-    set('kpi-v',   fmt1(s.Dc.Voltage)  + ' V');
-    set('kpi-i',   (s.Dc.Current >= 0 ? '+' : '') + fmt1(s.Dc.Current) + ' A');
-    set('kpi-p',   fmt0(s.Dc.Power)    + ' W');
-    set('kpi-t',   fmt1(s.System.MaxCellTemperature) + ' °C');
-    set('kpi-soc',   fmt1(s.Soc) + ' %');
-    set('kpi-c',     fmt1(s.Capacity) + ' Ah');
-    set('kpi-bms-c', s.BmsCapacity > 0.1 ? fmt1(s.BmsCapacity) + ' Ah' : '—');
+    set('kpi-v',     f1(s.Dc.Voltage)  + ' V');
+    set('kpi-i',     (s.Dc.Current >= 0 ? '+' : '') + f1(s.Dc.Current) + ' A');
+    set('kpi-p',     f0(s.Dc.Power)    + ' W');
+    set('kpi-t',     f1(s.System.MaxCellTemperature) + ' °C');
+    set('kpi-soc',   f1(s.Soc) + '%');
+    set('kpi-c',     f1(s.Capacity) + ' Ah');
+    set('kpi-bms-c', s.BmsCapacity > 0.1 ? f1(s.BmsCapacity) + ' Ah' : '—');
 
     const delta = (s.System.MaxCellVoltage - s.System.MinCellVoltage) * 1000;
-    set('kpi-d', fmt0(delta) + ' mV');
-    set('kpi-vmin', fmt3(s.System.MinCellVoltage));
-    set('kpi-vmax', fmt3(s.System.MaxCellVoltage));
+    set('kpi-d',    f0(delta) + ' mV');
+    set('kpi-vmin', f3(s.System.MinCellVoltage));
+    set('kpi-vmax', f3(s.System.MaxCellVoltage));
 
-    // Horodatage
     const d = new Date(s.timestamp);
-    set('last-ts', isNaN(d) ? '—' : d.toLocaleTimeString());
+    set('last-ts', isNaN(d) ? '—' : d.toLocaleTimeString('fr-FR'));
 
-    // Bar chart cellules avec coloration MIN/MAX temps réel
+    // Bar chart cellules
     if (cCells && s.Voltages) {
       const entries = Object.entries(s.Voltages).sort(function(a, b) {
         return parseInt(a[0].replace(/\D/g,'')) - parseInt(b[0].replace(/\D/g,''));
       });
       var minV = Infinity, maxV = -Infinity;
-      entries.forEach(function(e) {
-        var v = +e[1];
-        if (v < minV) minV = v;
-        if (v > maxV) maxV = v;
-      });
+      entries.forEach(function(e) { var v = +e[1]; if (v < minV) minV = v; if (v > maxV) maxV = v; });
       var avg = entries.reduce(function(s,e){return s+(+e[1]);},0) / entries.length;
       var yMin = +(minV - 0.030).toFixed(3);
       var yMax = +(maxV + 0.030).toFixed(3);
@@ -394,26 +332,24 @@
           label: { show: !!lbl, formatter: lbl, position: 'top', fontSize: 8, fontWeight: 'bold', color: color }
         };
       });
-      var deltaColor = ((maxV-minV)*1000 > 100) ? '#f85149' : (((maxV-minV)*1000 > 50) ? '#d29922' : '#3fb950');
+      var deltaColor = delta > 100 ? '#f85149' : delta > 50 ? '#d29922' : '#3fb950';
       cCells.setOption({
-        title: { text: '\u0394 = ' + ((maxV-minV)*1000).toFixed(0) + ' mV', textStyle: { color: deltaColor } },
-        yAxis: { min: yMin, max: yMax },
+        title: { text: 'Δ = ' + delta.toFixed(0) + ' mV', textStyle: { color: deltaColor, fontSize: 11 } },
+        yAxis: { min: yMin, max: yMax, axisLabel: { fontSize: 9 } },
         series: [{
           data: data,
-          markLine: { data: [{ yAxis: avg, label: { formatter: 'moy '+avg.toFixed(3)+'V' } }] }
+          markLine: { data: [{ yAxis: avg, label: { formatter: 'moy ' + avg.toFixed(3) + 'V', color: '#6e7681', fontSize: 9 }, lineStyle: { color: '#444c56', type: 'dashed' } }] }
         }]
       });
     }
   };
 
-  // ─── Rafraîchissement du boxplot (toutes les 30 s) ────────────────────────
+  // ── Refresh boxplot (30s) ──────────────────────────────────────────
   function refreshHistory() {
     fetch('/api/v1/bms/' + BMS_ADDR + '/history')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (!Array.isArray(data) || data.length < 4) return;
-
-        // Boxplot : regrouper les tensions par cellule et recalculer les statistiques
         if (cBoxplot) {
           var cellMap = {};
           data.forEach(function(s) {
@@ -427,33 +363,31 @@
             return parseInt(a.replace(/\D/g,'')) - parseInt(b.replace(/\D/g,''));
           });
           var bpLabels = cellKeys.map(function(k) { return 'C' + k.replace(/\D/g,''); });
-
           var bpData = cellKeys.map(function(k) {
             var v = cellMap[k].slice().sort(function(a,b){return a-b;});
             var n = v.length;
-            var boxVals = [v[0], v[Math.floor(n/4)], v[Math.floor(n/2)], v[Math.floor(3*n/4)], v[n-1]];
-            var cShort  = 'C' + k.replace(/\D/g,'');
-            var isMin   = cShort === currentMinCell;
-            var isMax   = cShort === currentMaxCell;
-            var color   = isMin ? 'rgba(248,81,73,0.25)'  : (isMax ? 'rgba(63,185,80,0.25)'  : 'rgba(88,166,255,0.15)');
-            var border  = isMin ? '#f85149'                : (isMax ? '#3fb950'                : '#58a6ff');
-            return { value: boxVals, itemStyle: { color: color, borderColor: border, borderWidth: 2 } };
+            var cShort = 'C' + k.replace(/\D/g,'');
+            var isMin  = cShort === currentMinCell;
+            var isMax  = cShort === currentMaxCell;
+            var color  = isMin ? 'rgba(248,81,73,0.2)'  : (isMax ? 'rgba(63,185,80,0.2)'  : 'rgba(88,166,255,0.12)');
+            var border = isMin ? '#f85149'               : (isMax ? '#3fb950'               : '#58a6ff');
+            return {
+              value: [v[0], v[Math.floor(n/4)], v[Math.floor(n/2)], v[Math.floor(3*n/4)], v[n-1]],
+              itemStyle: { color: color, borderColor: border, borderWidth: 2 }
+            };
           });
-
           var balData = [];
           cellKeys.forEach(function(k) {
             if (currentBalances[k]) {
               var v  = cellMap[k].slice().sort(function(a,b){return a-b;});
               var mx = v[v.length - 1];
               var mn = v[0];
-              var y  = mx + (mx - mn) * 0.08 + 0.001;
-              balData.push(['C' + k.replace(/\D/g,''), y]);
+              balData.push(['C' + k.replace(/\D/g,''), mx + (mx - mn) * 0.08 + 0.001]);
             }
           });
-
           cBoxplot.setOption({
-            title: { text: 'Distribution par cellule (' + data.length + ' snapshots)' },
-            xAxis: { data: bpLabels },
+            title: { text: 'Distribution (' + data.length + ' snapshots)', textStyle: { color: '#8b949e', fontSize: 11 } },
+            xAxis: { data: bpLabels, axisLabel: { fontSize: 9, color: '#6e7681' } },
             series: [{ data: bpData }, { data: balData }]
           });
         }
@@ -461,17 +395,17 @@
       .catch(function() {});
   }
 
-  setTimeout(refreshHistory, 5000);
+  setTimeout(refreshHistory, 3000);
   setInterval(refreshHistory, 30000);
 })();
 
-// ─── Actions BMS — fonctions globales (appelées depuis onclick="") ───────────
-function openSocModal()   { document.getElementById('modal-soc').style.display   = 'flex'; }
-function closeSocModal()  { document.getElementById('modal-soc').style.display   = 'none'; document.getElementById('soc-result').textContent = ''; }
-function openResetModal() { document.getElementById('modal-reset').style.display = 'flex'; }
-function closeResetModal(){ document.getElementById('modal-reset').style.display = 'none'; document.getElementById('reset-result').textContent = ''; document.getElementById('reset-confirm').checked = false; }
+// ── Modals ─────────────────────────────────────────────────────────────
+function openSocModal()    { document.getElementById('modal-soc').style.display   = 'flex'; }
+function closeSocModal()   { document.getElementById('modal-soc').style.display   = 'none'; document.getElementById('soc-result').textContent = ''; }
+function openResetModal()  { document.getElementById('modal-reset').style.display = 'flex'; }
+function closeResetModal() { document.getElementById('modal-reset').style.display = 'none'; document.getElementById('reset-result').textContent = ''; document.getElementById('reset-confirm').checked = false; }
 
-function _bmsActionResult(id, ok, msg) {
+function _result(id, ok, msg) {
   var el = document.getElementById(id);
   el.style.color = ok ? 'var(--green)' : 'var(--red)';
   el.textContent = msg;
@@ -480,57 +414,32 @@ function _bmsActionResult(id, ok, msg) {
 function submitSoc() {
   var soc = parseFloat(document.getElementById('soc-value').value);
   var pwd = document.getElementById('soc-password').value;
-  if (isNaN(soc) || soc < 0 || soc > 100) {
-    _bmsActionResult('soc-result', false, 'SOC invalide — valeur entre 0 et 100 %');
-    return;
-  }
+  if (isNaN(soc) || soc < 0 || soc > 100) { _result('soc-result', false, 'SOC invalide — valeur entre 0 et 100 %'); return; }
+  _result('soc-result', null, 'Envoi en cours…');
   document.getElementById('soc-result').style.color = 'var(--muted)';
-  document.getElementById('soc-result').textContent = 'Envoi en cours…';
   fetch('/api/v1/bms/' + window._bmsAddr + '/soc', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ soc: soc, password: pwd })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
-      var msg = '✓ SOC calibré à ' + soc.toFixed(1) + ' %';
-      if (data.warning) msg += '  (' + data.warning + ')';
-      _bmsActionResult('soc-result', true, msg);
-      setTimeout(closeSocModal, 2500);
-    } else {
-      _bmsActionResult('soc-result', false, '✗ ' + (data.error || 'Erreur inconnue'));
-    }
-  })
-  .catch(function(e) { _bmsActionResult('soc-result', false, '✗ Erreur réseau : ' + e); });
+  }).then(r => r.json()).then(d => {
+    if (d.ok) { _result('soc-result', true, '✓ SOC calibré à ' + soc.toFixed(1) + ' %' + (d.warning ? '  (' + d.warning + ')' : '')); setTimeout(closeSocModal, 2500); }
+    else       { _result('soc-result', false, '✗ ' + (d.error || 'Erreur inconnue')); }
+  }).catch(e => _result('soc-result', false, '✗ Erreur réseau : ' + e));
 }
 
 function submitReset() {
-  var pwd     = document.getElementById('reset-password').value;
-  var confirm = document.getElementById('reset-confirm').checked;
-  if (!confirm) {
-    _bmsActionResult('reset-result', false, 'Cocher la case de confirmation');
-    return;
-  }
+  if (!document.getElementById('reset-confirm').checked) { _result('reset-result', false, 'Cocher la case de confirmation'); return; }
+  var pwd = document.getElementById('reset-password').value;
   document.getElementById('reset-result').style.color = 'var(--muted)';
   document.getElementById('reset-result').textContent = 'Envoi du reset…';
   fetch('/api/v1/bms/' + window._bmsAddr + '/reset', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ confirm: true, password: pwd })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
-      var msg = '✓ Reset envoyé — BMS redémarre (quelques secondes d\'interruption)';
-      if (data.warning) msg += '  (' + data.warning + ')';
-      _bmsActionResult('reset-result', true, msg);
-      setTimeout(closeResetModal, 3000);
-    } else {
-      _bmsActionResult('reset-result', false, '✗ ' + (data.error || 'Erreur inconnue'));
-    }
-  })
-  .catch(function(e) { _bmsActionResult('reset-result', false, '✗ Erreur réseau : ' + e); });
+  }).then(r => r.json()).then(d => {
+    if (d.ok) { _result('reset-result', true, '✓ Reset envoyé — quelques secondes d\'interruption'); setTimeout(closeResetModal, 3000); }
+    else       { _result('reset-result', false, '✗ ' + (d.error || 'Erreur inconnue')); }
+  }).catch(e => _result('reset-result', false, '✗ Erreur réseau : ' + e));
 }
 </script>
 {% endblock %}

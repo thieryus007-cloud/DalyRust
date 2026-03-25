@@ -1,176 +1,195 @@
 {% extends "base.html" %}
 
-{% block title %}ET112 — {{ name }} — Monitoring{% endblock %}
+{% block title %}ET112 {{ name }} — ESS Monitor{% endblock %}
+{% block page_title %}ET112 — {{ name }}{% endblock %}
+{% block nav_et112 %}active{% endblock %}
 
 {% block content %}
 
-{# ─── En-tête ────────────────────────────────────────────────────────────── #}
-<div class="info-bar">
-  <div style="display:flex;align-items:center;gap:0.5rem;">
-    <div class="dot {% if connected %}active{% endif %}"></div>
-    {% if connected %}
-      <strong>Connecté</strong>
-    {% else %}
-      <span style="color:var(--muted)">En attente de données…</span>
-    {% endif %}
-  </div>
-  <div>⚡ <strong>ET112</strong> — {{ name }}</div>
-  <div>Adresse Modbus : <code>{{ addr_hex }}</code></div>
-  <div style="margin-left:auto;font-size:0.7rem;color:var(--muted)">
-    Dernière mesure : <span id="last-ts">{{ last_ts }}</span>
+<div class="page-hdr">
+  <a href="/dashboard/et112" class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.7rem;">← Retour</a>
+  <h1>⚡ {{ name }}</h1>
+  <span class="badge {% if connected %}ok{% else %}muted{% endif %}">
+    {% if connected %}● Connecté{% else %}○ Hors ligne{% endif %}
+  </span>
+  <div class="page-hdr-meta" style="margin-left:auto">
+    <span>{{ addr_hex }}</span>
+    <span class="sep">·</span>
+    <span>Dernière mesure : <span id="last-ts">{{ last_ts }}</span></span>
   </div>
 </div>
 
 {% if connected %}
 
-{# ─── Cartes de métriques instantanées ──────────────────────────────────── #}
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem;">
+{# ─── Métriques instantanées ──────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.85rem;margin-bottom:1.25rem;">
 
-  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Puissance</div>
-    <div style="font-size:2rem;font-weight:700;color:{% if power_w >= 0.0 %}var(--green){% else %}var(--accent){% endif %}" id="val-power">
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Puissance</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;
+                color:{% if power_w >= 0.0 %}var(--green){% else %}var(--accent){% endif %}" id="val-power">
       {{ power_w|f1 }} W
     </div>
-    <div style="font-size:0.7rem;color:var(--muted)">{% if power_w >= 0.0 %}Import{% else %}Export{% endif %}</div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.2rem">
+      {% if power_w >= 0.0 %}Import{% else %}Export{% endif %}
+    </div>
   </div>
 
-  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Tension</div>
-    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-voltage">
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Tension</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)" id="val-voltage">
       {{ voltage_v|f1 }} V
     </div>
   </div>
 
-  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Courant</div>
-    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-current">
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Courant</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--orange)" id="val-current">
       {{ current_a|f2 }} A
     </div>
   </div>
 
-  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Facteur de puissance</div>
-    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-pf">
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Facteur puissance</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text2)" id="val-pf">
       {{ power_factor|f3 }}
     </div>
   </div>
 
-  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Fréquence</div>
-    <div style="font-size:2rem;font-weight:700;color:var(--text)" id="val-freq">
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Fréquence</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text)" id="val-freq">
       {{ frequency_hz|f2 }} Hz
     </div>
   </div>
 
-  <div class="card" style="text-align:center;padding:1.5rem 1rem;">
-    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:.05em">Puiss. apparente</div>
-    <div style="font-size:2rem;font-weight:700;color:var(--muted)" id="val-apparent">
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Puiss. apparente</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--muted)" id="val-apparent">
       {{ apparent_power_va|f1 }} VA
     </div>
   </div>
 
 </div>
 
-{# ─── Énergie cumulée ─────────────────────────────────────────────────────── #}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
-
-  <div class="card" style="padding:1.5rem;display:flex;flex-direction:column;gap:0.5rem;">
-    <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">⬇ Énergie importée (depuis MàJ)</div>
-    <div style="font-size:2.2rem;font-weight:700;color:var(--green)" id="val-import">
+{# ─── Énergie cumulée ─────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+  <div class="card card-p">
+    <div class="card-title">⬇ Énergie importée</div>
+    <div style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--green)" id="val-import">
       {{ energy_import_kwh|f3 }} kWh
     </div>
-    <div style="font-size:0.7rem;color:var(--muted)">{{ energy_import_wh|f0 }} Wh brut (cumulé compteur)</div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.4rem">{{ energy_import_wh|f0 }} Wh brut cumulé</div>
   </div>
-
-  <div class="card" style="padding:1.5rem;display:flex;flex-direction:column;gap:0.5rem;">
-    <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">⬆ Énergie exportée</div>
-    <div style="font-size:2.2rem;font-weight:700;color:var(--accent)" id="val-export">
+  <div class="card card-p">
+    <div class="card-title">⬆ Énergie exportée</div>
+    <div style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)" id="val-export">
       {{ energy_export_kwh|f3 }} kWh
     </div>
-    <div style="font-size:0.7rem;color:var(--muted)">{{ energy_export_wh|f0 }} Wh brut (cumulé compteur)</div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.4rem">{{ energy_export_wh|f0 }} Wh brut cumulé</div>
   </div>
-
 </div>
 
-{# ─── Graphique puissance (ECharts) ──────────────────────────────────────── #}
-<div class="card" style="padding:1rem;">
-  <div style="font-size:0.8rem;font-weight:600;margin-bottom:0.75rem;color:var(--muted)">Historique puissance (dernières mesures)</div>
-  <div id="chart-power" style="height:250px;"></div>
+{# ─── Historique puissance ─────────────────────────────────────────────── #}
+<div class="chart-card">
+  <div class="chart-hdr">
+    <span class="chart-hdr-title">Historique puissance</span>
+    <span class="chart-hdr-meta">Dernières mesures — rafraîchi toutes les 5s</span>
+  </div>
+  <div id="chart-power" style="height:260px;"></div>
 </div>
 
 {% else %}
 
-<div class="card" style="text-align:center;padding:3rem;color:var(--muted)">
-  <div style="font-size:2.5rem;margin-bottom:1rem">⏳</div>
-  <div>En attente du premier snapshot ET112…</div>
-  <div style="font-size:0.8rem;margin-top:0.5rem">
-    Vérifiez que l'ET112 est alimenté sur <code>{{ addr_hex }}</code> @ <code>/dev/ttyUSB1</code>
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">⏳</div>
+    <div class="empty-title">En attente du premier snapshot ET112</div>
+    <div class="empty-sub">
+      Vérifiez que l'ET112 est alimenté sur <code>{{ addr_hex }}</code><br>
+      et que le bus RS485 est connecté sur <code>/dev/ttyUSB0</code>.
+    </div>
   </div>
 </div>
 
 {% endif %}
 
-{# ─── Script ECharts ──────────────────────────────────────────────────────── #}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
 <script>
 const ADDR = "{{ address }}";
-const API  = `/api/v1/et112/${ADDR}`;
 
-// Initialiser le graphique
+// ── ECharts power chart ────────────────────────────────────────────────
 const chartDom = document.getElementById('chart-power');
 let myChart = null;
 if (chartDom) {
-    myChart = echarts.init(chartDom);
-    myChart.setOption({
-        tooltip: { trigger: 'axis', formatter: params => {
-            const t = params[0].name;
-            return `${t}<br/>Puissance: <b>${params[0].value} W</b>`;
-        }},
-        xAxis: { type: 'category', data: [], axisLabel: { fontSize: 11 } },
-        yAxis: { type: 'value', name: 'W', axisLabel: { fontSize: 11 } },
-        series: [{
-            name: 'Puissance',
-            type: 'line',
-            data: [],
-            smooth: true,
-            lineStyle: { color: '#0969da' },
-            areaStyle: { opacity: 0.15 },
-            symbol: 'none',
-        }],
-        grid: { left: 50, right: 20, top: 20, bottom: 30 },
-    });
-    window.addEventListener('resize', () => myChart.resize());
+  myChart = echarts.init(chartDom);
+  myChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#21262d',
+      borderColor: '#30363d',
+      textStyle: { color: '#e6edf3', fontSize: 11 },
+      formatter: p => p[0].name + '<br/>Puissance : <b>' + p[0].value + ' W</b>'
+    },
+    xAxis: {
+      type: 'category', data: [],
+      axisLine: { lineStyle: { color: '#30363d' } },
+      axisLabel: { color: '#6e7681', fontSize: 10 },
+      boundaryGap: false,
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisLabel: { color: '#6e7681', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#21262d' } },
+    },
+    series: [{
+      name: 'Puissance', type: 'line', data: [],
+      smooth: true, symbol: 'none',
+      lineStyle: { color: '#58a6ff', width: 2 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [{ offset: 0, color: 'rgba(88,166,255,0.25)' }, { offset: 1, color: 'rgba(88,166,255,0.02)' }]
+      }},
+    }],
+    grid: { left: 50, right: 16, top: 16, bottom: 30 },
+  });
+  window.addEventListener('resize', () => myChart && myChart.resize());
 }
 
-// Mise à jour périodique
 async function update() {
-    try {
-        const resp = await fetch(`${API}/status`);
-        if (!resp.ok) return;
-        const d = await resp.json();
-        document.getElementById('val-power').textContent   = d.power_w.toFixed(1) + ' W';
-        document.getElementById('val-voltage').textContent = d.voltage_v.toFixed(1) + ' V';
-        document.getElementById('val-current').textContent = d.current_a.toFixed(2) + ' A';
-        document.getElementById('val-pf').textContent      = d.power_factor.toFixed(3);
-        document.getElementById('val-freq').textContent    = d.frequency_hz.toFixed(2) + ' Hz';
-        document.getElementById('val-apparent').textContent = d.apparent_power_va.toFixed(1) + ' VA';
-        document.getElementById('val-import').textContent  = (d.energy_import_wh / 1000).toFixed(3) + ' kWh';
-        document.getElementById('val-export').textContent  = (d.energy_export_wh / 1000).toFixed(3) + ' kWh';
-        document.getElementById('last-ts').textContent     = new Date().toLocaleTimeString();
-    } catch(e) {}
+  try {
+    const resp = await fetch(`/api/v1/et112/${ADDR}/status`);
+    if (!resp.ok) return;
+    const d = await resp.json();
+    const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    set('val-power',    d.power_w.toFixed(1) + ' W');
+    set('val-voltage',  d.voltage_v.toFixed(1) + ' V');
+    set('val-current',  d.current_a.toFixed(2) + ' A');
+    set('val-pf',       d.power_factor.toFixed(3));
+    set('val-freq',     d.frequency_hz.toFixed(2) + ' Hz');
+    set('val-apparent', d.apparent_power_va.toFixed(1) + ' VA');
+    set('val-import',   (d.energy_import_wh / 1000).toFixed(3) + ' kWh');
+    set('val-export',   (d.energy_export_wh / 1000).toFixed(3) + ' kWh');
+    set('last-ts',      new Date().toLocaleTimeString('fr-FR'));
+    const powEl = document.getElementById('val-power');
+    if (powEl) powEl.style.color = d.power_w >= 0 ? 'var(--green)' : 'var(--accent)';
+  } catch(e) {}
 }
 
 async function loadHistory() {
-    if (!myChart) return;
-    try {
-        const resp = await fetch(`${API}/history?limit=120`);
-        if (!resp.ok) return;
-        const d = await resp.json();
-        const hist = d.history.slice().reverse();
-        const xs = hist.map(s => new Date(s.timestamp).toLocaleTimeString());
-        const ys = hist.map(s => s.power_w.toFixed(1));
-        myChart.setOption({ xAxis: { data: xs }, series: [{ data: ys }] });
-    } catch(e) {}
+  if (!myChart) return;
+  try {
+    const resp = await fetch(`/api/v1/et112/${ADDR}/history?limit=120`);
+    if (!resp.ok) return;
+    const d = await resp.json();
+    const hist = d.history.slice().reverse();
+    const xs = hist.map(s => new Date(s.timestamp).toLocaleTimeString('fr-FR'));
+    const ys = hist.map(s => s.power_w.toFixed(1));
+    myChart.setOption({ xAxis: { data: xs }, series: [{ data: ys }] });
+  } catch(e) {}
 }
 
 update();
@@ -178,5 +197,4 @@ loadHistory();
 setInterval(update, 5000);
 setInterval(loadHistory, 30000);
 </script>
-
 {% endblock %}

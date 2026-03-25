@@ -5,6 +5,95 @@
 
 ---
 
+## 0. RÉFÉRENCE COMMANDES — QUI / OÙ / QUAND / QUOI
+
+> Cette section est la seule référence à consulter pour savoir quelle commande lancer.
+> Chaque commande indique : **qui** l'exécute, **où**, **quand**, et **ce qu'elle fait**.
+
+---
+
+### 0A. COMMANDES PI5 — USAGE QUOTIDIEN
+
+| Quand | Commande (sur Pi5, dans ~/Daly-BMS-Rust) | Ce que ça fait |
+|-------|------------------------------------------|----------------|
+| Récupérer le code depuis GitHub | `make sync` | git fetch + sudo chown + git reset --hard → Pi5 à jour |
+| Appliquer une modif de Config.toml | `sudo cp Config.toml /etc/daly-bms/config.toml` | Copie la config repo → config production lue par systemd |
+| Redémarrer le serveur BMS | `sudo systemctl restart daly-bms` | Redémarre daly-bms-server avec la config en cours |
+| Voir les logs BMS en direct | `journalctl -u daly-bms -f` | Logs temps réel du serveur |
+| Compiler daly-bms-server (Pi5) | `make build-arm` | Cross-compile aarch64 (~5-10 min) |
+| Déployer le nouveau binaire BMS | `sudo systemctl stop daly-bms && sudo cp target/aarch64-unknown-linux-gnu/release/daly-bms-server /usr/local/bin/ && sudo systemctl start daly-bms` | Remplace le binaire et redémarre |
+| Compiler dbus-mqtt-venus (NanoPi) | `make build-venus-v7` | Cross-compile armv7 (~5 min) |
+| Déployer dbus-mqtt-venus sur NanoPi | `make install-venus-v7` | SSH → arrêt service → copie binaire → redémarrage |
+| Démarrer Docker (Mosquitto/InfluxDB/Grafana/Node-RED) | `make up` | Lance la stack Docker complète |
+| Arrêter Docker | `make down` | Arrête la stack, **volumes préservés** |
+| Tout supprimer Docker (⚠ destructif) | `make reset` | Arrête + supprime volumes (retained MQTT perdu) |
+| Voir logs Docker | `make logs` | Logs de tous les conteneurs |
+
+---
+
+### 0B. COMMANDES PI5 — RÉCUPÉRATION ERREURS
+
+| Erreur | Commandes exactes (sur Pi5, dans ~/Daly-BMS-Rust) | Explication |
+|--------|---------------------------------------------------|-------------|
+| `make sync` → **"Permission denied" sur mosquitto.conf** | `sudo chown -R pi5compute:pi5compute ~/Daly-BMS-Rust/`<br>`git reset --hard origin/claude/review-dashboard-plan-JEvFY` | Docker a créé des fichiers root. chown les rend accessibles, puis reset force la mise à jour. |
+| Service BMS ne démarre pas | `journalctl -u daly-bms -n 50` | Voir les 50 dernières lignes de log pour identifier l'erreur |
+| Config modifiée mais ignorée par le service | `sudo cp Config.toml /etc/daly-bms/config.toml && sudo systemctl restart daly-bms` | Le service lit /etc/daly-bms/, pas ~/Daly-BMS-Rust/ |
+
+---
+
+### 0C. COMMANDES NANOPI — USAGE QUOTIDIEN
+
+| Quand | Commande (sur NanoPi via SSH) | Ce que ça fait |
+|-------|-------------------------------|----------------|
+| Vérifier que le bridge Venus tourne | `svstat /service/dbus-mqtt-venus` | Affiche "up (pid X) Xs" si OK |
+| Redémarrer le bridge Venus | `svc -t /service/dbus-mqtt-venus` | Redémarre proprement via runit |
+| Arrêter le bridge Venus | `svc -d /service/dbus-mqtt-venus` | Arrêt (nécessaire avant de copier le binaire manuellement) |
+| Voir les logs Venus en direct | `tail -f /var/log/dbus-mqtt-venus/current` | Logs temps réel |
+| Lister tous les services Victron actifs | `dbus -y \| grep victronenergy` | Tous les services D-Bus enregistrés |
+| Appliquer une modif config NanoPi | `scp nanoPi/config-nanopi.toml root@192.168.1.120:/data/daly-bms/config.toml && ssh root@192.168.1.120 "svc -t /service/dbus-mqtt-venus"` | Copie config + redémarre (depuis Pi5) |
+
+---
+
+### 0D. COMMANDES CLAUDE CODE — DÉVELOPPEMENT
+
+| Quand | Commande (Claude Code, dans ~/Daly-BMS-Rust) | Ce que ça fait |
+|-------|----------------------------------------------|----------------|
+| Après toute modification de code | `git add <fichiers> && git commit -m "type(scope): description" && git push -u origin claude/review-dashboard-plan-JEvFY` | Commit + push vers GitHub |
+| Vérifier la branche courante | `git branch` | Confirme qu'on est sur la bonne branche |
+
+---
+
+### 0E. WORKFLOW COMPLET — MODIFIER LE CODE ET DÉPLOYER
+
+```
+1. Claude Code modifie le code
+   git add ... && git commit -m "..." && git push
+
+2. Pi5 récupère
+   make sync
+
+3a. Si seulement Config.toml a changé :
+    sudo cp Config.toml /etc/daly-bms/config.toml
+    sudo systemctl restart daly-bms
+
+3b. Si le code Rust ou les templates HTML ont changé :
+    make build-arm
+    sudo systemctl stop daly-bms
+    sudo cp target/aarch64-unknown-linux-gnu/release/daly-bms-server /usr/local/bin/
+    sudo cp Config.toml /etc/daly-bms/config.toml   ← seulement si config aussi modifiée
+    sudo systemctl start daly-bms
+
+3c. Si dbus-mqtt-venus a changé (code NanoPi) :
+    make build-venus-v7
+    make install-venus-v7
+
+3d. Si nanoPi/config-nanopi.toml a changé :
+    scp nanoPi/config-nanopi.toml root@192.168.1.120:/data/daly-bms/config.toml
+    ssh root@192.168.1.120 "svc -t /service/dbus-mqtt-venus"
+```
+
+---
+
 ## 1. ARCHITECTURE GLOBALE
 
 ```

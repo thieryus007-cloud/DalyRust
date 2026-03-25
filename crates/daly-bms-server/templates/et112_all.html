@@ -1,92 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %}Compteurs ET112 — Monitoring{% endblock %}
+{% block title %}Compteurs ET112 — ESS Monitor{% endblock %}
+{% block page_title %}Compteurs ET112{% endblock %}
+{% block nav_et112 %}active{% endblock %}
 
 {% block content %}
 
-{# ─── En-tête ────────────────────────────────────────────────────────────── #}
-<div class="info-bar">
-  <strong>Compteurs ET112</strong>
-  <span>{{ device_count }} appareil(s) configuré(s)</span>
+<div class="page-hdr">
+  <h1>⚡ Compteurs ET112</h1>
+  <div class="page-hdr-meta">
+    <span><strong style="color:var(--text)">{{ device_count }}</strong> appareil(s) configuré(s)</span>
+    <span class="sep">·</span>
+    <span>Màj : <span id="et112-ts">—</span></span>
+  </div>
 </div>
 
-{# ─── Grille des compteurs ───────────────────────────────────────────────── #}
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:1rem;">
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.25rem;">
 
 {% for d in devices %}
-<div class="bms-card-ng {% if !d.connected %}{% endif %}" id="et112-card-{{ d.address }}" style="{% if !d.connected %}opacity:0.7;{% endif %}">
+<div class="bms-card {% if !d.connected %}" style="opacity:0.7{% endif %}" id="et112-card-{{ d.address }}">
 
-  {# ── En-tête carte ──── #}
-  <div class="bms-hdr" style="{% if d.connected %}background:#1a5f8a;{% else %}background:#57606a;{% endif %}">
-    <div class="bms-hdr-title">
-      ⚡ {{ d.name }}
+  {# Header #}
+  <div class="bms-hdr" style="{% if d.connected %}{% if d.service_type == "pvinverter" %}background:linear-gradient(135deg,#0e3320 0%,#081a10 100%){% else if d.service_type == "heatpump" %}background:linear-gradient(135deg,#2a1b40 0%,#180e2a 100%){% else %}background:linear-gradient(135deg,#1a2a40 0%,#0d1a28 100%){% endif %}{% else %}background:linear-gradient(135deg,#2d333b 0%,#1c2128 100%){% endif %}">
+    <div class="bms-hdr-left">
+      {% if d.connected %}
+        <div class="bms-live"><div class="live-dot"></div>LIVE</div>
+      {% else %}
+        <span style="font-size:0.62rem;color:rgba(255,255,255,0.35)">Hors ligne</span>
+      {% endif %}
+      <span class="bms-hdr-name">
+        {% if d.service_type == "pvinverter" %}☀{% else if d.service_type == "heatpump" %}🌡{% else %}⚡{% endif %}
+        {{ d.name }}
+      </span>
     </div>
     <div class="bms-hdr-right">
-      {% if d.connected %}
-        <div class="bms-live-dot"></div>
-        <span>LIVE</span>
-      {% else %}
-        <span style="color:rgba(255,255,255,0.5)">Hors ligne</span>
-      {% endif %}
-      <div class="bms-can-badge">{{ d.addr_hex }}</div>
-      <span class="bms-hdr-ts" id="ts-{{ d.address }}">{{ d.last_ts }}</span>
+      <span class="bms-badge">{{ d.addr_hex }}</span>
+      <span class="bms-ts" id="ts-{{ d.address }}">{{ d.last_ts }}</span>
     </div>
   </div>
 
   {% if d.connected %}
 
-  {# ── KPI 4 colonnes ── #}
+  {# KPI 4 col #}
   <div class="kpi4">
-    <div class="kpi4-cell kpi4-p">
+    <div class="kpi4-cell t-yellow">
       <div class="kpi4-lbl">Puissance</div>
       <div class="kpi4-val {% if d.power_w >= 0.0 %}chg{% else %}dch{% endif %}" id="p-{{ d.address }}">
         {{ d.power_w|f1 }} W
       </div>
     </div>
-    <div class="kpi4-cell kpi4-v">
+    <div class="kpi4-cell t-blue">
       <div class="kpi4-lbl">Tension</div>
       <div class="kpi4-val" id="v-{{ d.address }}">{{ d.voltage_v|f1 }} V</div>
     </div>
-    <div class="kpi4-cell kpi4-i">
+    <div class="kpi4-cell t-orange">
       <div class="kpi4-lbl">Courant</div>
       <div class="kpi4-val" id="i-{{ d.address }}">{{ d.current_a|f2 }} A</div>
     </div>
     <div class="kpi4-cell">
       <div class="kpi4-lbl">Type</div>
-      <div class="kpi4-val" style="font-size:0.78rem;">{{ d.service_type }}</div>
+      <div class="kpi4-val muted">{{ d.service_type }}</div>
     </div>
   </div>
 
-  {# ── Énergie ── #}
-  <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);">
-    <div style="padding:0.45rem 0.65rem;border-right:1px solid var(--border);">
-      <div class="kpi4-lbl">⬇ Énergie importée</div>
-      <div class="kpi4-val" style="color:var(--green)" id="imp-{{ d.address }}">
-        {{ d.energy_import_kwh|f1 }} kWh
-      </div>
+  {# Énergie #}
+  <div class="istrip c2">
+    <div class="icell">
+      <span class="i-lbl">⬇ Importée</span>
+      <span class="i-val ok" id="imp-{{ d.address }}">{{ d.energy_import_kwh|f2 }} kWh</span>
     </div>
-    <div style="padding:0.45rem 0.65rem;">
-      <div class="kpi4-lbl">⬆ Énergie exportée</div>
-      <div class="kpi4-val" style="color:var(--accent)" id="exp-{{ d.address }}">
-        {{ d.energy_export_kwh|f1 }} kWh
-      </div>
+    <div class="icell">
+      <span class="i-lbl">⬆ Exportée</span>
+      <span class="i-val blue" id="exp-{{ d.address }}">{{ d.energy_export_kwh|f2 }} kWh</span>
     </div>
   </div>
 
   {% else %}
 
-  {# ── Hors ligne ── #}
-  <div style="padding:1.5rem;text-align:center;color:var(--muted);">
-    <div style="font-size:1.5rem;margin-bottom:0.5rem">⏳</div>
-    <div style="font-size:0.8rem">En attente du premier snapshot…</div>
-    <div style="font-size:0.7rem;margin-top:0.25rem">Adresse Modbus : <code>{{ d.addr_hex }}</code></div>
+  <div class="empty-state" style="padding:2rem 1rem;">
+    <div class="empty-icon" style="font-size:1.5rem">⏳</div>
+    <div class="empty-title">En attente de données</div>
+    <div class="empty-sub">Adresse Modbus : <code>{{ d.addr_hex }}</code></div>
   </div>
 
   {% endif %}
 
-  {# ── Lien détail ── #}
-  <div style="padding:0.4rem 0.75rem;display:flex;justify-content:flex-end;border-top:1px solid var(--border);">
-    <a class="link-detail" href="/dashboard/et112/{{ d.address }}">Détails →</a>
+  <div style="padding:0.5rem 0.75rem;display:flex;justify-content:flex-end;border-top:1px solid var(--border);">
+    <a href="/dashboard/et112/{{ d.address }}" class="btn btn-outline" style="font-size:0.72rem;padding:0.3rem 0.7rem;">Détails →</a>
   </div>
 
 </div>
@@ -94,37 +94,41 @@
 
 </div>
 
-{# ─── Scripts de mise à jour ─────────────────────────────────────────────── #}
+{% endblock %}
+
+{% block scripts %}
 <script>
 const ET112_ADDRS = [{% for d in devices %}{{ d.address }}{% if !loop.last %}, {% endif %}{% endfor %}];
 
 async function updateAll() {
-    for (const addr of ET112_ADDRS) {
-        try {
-            const resp = await fetch(`/api/v1/et112/${addr}/status`);
-            if (!resp.ok) continue;
-            const d = await resp.json();
-            const pw = document.getElementById(`p-${addr}`);
-            const vv = document.getElementById(`v-${addr}`);
-            const iv = document.getElementById(`i-${addr}`);
-            const im = document.getElementById(`imp-${addr}`);
-            const ex = document.getElementById(`exp-${addr}`);
-            const ts = document.getElementById(`ts-${addr}`);
-            if (pw) {
-                pw.textContent = d.power_w.toFixed(1) + ' W';
-                pw.className = 'kpi4-val ' + (d.power_w >= 0 ? 'chg' : 'dch');
-            }
-            if (vv) vv.textContent = d.voltage_v.toFixed(1) + ' V';
-            if (iv) iv.textContent = d.current_a.toFixed(2) + ' A';
-            if (im) im.textContent = (d.energy_import_wh / 1000).toFixed(1) + ' kWh';
-            if (ex) ex.textContent = (d.energy_export_wh / 1000).toFixed(1) + ' kWh';
-            if (ts) ts.textContent = new Date().toLocaleTimeString();
-        } catch(e) {}
-    }
+  const ts = new Date().toLocaleTimeString('fr-FR');
+  const tsEl = document.getElementById('et112-ts');
+  if (tsEl) tsEl.textContent = ts;
+
+  for (const addr of ET112_ADDRS) {
+    try {
+      const resp = await fetch(`/api/v1/et112/${addr}/status`);
+      if (!resp.ok) continue;
+      const d = await resp.json();
+
+      const pw = document.getElementById(`p-${addr}`);
+      const vv = document.getElementById(`v-${addr}`);
+      const iv = document.getElementById(`i-${addr}`);
+      const im = document.getElementById(`imp-${addr}`);
+      const ex = document.getElementById(`exp-${addr}`);
+      const tsEl2 = document.getElementById(`ts-${addr}`);
+
+      if (pw) { pw.textContent = d.power_w.toFixed(1) + ' W'; pw.className = 'kpi4-val ' + (d.power_w >= 0 ? 'chg' : 'dch'); }
+      if (vv) vv.textContent = d.voltage_v.toFixed(1) + ' V';
+      if (iv) iv.textContent = d.current_a.toFixed(2) + ' A';
+      if (im) im.textContent = (d.energy_import_wh / 1000).toFixed(2) + ' kWh';
+      if (ex) ex.textContent = (d.energy_export_wh / 1000).toFixed(2) + ' kWh';
+      if (tsEl2) tsEl2.textContent = ts;
+    } catch(e) {}
+  }
 }
 
 updateAll();
 setInterval(updateAll, 5000);
 </script>
-
 {% endblock %}

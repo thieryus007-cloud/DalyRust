@@ -1,116 +1,208 @@
 {% extends "base.html" %}
 
-{% block title %}{{ name }} — Tasmota{% endblock %}
+{% block title %}{{ name }} — Tasmota — ESS Monitor{% endblock %}
+{% block page_title %}Tasmota — {{ name }}{% endblock %}
+{% block nav_tasmota %}active{% endblock %}
 
 {% block content %}
 
-{# ─── En-tête ────────────────────────────────────────────────────────────── #}
-<div class="info-bar">
-  <strong>🔌 {{ name }}</strong>
-  <span>
-    {% if connected %}
-      {% if power_on %}<span style="color:var(--green);font-weight:600">ON</span>{% else %}<span style="color:var(--red);font-weight:600">OFF</span>{% endif %}
-    {% else %}
-      <span style="color:var(--muted)">Hors ligne</span>
-    {% endif %}
-    — {{ tasmota_id }} — Màj : {{ last_ts }}
+<div class="page-hdr">
+  <a href="/dashboard/tasmota" class="btn btn-outline" style="font-size:0.75rem;padding:0.3rem 0.7rem;">← Retour</a>
+  <h1>🔌 {{ name }}</h1>
+  <span class="badge {% if connected %}{% if power_on %}ok{% else %}alarm{% endif %}{% else %}muted{% endif %}">
+    {% if connected %}{% if power_on %}● ON{% else %}● OFF{% endif %}{% else %}○ Hors ligne{% endif %}
   </span>
-  <a href="/dashboard/tasmota" style="font-size:0.8rem">← Retour liste</a>
-</div>
-
-{% if !connected %}
-<div style="margin:2rem auto;max-width:500px;padding:2rem;background:var(--surface);border-radius:var(--radius);text-align:center;color:var(--muted);box-shadow:var(--shadow);">
-  <div style="font-size:2rem;margin-bottom:1rem">⏳</div>
-  <div>En attente du premier message MQTT…</div>
-  <div style="font-size:0.8rem;margin-top:0.5rem">
-    Vérifier que <code>tele/{{ tasmota_id }}/SENSOR</code> est publié sur le broker.
+  <div class="page-hdr-meta" style="margin-left:auto">
+    <span>{{ tasmota_id }}</span>
+    <span class="sep">·</span>
+    <span>Dernière mesure : <span id="last-ts">{{ last_ts }}</span></span>
   </div>
 </div>
+
+{% if connected %}
+
+{# ─── Métriques instantanées ──────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.85rem;margin-bottom:1.25rem;">
+
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Puissance active</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;
+                color:{% if power_w > 0.0 %}var(--yellow){% else %}var(--muted){% endif %}" id="val-power">
+      {{ power_w|f1 }} W
+    </div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.2rem">
+      {% if power_on %}Relais ON{% else %}Relais OFF{% endif %}
+    </div>
+  </div>
+
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Tension</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)" id="val-voltage">
+      {{ voltage_v|f1 }} V
+    </div>
+  </div>
+
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Courant</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--orange)" id="val-current">
+      {{ current_a|f2 }} A
+    </div>
+  </div>
+
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Puiss. apparente</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--muted)" id="val-apparent">
+      {{ apparent_power_va|f1 }} VA
+    </div>
+  </div>
+
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Facteur puissance</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text2)" id="val-pf">
+      {{ power_factor|f2 }}
+    </div>
+  </div>
+
+  <div class="card card-p" style="text-align:center;">
+    <div class="card-title" style="margin-bottom:0.3rem">Signal WiFi</div>
+    <div style="font-size:2.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--muted)" id="val-rssi">
+      {{ rssi }}
+    </div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.2rem">dBm</div>
+  </div>
+
+</div>
+
+{# ─── Énergie cumulée ─────────────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+  <div class="card card-p">
+    <div class="card-title">☀ Aujourd'hui</div>
+    <div style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)" id="val-today">
+      {{ energy_today_kwh|f3 }} kWh
+    </div>
+  </div>
+  <div class="card card-p">
+    <div class="card-title">⏮ Hier</div>
+    <div style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--muted)" id="val-yesterday">
+      {{ energy_yesterday_kwh|f3 }} kWh
+    </div>
+  </div>
+  <div class="card card-p">
+    <div class="card-title">∑ Total</div>
+    <div style="font-size:2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text)" id="val-total">
+      {{ energy_total_kwh|f1 }} kWh
+    </div>
+    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.4rem">Type : {{ service_type }}</div>
+  </div>
+</div>
+
+{# ─── Historique puissance ─────────────────────────────────────────────── #}
+<div class="chart-card">
+  <div class="chart-hdr">
+    <span class="chart-hdr-title">Historique puissance</span>
+    <span class="chart-hdr-meta">Dernières mesures — rafraîchi toutes les 5s</span>
+  </div>
+  <div id="chart-power" style="height:260px;"></div>
+</div>
+
 {% else %}
 
-{# ─── Puissance instantanée ───────────────────────────────────────────────── #}
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1rem;">
-
-  <div class="bms-card-ng" style="padding:1rem;">
-    <div class="kpi4-lbl">Puissance active</div>
-    <div class="kpi4-val" style="font-size:2rem;color:var(--accent)" id="pw">{{ power_w|f1 }} W</div>
-  </div>
-
-  <div class="bms-card-ng" style="padding:1rem;">
-    <div class="kpi4-lbl">Tension</div>
-    <div class="kpi4-val" style="font-size:2rem;" id="vv">{{ voltage_v|f1 }} V</div>
-  </div>
-
-  <div class="bms-card-ng" style="padding:1rem;">
-    <div class="kpi4-lbl">Courant</div>
-    <div class="kpi4-val" style="font-size:2rem;" id="iv">{{ current_a|f2 }} A</div>
-  </div>
-
-  <div class="bms-card-ng" style="padding:1rem;">
-    <div class="kpi4-lbl">Puissance apparente</div>
-    <div class="kpi4-val" style="font-size:2rem;" id="pva">{{ apparent_power_va|f1 }} VA</div>
-  </div>
-
-  <div class="bms-card-ng" style="padding:1rem;">
-    <div class="kpi4-lbl">Facteur de puissance</div>
-    <div class="kpi4-val" style="font-size:2rem;" id="pf">{{ power_factor|f2 }}</div>
-  </div>
-
-  <div class="bms-card-ng" style="padding:1rem;">
-    <div class="kpi4-lbl">Signal WiFi</div>
-    <div class="kpi4-val" style="font-size:2rem;color:var(--muted)" id="rssi">{{ rssi }}</div>
-  </div>
-
-</div>
-
-{# ─── Énergie ─────────────────────────────────────────────────────────────── #}
-<div class="bms-card-ng" style="margin-bottom:1rem;">
-  <div class="bms-hdr" style="background:#1a5f8a;">
-    <div class="bms-hdr-title">Énergie consommée</div>
-    <div class="bms-hdr-right"><span>{{ service_type }}</span></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;">
-    <div style="padding:1rem;border-right:1px solid var(--border);">
-      <div class="kpi4-lbl">Aujourd'hui</div>
-      <div class="kpi4-val" style="font-size:1.8rem;color:var(--accent)" id="etd">{{ energy_today_kwh|f3 }} kWh</div>
-    </div>
-    <div style="padding:1rem;border-right:1px solid var(--border);">
-      <div class="kpi4-lbl">Hier</div>
-      <div class="kpi4-val" style="font-size:1.8rem;color:var(--muted)" id="eyd">{{ energy_yesterday_kwh|f3 }} kWh</div>
-    </div>
-    <div style="padding:1rem;">
-      <div class="kpi4-lbl">Total</div>
-      <div class="kpi4-val" style="font-size:1.8rem;" id="etot">{{ energy_total_kwh|f1 }} kWh</div>
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">⏳</div>
+    <div class="empty-title">En attente du premier message MQTT</div>
+    <div class="empty-sub">
+      Vérifiez que <code>tele/{{ tasmota_id }}/SENSOR</code><br>
+      est publié sur le broker MQTT.
     </div>
   </div>
 </div>
 
 {% endif %}
 
-{# ─── Mise à jour automatique ─────────────────────────────────────────────── #}
+{% endblock %}
+
+{% block scripts %}
 <script>
 const TASMOTA_ID = {{ id }};
 
+// ── ECharts power chart ────────────────────────────────────────────────
+const chartDom = document.getElementById('chart-power');
+let myChart = null;
+if (chartDom) {
+  myChart = echarts.init(chartDom);
+  myChart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#21262d',
+      borderColor: '#30363d',
+      textStyle: { color: '#e6edf3', fontSize: 11 },
+      formatter: p => p[0].name + '<br/>Puissance : <b>' + p[0].value + ' W</b>'
+    },
+    xAxis: {
+      type: 'category', data: [],
+      axisLine: { lineStyle: { color: '#30363d' } },
+      axisLabel: { color: '#6e7681', fontSize: 10 },
+      boundaryGap: false,
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisLabel: { color: '#6e7681', fontSize: 10 },
+      splitLine: { lineStyle: { color: '#21262d' } },
+    },
+    series: [{
+      name: 'Puissance', type: 'line', data: [],
+      smooth: true, symbol: 'none',
+      lineStyle: { color: '#d29922', width: 2 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+        colorStops: [{ offset: 0, color: 'rgba(210,153,34,0.25)' }, { offset: 1, color: 'rgba(210,153,34,0.02)' }]
+      }},
+    }],
+    grid: { left: 50, right: 16, top: 16, bottom: 30 },
+  });
+  window.addEventListener('resize', () => myChart && myChart.resize());
+}
+
+const powerHistory = [];
+const MAX_PTS = 120;
+
 async function update() {
-    try {
-        const resp = await fetch(`/api/v1/tasmota/${TASMOTA_ID}/status`);
-        if (!resp.ok) return;
-        const d = await resp.json();
-        const el = (id) => document.getElementById(id);
-        if (el('pw'))   el('pw').textContent   = d.power_w.toFixed(1) + ' W';
-        if (el('vv'))   el('vv').textContent   = d.voltage_v.toFixed(1) + ' V';
-        if (el('iv'))   el('iv').textContent   = d.current_a.toFixed(2) + ' A';
-        if (el('pva'))  el('pva').textContent  = d.apparent_power_va.toFixed(1) + ' VA';
-        if (el('pf'))   el('pf').textContent   = d.power_factor.toFixed(2);
-        if (el('etd'))  el('etd').textContent  = d.energy_today_kwh.toFixed(3) + ' kWh';
-        if (el('eyd'))  el('eyd').textContent  = d.energy_yesterday_kwh.toFixed(3) + ' kWh';
-        if (el('etot')) el('etot').textContent = d.energy_total_kwh.toFixed(1) + ' kWh';
-        if (el('rssi') && d.rssi != null) el('rssi').textContent = d.rssi + ' dBm';
-    } catch(e) {}
+  try {
+    const resp = await fetch(`/api/v1/tasmota/${TASMOTA_ID}/status`);
+    if (!resp.ok) return;
+    const d = await resp.json();
+    const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+
+    set('val-power',     d.power_w.toFixed(1) + ' W');
+    set('val-voltage',   d.voltage_v.toFixed(1) + ' V');
+    set('val-current',   d.current_a.toFixed(2) + ' A');
+    set('val-apparent',  d.apparent_power_va.toFixed(1) + ' VA');
+    set('val-pf',        d.power_factor.toFixed(2));
+    set('val-today',     d.energy_today_kwh.toFixed(3) + ' kWh');
+    set('val-yesterday', d.energy_yesterday_kwh.toFixed(3) + ' kWh');
+    set('val-total',     d.energy_total_kwh.toFixed(1) + ' kWh');
+    set('last-ts',       new Date().toLocaleTimeString('fr-FR'));
+    if (d.rssi != null) set('val-rssi', d.rssi + ' dBm');
+
+    const powEl = document.getElementById('val-power');
+    if (powEl) powEl.style.color = d.power_w > 0 ? 'var(--yellow)' : 'var(--muted)';
+
+    // Rolling chart
+    if (myChart) {
+      const t = new Date().toLocaleTimeString('fr-FR');
+      powerHistory.push({ t, v: d.power_w.toFixed(1) });
+      if (powerHistory.length > MAX_PTS) powerHistory.shift();
+      myChart.setOption({
+        xAxis: { data: powerHistory.map(p => p.t) },
+        series: [{ data: powerHistory.map(p => p.v) }]
+      });
+    }
+  } catch(e) {}
 }
 
 update();
 setInterval(update, 5000);
 </script>
-
 {% endblock %}
