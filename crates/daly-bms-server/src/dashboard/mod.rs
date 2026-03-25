@@ -61,6 +61,11 @@ mod filters {
     pub fn pluralize(v: &usize) -> ::askama::Result<String> {
         Ok(if *v == 1 { String::new() } else { "s".to_string() })
     }
+    /// Longueur d'un slice/Vec — remplace le filtre built-in Askama
+    /// (nécessaire quand un module `filters` custom est défini dans le crate)
+    pub fn length<T>(v: &[T]) -> ::askama::Result<usize> {
+        Ok(v.len())
+    }
 }
 
 // =============================================================================
