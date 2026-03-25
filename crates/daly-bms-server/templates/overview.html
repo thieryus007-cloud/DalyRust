@@ -1,469 +1,633 @@
 {% extends "base.html" %}
 
-{% block title %}Vue d'ensemble — ESS Monitor{% endblock %}
-{% block page_title %}Vue d'ensemble{% endblock %}
+{% block title %}Vue d'ensemble ESS — Monitor{% endblock %}
+{% block page_title %}Vue d'ensemble ESS{% endblock %}
 {% block nav_overview %}active{% endblock %}
 
 {% block head %}
 <style>
-  /* ─── Overview-specific ─── */
-  .ov-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
-    gap: 1.25rem;
-    margin-bottom: 1.75rem;
-  }
-  .ov-et112-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.75rem;
-  }
-  .ov-irr-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.75rem;
-  }
+/* ═══════════════════════════════════════════════════════════════
+   ESS Overview — Sunsynk-inspired layout
+   ═══════════════════════════════════════════════════════════════ */
 
-  /* ET112 card dans overview */
-  .et112-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    box-shadow: var(--shadow);
-    transition: border-color 0.2s;
-  }
-  .et112-card:hover { border-color: var(--border2); }
-  .et112-hdr {
-    padding: 0.7rem 0.9rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border);
-  }
-  .et112-hdr.pv  { background: linear-gradient(135deg, #0e3320 0%, #081a10 100%); }
-  .et112-hdr.hp  { background: linear-gradient(135deg, #2a1b40 0%, #180e2a 100%); }
-  .et112-hdr.grd { background: linear-gradient(135deg, #1a2a40 0%, #0d1a28 100%); }
-  .et112-hdr-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
-  .et112-hdr-right { display: flex; align-items: center; gap: 0.4rem; }
+/* ── Layout grid ─────────────────────────────────────────────── */
+.ov-wrap {
+  display: grid;
+  grid-template-rows: 270px 1fr;
+  gap: 0.6rem;
+  height: calc(100vh - 56px - 1.4rem);
+  min-height: 560px;
+}
+.ov-top {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr 1fr;
+  gap: 0.6rem;
+}
+.ov-bot {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 0.6rem;
+  min-height: 0;
+}
 
-  /* Irradiance card */
-  .irr-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    box-shadow: var(--shadow);
-  }
-  .irr-hdr {
-    padding: 0.7rem 0.9rem;
-    background: linear-gradient(135deg, #2a1e00 0%, #160f00 100%);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .irr-hdr-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
-  .irr-ts { font-size: 0.6rem; color: rgba(255,255,255,0.45); font-family: 'JetBrains Mono', monospace; }
+/* ── Panel ───────────────────────────────────────────────────── */
+.ov-p {
+  background: #090c10;
+  border: 1px solid #161d28;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ov-ph {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.8rem 0.35rem;
+  border-bottom: 1px solid #161d28;
+  flex-shrink: 0;
+}
+.ov-pt {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: #374151;
+}
+.ov-ptime {
+  font-size: 0.58rem;
+  color: #1f2937;
+  font-family: 'JetBrains Mono', monospace;
+}
 
-  /* Power value large */
-  .power-hero {
-    text-align: center;
-    padding: 0.85rem 1rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .power-hero-val {
-    font-size: 2rem;
-    font-weight: 800;
-    font-family: 'JetBrains Mono', monospace;
-    line-height: 1;
-  }
-  .power-hero-lbl {
-    font-size: 0.6rem;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: var(--muted);
-    margin-top: 0.2rem;
-  }
+/* ── Hero number ─────────────────────────────────────────────── */
+.ov-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.25rem 0.75rem; }
+.ov-big  { font: 800 3rem/1 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+.ov-unit { font-size: 0.6rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; margin-top: 0.15rem; }
+.ov-sub  { display: flex; gap: 1.5rem; margin-top: 0.65rem; }
+.ov-sub-cell { text-align: center; }
+.ov-sub-val  { font: 700 1.05rem/1 'JetBrains Mono', monospace; }
+.ov-sub-lbl  { font-size: 0.52rem; letter-spacing: .08em; text-transform: uppercase; color: #374151; margin-top: 0.1rem; }
+
+/* ── Metrics strip ───────────────────────────────────────────── */
+.ov-strip { display: grid; border-top: 1px solid #161d28; flex-shrink: 0; }
+.ov-strip.c2 { grid-template-columns: 1fr 1fr; }
+.ov-strip.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.ov-m { padding: 0.4rem 0.6rem; border-right: 1px solid #161d28; text-align: center; }
+.ov-m:last-child { border-right: none; }
+.ov-ml { font-size: 0.52rem; letter-spacing: .08em; text-transform: uppercase; color: #374151; margin-bottom: 0.1rem; }
+.ov-mv { font: 700 0.88rem/1 'JetBrains Mono', monospace; color: #d1d5db; }
+
+/* ── Device list ─────────────────────────────────────────────── */
+.ov-dlist { border-top: 1px solid #161d28; padding: 0.25rem 0.7rem 0.3rem; flex-shrink: 0; }
+.ov-drow  { display: flex; align-items: center; justify-content: space-between; padding: 0.18rem 0; font-size: 0.68rem; }
+.ov-dname { color: #6b7280; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-dval  { font: 700 0.7rem 'JetBrains Mono', monospace; color: #d1d5db; margin-left: 0.5rem; }
+.ov-dot-on  { color: #10b981; font-size: 0.5rem; margin-left: 0.35rem; }
+.ov-dot-off { color: #1f2937; font-size: 0.5rem; margin-left: 0.35rem; }
+
+/* ── Battery gauge ───────────────────────────────────────────── */
+.ov-gauge-wrap { flex: 1; position: relative; min-height: 0; }
+#batt-gauge { width: 100%; height: 100%; }
+.ov-batt-names {
+  position: absolute; bottom: 6px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 1.25rem;
+  font-size: 0.6rem; font-family: 'JetBrains Mono', monospace;
+}
+.ov-batt-name-soc { color: #9ca3af; font-weight: 700; }
+.ov-batt-name-lbl { color: #374151; font-size: 0.52rem; margin-left: 0.2rem; }
+
+/* ── Colours ─────────────────────────────────────────────────── */
+.c-solar { color: #f59e0b; }
+.c-batt  { color: #10b981; }
+.c-load  { color: #8b5cf6; }
+.c-irr   { color: #fbbf24; }
+.c-grid  { color: #60a5fa; }
+
+/* ── Flow diagram ────────────────────────────────────────────── */
+.ov-flow { min-height: 0; }
+.ov-flow-inner { flex: 1; padding: 0.4rem; min-height: 0; }
+#flow-svg { width: 100%; height: 100%; }
+
+/* ── History chart ───────────────────────────────────────────── */
+.ov-chart { min-height: 0; }
+.ov-chdr {
+  padding: 0.4rem 0.8rem 0.3rem;
+  border-bottom: 1px solid #161d28;
+  display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.ov-leg { display: flex; align-items: center; gap: 0.28rem; font-size: 0.58rem; color: #4b5563; }
+.ov-leg-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+#hist-chart { flex: 1; min-height: 0; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .ov-top { grid-template-columns: 1fr 1fr; }
+  .ov-bot { grid-template-columns: 1fr; }
+  .ov-wrap { height: auto; grid-template-rows: auto auto; }
+}
+@media (max-width: 680px) {
+  .ov-top { grid-template-columns: 1fr; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 
-{# ─── Header ── #}
-<div class="page-hdr">
-  <h1>🏠 Vue d'ensemble</h1>
-  <div class="page-hdr-meta">
-    <span>Mise à jour : <span id="ov-ts">—</span></span>
-  </div>
-</div>
+{# ── Inline JS data from Askama ──────────────────────────────────────── #}
+<script>
+const BMS_ADDRS = [{% for b in bms_list %}{{ b.address }}{% if !loop.last %},{% endif %}{% endfor %}];
+const BMS_CAPS  = { {% for b in bms_list %}{{ b.address }}:{{ b.capacity_ah|f0 }}{% if !loop.last %},{% endif %}{% endfor %} };
+const BMS_NAMES = { {% for b in bms_list %}"{{ b.address }}":"{{ b.name }}"{% if !loop.last %},{% endif %}{% endfor %} };
+const ET112_DEVS = [{% for d in et112_list %}{"addr":{{ d.address }},"type":"{{ d.service_type }}","name":"{{ d.name }}"}{% if !loop.last %},{% endif %}{% endfor %}];
+</script>
 
-{# ═══════════════════════════════════════════════════
-   SECTION 1 — BATTERIES
-   ═══════════════════════════════════════════════════ #}
-<div class="section-hdr">
-  <h2>🔋 Batteries</h2>
-  <span class="section-count">{{ bms_list|length }} BMS</span>
-  <div class="section-rule"></div>
-  <a href="/dashboard" style="font-size:0.72rem;color:var(--muted);white-space:nowrap">Tout voir →</a>
-</div>
+<div class="ov-wrap">
 
-<div class="ov-grid" id="ov-bms-grid">
-{% for bms in bms_list %}
-<div class="bms-card {% if bms.any_alarm %}alarm{% endif %}" id="ov-bms-{{ bms.address }}">
+  {# ═══════════════════════ TOP ROW ═══════════════════════ #}
+  <div class="ov-top">
 
-  {# Header #}
-  <div class="bms-hdr {% if bms.any_alarm %}alarm-hdr{% endif %}">
-    <div class="bms-hdr-left">
-      <div class="bms-live"><div class="live-dot"></div>LIVE</div>
-      <span class="bms-hdr-name">{{ bms.name }}</span>
-    </div>
-    <div class="bms-hdr-right">
-      <span class="bms-badge">{{ bms.can_id }}</span>
-      <span class="bms-ts" id="ov-ts-{{ bms.address }}">{{ bms.last_update }}</span>
-    </div>
-  </div>
+    {# ── SOLAR ──────────────────────────────────────────── #}
+    <div class="ov-p">
+      <div class="ov-ph">
+        <span class="ov-pt">☀ Solaire</span>
+        <span class="ov-ptime" id="solar-ts">{% match irradiance_wm2 %}{% when Some with (_) %}{{ irradiance_ts }}{% when None %}—{% endmatch %}</span>
+      </div>
 
-  {# KPI 4 col #}
-  <div class="kpi4">
-    <div class="kpi4-cell t-blue">
-      <div class="kpi4-lbl">Tension</div>
-      <div class="kpi4-val" id="ov-v-{{ bms.address }}">{{ bms.voltage|f2 }} V</div>
-    </div>
-    <div class="kpi4-cell t-green">
-      <div class="kpi4-lbl">SOC</div>
-      <div class="kpi4-val {% if bms.soc > 60.0 %}chg{% else if bms.soc < 20.0 %}dch{% endif %}"
-           id="ov-soc-{{ bms.address }}">{{ bms.soc|f1 }}%</div>
-    </div>
-    <div class="kpi4-cell t-orange">
-      <div class="kpi4-lbl">Courant</div>
-      <div class="kpi4-val {% if bms.current > 0.0 %}chg{% else if bms.current < -0.1 %}dch{% endif %}"
-           id="ov-i-{{ bms.address }}">{{ bms.current|sign }} A</div>
-    </div>
-    <div class="kpi4-cell t-yellow">
-      <div class="kpi4-lbl">Puissance</div>
-      <div class="kpi4-val {% if bms.power > 0.0 %}chg{% else if bms.power < -0.1 %}dch{% endif %}"
-           id="ov-p-{{ bms.address }}">{{ bms.power|f0 }} W</div>
-    </div>
-  </div>
-
-  {# SOC bar #}
-  <div class="soc-row">
-    <span>0%</span>
-    <div class="soc-track">
-      <div class="soc-fill" id="ov-bar-{{ bms.address }}"
-           style="width:{{ bms.soc|f0 }}%;background:{% if bms.soc > 60.0 %}var(--green){% else if bms.soc > 25.0 %}var(--yellow){% else %}var(--red){% endif %}"></div>
-    </div>
-    <span id="ov-socpct-{{ bms.address }}">{{ bms.soc|f0 }}%</span>
-    <span style="color:var(--muted2)">100%</span>
-  </div>
-
-  {# Infos bas #}
-  <div class="istrip c4">
-    <div class="icell">
-      <span class="i-lbl">T° max</span>
-      <span class="i-val {% if bms.temp_max > 45.0 %}bad{% else if bms.temp_max > 35.0 %}warn{% endif %}"
-            id="ov-tmax-{{ bms.address }}">{{ bms.temp_max|f1 }} °C</span>
-    </div>
-    <div class="icell">
-      <span class="i-lbl">Δ cellules</span>
-      <span class="i-val {% if bms.cell_delta_mv > 100.0 %}bad{% else if bms.cell_delta_mv > 50.0 %}warn{% else %}ok{% endif %}"
-            id="ov-dlt-{{ bms.address }}">{{ bms.cell_delta_mv|mv }} mV</span>
-    </div>
-    <div class="icell">
-      <span class="i-lbl">Alarmes</span>
-      <span class="i-val {% if bms.any_alarm %}bad{% else %}ok{% endif %}">
-        {% if bms.any_alarm %}⚠ Actives{% else %}✓ Aucune{% endif %}
-      </span>
-    </div>
-    <div class="icell" style="display:flex;align-items:center;justify-content:flex-end;padding-right:0.85rem;">
-      <a href="/dashboard/bms/{{ bms.address }}" class="btn btn-outline" style="font-size:0.7rem;padding:0.25rem 0.65rem;"
-         onclick="event.stopPropagation()">Détail →</a>
-    </div>
-  </div>
-
-</div>
-{% endfor %}
-
-{% if bms_list.is_empty() %}
-<div class="card">
-  <div class="empty-state">
-    <div class="empty-icon">⏳</div>
-    <div class="empty-title">En attente des données BMS</div>
-  </div>
-</div>
-{% endif %}
-</div>
-
-{# ═══════════════════════════════════════════════════
-   SECTION 2 — COMPTEURS ÉNERGIE
-   ═══════════════════════════════════════════════════ #}
-<div class="section-hdr">
-  <h2>⚡ Compteurs énergie</h2>
-  <span class="section-count">{{ et112_list|length }} ET112</span>
-  <div class="section-rule"></div>
-  <a href="/dashboard/et112" style="font-size:0.72rem;color:var(--muted);white-space:nowrap">Tout voir →</a>
-</div>
-
-<div class="ov-et112-grid">
-{% for dev in et112_list %}
-<div class="et112-card" id="ov-et112-{{ dev.address }}">
-
-  <div class="et112-hdr {% if dev.service_type == "pvinverter" %}pv{% else if dev.service_type == "heatpump" %}hp{% else %}grd{% endif %}">
-    <span class="et112-hdr-name">
-      {% if dev.service_type == "pvinverter" %}☀{% else if dev.service_type == "heatpump" %}🌡{% else %}⚡{% endif %}
-      {{ dev.name }}
-    </span>
-    <div class="et112-hdr-right">
-      {% if dev.connected %}
-        <div class="live-dot"></div>
-        <span style="font-size:0.62rem;color:rgba(255,255,255,0.6)">LIVE</span>
-      {% else %}
-        <span style="font-size:0.62rem;color:rgba(255,255,255,0.35)">Hors ligne</span>
-      {% endif %}
-      <span class="bms-badge">{{ dev.addr_hex }}</span>
-    </div>
-  </div>
-
-  {% if dev.connected %}
-  <div class="power-hero">
-    <div class="power-hero-val {% if dev.service_type == "pvinverter" %}green{% else %}orange{% endif %}"
-         id="ov-et-pow-{{ dev.address }}">{{ dev.power_w|f0 }} W</div>
-    <div class="power-hero-lbl">Puissance instantanée</div>
-  </div>
-
-  <div class="istrip c2" style="border-bottom:none">
-    <div class="icell">
-      <span class="i-lbl">⬇ Importée</span>
-      <span class="i-val green" id="ov-et-imp-{{ dev.address }}">{{ dev.energy_kwh|f2 }} kWh</span>
-    </div>
-    <div class="icell" style="display:flex;align-items:flex-end;justify-content:flex-end;padding-right:0.85rem;">
-      <a href="/dashboard/et112/{{ dev.address }}" class="btn btn-outline" style="font-size:0.7rem;padding:0.25rem 0.65rem;">Détail →</a>
-    </div>
-  </div>
-
-  {% else %}
-  <div class="empty-state" style="padding:2rem 1rem;">
-    <div class="empty-icon" style="font-size:1.5rem">⏳</div>
-    <div class="empty-sub">En attente de données…</div>
-  </div>
-  {% endif %}
-
-</div>
-{% endfor %}
-
-{% if et112_list.is_empty() %}
-<div class="card card-p" style="color:var(--muted);font-size:0.8rem;">Aucun ET112 configuré.</div>
-{% endif %}
-</div>
-
-{# ═══════════════════════════════════════════════════
-   SECTION 3 — IRRADIANCE
-   ═══════════════════════════════════════════════════ #}
-<div class="section-hdr">
-  <h2>🌤 Irradiance solaire</h2>
-  <div class="section-rule"></div>
-</div>
-
-<div class="ov-irr-grid">
-
-  <div class="irr-card">
-    <div class="irr-hdr">
-      <span class="irr-hdr-name">☀ Capteur PRALRAN</span>
-      <span class="irr-ts">Màj : <span id="irr-ts">{{ irradiance_ts }}</span></span>
-    </div>
-    <div style="padding:1rem;">
-      {% if let Some(wm2) = irradiance_wm2 %}
-        <div id="irr-gauge" style="height:170px;"></div>
-        <div style="text-align:center;font-size:0.62rem;color:var(--muted);margin-top:0.3rem;">W/m²</div>
-      {% else %}
-        <div class="empty-state" style="padding:2rem 1rem;">
-          <div class="empty-icon" style="font-size:1.5rem">⏳</div>
-          <div class="empty-sub">En attente du capteur RS485…</div>
+      <div class="ov-hero">
+        <div class="ov-big c-solar" id="solar-w">
+          {% for d in et112_list %}{% if d.service_type == "pvinverter" %}{% if d.connected %}{{ d.power_w|f0 }}{% else %}—{% endif %}{% endif %}{% endfor %}
         </div>
-      {% endif %}
-    </div>
-  </div>
+        <div class="ov-unit c-solar">W Production solaire</div>
 
-  <div class="irr-card">
-    <div class="chart-hdr">
-      <span class="chart-hdr-title">Irradiance W/m² — temps réel</span>
-      <span class="chart-hdr-meta" id="irr-val-label">—</span>
-    </div>
-    <div id="irr-hist" style="height:200px;"></div>
-  </div>
+        <div class="ov-sub">
+          <div class="ov-sub-cell">
+            <div class="ov-sub-val c-irr" id="irr-w">{% match irradiance_wm2 %}{% when Some with (v) %}{{ v|f0 }}{% when None %}—{% endmatch %}</div>
+            <div class="ov-sub-lbl" style="color:#a16207">W/m² Irrad.</div>
+          </div>
+          <div class="ov-sub-cell">
+            <div class="ov-sub-val c-solar" id="solar-kwh">{% for d in et112_list %}{% if d.service_type == "pvinverter" %}{{ d.energy_kwh|f2 }}{% endif %}{% endfor %}</div>
+            <div class="ov-sub-lbl" style="color:#92400e">kWh Auj.</div>
+          </div>
+        </div>
+      </div>
 
-</div>
+      <div class="ov-dlist">
+        {% for d in et112_list %}{% if d.service_type == "pvinverter" %}
+        <div class="ov-drow">
+          <span class="ov-dname">{{ d.name }}</span>
+          <span class="ov-dval c-solar" id="et-pw-{{ d.address }}">{{ d.power_w|f0 }} W</span>
+          <span class="{% if d.connected %}ov-dot-on{% else %}ov-dot-off{% endif %}">●</span>
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+
+    {# ── BATTERY ────────────────────────────────────────── #}
+    <div class="ov-p">
+      <div class="ov-ph">
+        <span class="ov-pt">🔋 Batterie</span>
+        <span class="ov-ptime" id="batt-ts">—</span>
+      </div>
+
+      <div class="ov-gauge-wrap">
+        <div id="batt-gauge"></div>
+        <div class="ov-batt-names">
+          {% for b in bms_list %}
+          <div>
+            <span class="ov-batt-name-soc" id="bsoc-{{ b.address }}">{{ b.soc|f0 }}%</span>
+            <span class="ov-batt-name-lbl">{{ b.name }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="ov-strip c3">
+        <div class="ov-m">
+          <div class="ov-ml">Tension</div>
+          <div class="ov-mv c-grid" id="batt-v">{% for b in bms_list %}{% if loop.first %}{{ b.voltage|f1 }}V{% endif %}{% endfor %}</div>
+        </div>
+        <div class="ov-m">
+          <div class="ov-ml">Courant</div>
+          <div class="ov-mv" id="batt-a">{% for b in bms_list %}{% if loop.first %}{{ b.current|f1 }}A{% endif %}{% endfor %}</div>
+        </div>
+        <div class="ov-m">
+          <div class="ov-ml">Puissance</div>
+          <div class="ov-mv" id="batt-w">{% for b in bms_list %}{% if loop.first %}{{ b.power|f0 }}W{% endif %}{% endfor %}</div>
+        </div>
+      </div>
+    </div>
+
+    {# ── CHARGES ────────────────────────────────────────── #}
+    <div class="ov-p">
+      <div class="ov-ph">
+        <span class="ov-pt">⚡ Charges PAC</span>
+        <span class="ov-ptime" id="loads-ts">—</span>
+      </div>
+
+      <div class="ov-hero">
+        <div class="ov-big c-load" id="loads-w">—</div>
+        <div class="ov-unit c-load">W Total consommé</div>
+
+        <div class="ov-sub">
+          <div class="ov-sub-cell">
+            <div class="ov-sub-val c-load" id="loads-kwh">{% for d in et112_list %}{% if d.service_type == "heatpump" %}{{ d.energy_kwh|f1 }} {% endif %}{% endfor %}</div>
+            <div class="ov-sub-lbl" style="color:#5b21b6">kWh Auj.</div>
+          </div>
+          <div class="ov-sub-cell">
+            <div class="ov-sub-val" id="loads-count" style="color:#6b7280">{% for d in et112_list %}{% if d.service_type == "heatpump" %}{% if loop.last %}{{ loop.index }}{% endif %}{% endif %}{% endfor %}</div>
+            <div class="ov-sub-lbl">Appareils</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ov-dlist">
+        {% for d in et112_list %}{% if d.service_type == "heatpump" %}
+        <div class="ov-drow">
+          <span class="ov-dname">{{ d.name }}</span>
+          <span class="ov-dval c-load" id="et-pw-{{ d.address }}">{{ d.power_w|f0 }} W</span>
+          <span class="{% if d.connected %}ov-dot-on{% else %}ov-dot-off{% endif %}">●</span>
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+
+  </div>{# /ov-top #}
+
+  {# ═══════════════════════ BOTTOM ROW ═══════════════════════ #}
+  <div class="ov-bot">
+
+    {# ── ENERGY FLOW ────────────────────────────────────── #}
+    <div class="ov-p ov-flow">
+      <div class="ov-ph">
+        <span class="ov-pt">⚡ Flux d'énergie</span>
+        <span class="ov-ptime" id="flow-ts">—</span>
+      </div>
+      <div class="ov-flow-inner">
+        <svg id="flow-svg" viewBox="0 0 420 280" preserveAspectRatio="xMidYMid meet">
+
+          {# ── SOLAR box ───────────────────────────────── #}
+          <rect x="30" y="20" width="130" height="60" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
+          <text x="95" y="38" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" letter-spacing="1">SOLAIRE</text>
+          <text x="95" y="56" fill="#f59e0b" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-solar-w">— W</text>
+          <text x="95" y="70" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-irr">— W/m²</text>
+
+          {# ── SYSTEM box ──────────────────────────────── #}
+          <rect x="155" y="105" width="110" height="64" rx="8" fill="#0c1520" stroke="#1e3552" stroke-width="1.5"/>
+          <text x="210" y="124" fill="#2d4a6e" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" letter-spacing="1">SYSTÈME</text>
+          <text x="210" y="141" fill="#60a5fa" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-sys-v">— V</text>
+          <text x="210" y="157" fill="#2d4a6e" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-sys-a">— A</text>
+
+          {# ── LOADS box ───────────────────────────────── #}
+          <rect x="260" y="20" width="130" height="60" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
+          <text x="325" y="38" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" letter-spacing="1">CHARGES PAC</text>
+          <text x="325" y="56" fill="#8b5cf6" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-loads-w">— W</text>
+          <text x="325" y="70" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-loads-kwh">— kWh</text>
+
+          {# ── BMS boxes ───────────────────────────────── #}
+          {% for b in bms_list %}
+          {% if loop.index == 1 %}
+          <rect x="30" y="195" width="130" height="62" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
+          <text x="95" y="213" fill="#374151" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-name">{{ b.name }}</text>
+          <text x="95" y="230" fill="#10b981" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-soc">{{ b.soc|f0 }}%</text>
+          <text x="95" y="246" fill="#374151" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-pw">{{ b.power|f0 }} W</text>
+          {% endif %}
+          {% if loop.index == 2 %}
+          <rect x="260" y="195" width="130" height="62" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
+          <text x="325" y="213" fill="#374151" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-name">{{ b.name }}</text>
+          <text x="325" y="230" fill="#10b981" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-soc">{{ b.soc|f0 }}%</text>
+          <text x="325" y="246" fill="#374151" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-pw">{{ b.power|f0 }} W</text>
+          {% endif %}
+          {% endfor %}
+
+          {# ── SOLAR → SYSTEM line ─────────────────────── #}
+          <line x1="160" y1="50" x2="185" y2="118" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,3" opacity="0.8">
+            <animate attributeName="stroke-dashoffset" from="27" to="0" dur="1.1s" repeatCount="indefinite"/>
+          </line>
+
+          {# ── SYSTEM → LOADS line ─────────────────────── #}
+          <line x1="235" y1="118" x2="262" y2="50" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="6,3" opacity="0.8">
+            <animate attributeName="stroke-dashoffset" from="27" to="0" dur="1.1s" repeatCount="indefinite"/>
+          </line>
+
+          {# ── SYSTEM ↕ BMS-1 line ─────────────────────── #}
+          <line x1="190" y1="160" x2="115" y2="194" stroke="#10b981" stroke-width="2" stroke-dasharray="6,3" opacity="0.7">
+            <animate id="anim-bms1" attributeName="stroke-dashoffset" from="27" to="0" dur="1.3s" repeatCount="indefinite"/>
+          </line>
+
+          {# ── SYSTEM ↕ BMS-2 line ─────────────────────── #}
+          <line x1="230" y1="160" x2="305" y2="194" stroke="#10b981" stroke-width="2" stroke-dasharray="6,3" opacity="0.7">
+            <animate id="anim-bms2" attributeName="stroke-dashoffset" from="27" to="0" dur="1.3s" repeatCount="indefinite"/>
+          </line>
+
+        </svg>
+      </div>
+    </div>
+
+    {# ── HISTORY CHART ──────────────────────────────────── #}
+    <div class="ov-p ov-chart">
+      <div class="ov-chdr">
+        <span class="ov-pt" style="font-size:0.6rem">📈 Historique 10 min</span>
+        <span class="ov-leg"><span class="ov-leg-dot" style="background:#f59e0b"></span>Solaire W</span>
+        <span class="ov-leg"><span class="ov-leg-dot" style="background:#8b5cf6"></span>PAC W</span>
+        <span class="ov-leg"><span class="ov-leg-dot" style="background:#ef4444"></span>SOC %</span>
+        <span class="ov-leg"><span class="ov-leg-dot" style="background:#fbbf24;border-radius:2px"></span>Irr. W/m²</span>
+      </div>
+      <div id="hist-chart"></div>
+    </div>
+
+  </div>{# /ov-bot #}
+
+</div>{# /ov-wrap #}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-// ── WebSocket BMS ──────────────────────────────────────────────────────
-window.onBmsUpdate = function(snaps) {
-  const now = new Date().toLocaleTimeString('fr-FR');
-  const ovTs = document.getElementById('ov-ts');
-  if (ovTs) ovTs.textContent = now;
+// ════════════════════════════════════════════════════════════════
+// ESS Overview — live update engine
+// ════════════════════════════════════════════════════════════════
 
-  snaps.forEach(function(s) {
-    const a = s.address;
-    function set(id, val) {
-      const el = document.getElementById(id + '-' + a);
-      if (el) el.textContent = val;
-    }
+// ── State ────────────────────────────────────────────────────────
+let bmsMap  = {};  // addr:u8 → BmsSnapshot JSON
+let et112Map = {}; // addr:u8 → {power_w, energy_import_wh}
+let irrWm2  = null;
 
-    const v   = s.Dc ? s.Dc.Voltage  : (s.voltage  || 0);
-    const i   = s.Dc ? s.Dc.Current  : (s.current  || 0);
-    const p   = s.Dc ? s.Dc.Power    : (s.power    || 0);
-    const soc = s.Soc || 0;
-    const tmax = s.System ? s.System.MaxCellTemperature : (s.temp_max || 0);
-    const dlt  = s.System ? ((s.System.MaxCellVoltage - s.System.MinCellVoltage) * 1000) : 0;
+// ── Rolling history (120 pts × 5s = 10 min) ─────────────────────
+const MAX_PTS = 120;
+const hTime = [], hSolar = [], hLoad = [], hSoc = [], hIrr = [];
 
-    set('ov-v',   v.toFixed(2)   + ' V');
-    set('ov-soc', soc.toFixed(1) + '%');
-    set('ov-socpct', soc.toFixed(0) + '%');
-    set('ov-i',   (i >= 0 ? '+' : '') + i.toFixed(1) + ' A');
-    set('ov-p',   p.toFixed(0)   + ' W');
-    set('ov-tmax',tmax.toFixed(1)+ ' °C');
-    set('ov-dlt', dlt.toFixed(0) + ' mV');
-    set('ov-ts',  now);
+// ── Helpers ──────────────────────────────────────────────────────
+const el  = id => document.getElementById(id);
+const set = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+const f0  = v => (v != null ? Math.round(+v) : '—');
+const f1  = v => (v != null ? (+v).toFixed(1) : '—');
 
-    const bar = document.getElementById('ov-bar-' + a);
-    if (bar) {
-      bar.style.width = Math.min(100, Math.max(0, soc)).toFixed(0) + '%';
-      bar.style.background = soc > 60 ? 'var(--green)' : soc > 25 ? 'var(--yellow)' : 'var(--red)';
-    }
-    const curEl = document.getElementById('ov-i-' + a);
-    if (curEl) curEl.className = 'kpi4-val ' + (i >= 0 ? 'chg' : 'dch');
-    const powEl = document.getElementById('ov-p-' + a);
-    if (powEl) powEl.className = 'kpi4-val ' + (p >= 0 ? 'chg' : 'dch');
-  });
-};
-
-// ── ET112 polling ──────────────────────────────────────────────────────
-const ET112_DEVS = [
-{% for dev in et112_list %}
-  { addr: {{ dev.address }}, type: "{{ dev.service_type }}" },
-{% endfor %}
-];
-
-async function updateEt112() {
-  for (const dev of ET112_DEVS) {
-    try {
-      const resp = await fetch('/api/v1/et112/' + dev.addr + '/status');
-      if (!resp.ok) continue;
-      const d = await resp.json();
-      const powEl = document.getElementById('ov-et-pow-' + dev.addr);
-      const impEl = document.getElementById('ov-et-imp-' + dev.addr);
-      if (powEl) {
-        powEl.textContent = d.power_w.toFixed(0) + ' W';
-        powEl.className = 'power-hero-val ' + (dev.type === 'pvinverter' ? 'green' : 'orange');
-      }
-      if (impEl) impEl.textContent = (d.energy_import_wh / 1000).toFixed(2) + ' kWh';
-    } catch(e) {}
+// ── Weighted combined SOC ────────────────────────────────────────
+function combinedSoc() {
+  let wSum = 0, cap = 0;
+  for (const addr of BMS_ADDRS) {
+    const b = bmsMap[addr]; if (!b) continue;
+    const c = BMS_CAPS[addr] || 1;
+    wSum += (b.Soc || 0) * c;
+    cap  += c;
   }
+  return cap > 0 ? wSum / cap : 0;
 }
 
-// ── Irradiance gauge ECharts ───────────────────────────────────────────
-const irrHistory = { xs: [], ys: [] };
-let irrGauge = null, irrHist = null;
-
-const irrGaugeDom = document.getElementById('irr-gauge');
-if (irrGaugeDom) {
-  irrGauge = echarts.init(irrGaugeDom);
-  irrGauge.setOption({
+// ── ECharts Gauge ────────────────────────────────────────────────
+const gaugeEl = el('batt-gauge');
+let gauge = null;
+if (gaugeEl) {
+  gauge = echarts.init(gaugeEl);
+  gauge.setOption({
+    backgroundColor: 'transparent',
     series: [{
       type: 'gauge',
-      radius: '92%',
       startAngle: 210, endAngle: -30,
-      min: 0, max: 1200,
-      axisLine: {
-        lineStyle: {
-          width: 14,
-          color: [[0.25,'#2d333b'],[0.65,'rgba(210,153,34,0.7)'],[1,'rgba(248,81,73,0.8)']]
-        }
-      },
-      progress: { show: true, width: 14, roundCap: true, itemStyle: { color: '#d29922' } },
-      pointer: { length: '58%', width: 5, itemStyle: { color: '#d29922' } },
-      axisTick: { show: false },
+      min: 0, max: 100,
+      radius: '90%', center: ['50%', '58%'],
+      pointer: { show: false },
+      progress: { show: true, width: 18, roundCap: true, itemStyle: { color: '#10b981' } },
+      axisLine: { lineStyle: { width: 18, color: [[1, '#161d28']] }, roundCap: true },
       splitLine: { show: false },
+      axisTick:  { show: false },
       axisLabel: { show: false },
-      anchor: { show: true, size: 12, itemStyle: { color: '#d29922' } },
+      title: { show: true, offsetCenter: [0, '30%'], fontSize: 9, color: '#374151', fontFamily: "'JetBrains Mono',monospace" },
       detail: {
-        formatter: '{value} W/m²',
-        fontSize: 18, fontWeight: 800,
-        fontFamily: "'JetBrains Mono', monospace",
-        color: '#d29922',
-        offsetCenter: [0, '70%'],
+        valueAnimation: true, offsetCenter: [0, 0],
+        fontSize: 40, fontWeight: 800, color: '#10b981',
+        fontFamily: "'JetBrains Mono',monospace",
+        formatter: '{value}%',
       },
-      data: [{ value: {% if let Some(wm2) = irradiance_wm2 %}{{ wm2|f0 }}{% else %}0{% endif %} }],
-    }],
-    backgroundColor: 'transparent',
+      data: [{ value: 0, name: 'SOC' }],
+    }]
   });
-  window.addEventListener('resize', () => irrGauge && irrGauge.resize());
 }
 
-const irrHistDom = document.getElementById('irr-hist');
-if (irrHistDom) {
-  irrHist = echarts.init(irrHistDom);
-  irrHist.setOption({
+function setGauge(soc) {
+  if (!gauge) return;
+  const col = soc < 20 ? '#ef4444' : soc < 40 ? '#f97316' : soc < 60 ? '#eab308' : '#10b981';
+  gauge.setOption({
+    series: [{
+      progress: { itemStyle: { color: col } },
+      detail:   { color: col },
+      data:     [{ value: Math.round(soc), name: 'SOC' }],
+    }]
+  });
+}
+
+// ── ECharts History ──────────────────────────────────────────────
+const histEl = el('hist-chart');
+let hist = null;
+if (histEl) {
+  hist = echarts.init(histEl);
+  hist.setOption({
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#21262d',
-      borderColor: '#30363d',
-      textStyle: { color: '#e6edf3', fontSize: 11 },
-      formatter: p => p[0].name + '<br/>Irradiance : <b>' + p[0].value + ' W/m²</b>'
+      backgroundColor: '#161b22', borderColor: '#30363d',
+      textStyle: { color: '#e6edf3', fontSize: 10 },
     },
+    grid: { left: 52, right: 52, top: 12, bottom: 26 },
     xAxis: {
-      type: 'category', data: [],
-      axisLine: { lineStyle: { color: '#30363d' } },
-      axisLabel: { color: '#6e7681', fontSize: 10 },
-      boundaryGap: false,
+      type: 'category', data: [], boundaryGap: false,
+      axisLine: { lineStyle: { color: '#1e2530' } },
+      axisLabel: { color: '#374151', fontSize: 9 },
+      splitLine: { show: false },
     },
-    yAxis: {
-      type: 'value', min: 0,
-      axisLine: { show: false },
-      axisLabel: { color: '#6e7681', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#21262d' } },
-    },
-    series: [{
-      type: 'line', data: [], smooth: true, symbol: 'none',
-      lineStyle: { color: '#d29922', width: 2 },
-      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-        colorStops: [{ offset: 0, color: 'rgba(210,153,34,0.3)' }, { offset: 1, color: 'rgba(210,153,34,0.02)' }]
-      }},
-    }],
-    grid: { left: 40, right: 12, top: 12, bottom: 28 },
+    yAxis: [
+      {
+        type: 'value', name: 'W',
+        nameTextStyle: { color: '#374151', fontSize: 9 },
+        axisLabel: { color: '#374151', fontSize: 9 },
+        axisLine: { show: false },
+        splitLine: { lineStyle: { color: '#161d28' } },
+      },
+      {
+        type: 'value', name: 'SOC%', min: 0, max: 100,
+        nameTextStyle: { color: '#ef4444', fontSize: 9 },
+        axisLabel: { color: '#ef4444', fontSize: 9 },
+        axisLine: { show: false },
+        splitLine: { show: false },
+      }
+    ],
+    series: [
+      { name: 'Solaire', type: 'bar', stack: 'pw', data: [], itemStyle: { color: '#f59e0b' }, barMaxWidth: 10 },
+      { name: 'PAC',     type: 'bar', stack: 'pw', data: [], itemStyle: { color: '#8b5cf6' }, barMaxWidth: 10 },
+      { name: 'Irr.',    type: 'line', yAxisIndex: 0, data: [],
+        smooth: true, symbol: 'none',
+        lineStyle: { color: '#fbbf24', width: 1.5 },
+        areaStyle: { color: 'rgba(251,191,36,0.05)' } },
+      { name: 'SOC%',    type: 'line', yAxisIndex: 1, data: [],
+        smooth: true, symbol: 'none',
+        lineStyle: { color: '#ef4444', width: 2 } },
+    ]
   });
-  window.addEventListener('resize', () => irrHist && irrHist.resize());
 }
 
-async function updateIrradiance() {
+window.addEventListener('resize', () => {
+  gauge && gauge.resize();
+  hist  && hist.resize();
+});
+
+// ── Apply BMS state to UI ────────────────────────────────────────
+function applyBms() {
+  const soc = combinedSoc();
+  setGauge(soc);
+
+  // Per-BMS SOC labels
+  for (const addr of BMS_ADDRS) {
+    const b = bmsMap[addr]; if (!b) continue;
+    set(`bsoc-${addr}`, f0(b.Soc) + '%');
+  }
+
+  // Metrics strip — aggregate all BMS
+  let totalV = 0, totalA = 0, totalW = 0, n = 0;
+  for (const addr of BMS_ADDRS) {
+    const b = bmsMap[addr]; if (!b) continue;
+    const dc = b.Dc || {};
+    totalV += dc.Voltage || 0;
+    totalA += dc.Current || 0;
+    totalW += dc.Power   || 0;
+    n++;
+  }
+  if (n > 0) {
+    set('batt-v', f1(totalV / n) + 'V');
+    const aEl = el('batt-a');
+    if (aEl) {
+      aEl.textContent = (totalA >= 0 ? '+' : '') + f1(totalA) + 'A';
+      aEl.style.color = totalA >= 0 ? '#10b981' : '#f97316';
+    }
+    set('batt-w', f0(totalW) + 'W');
+    set('batt-ts', new Date().toLocaleTimeString('fr-FR'));
+  }
+
+  // Flow SVG BMS values
+  const bArr = BMS_ADDRS.map(a => bmsMap[a]).filter(Boolean);
+  if (bArr[0]) {
+    const dc = bArr[0].Dc || {};
+    set('f-bms1-soc', f0(bArr[0].Soc) + '%');
+    set('f-bms1-pw',  f0(dc.Power) + ' W');
+    set('f-sys-v',  f1(dc.Voltage) + ' V');
+    set('f-sys-a',  (dc.Current >= 0 ? '+' : '') + f1(dc.Current) + ' A');
+    // animate: charge direction
+    const a1 = el('anim-bms1');
+    if (a1 && dc.Current != null) {
+      const charging = dc.Current >= 0;
+      a1.setAttribute('from', charging ? '27' : '0');
+      a1.setAttribute('to',   charging ? '0'  : '27');
+    }
+  }
+  if (bArr[1]) {
+    const dc = bArr[1].Dc || {};
+    set('f-bms2-soc', f0(bArr[1].Soc) + '%');
+    set('f-bms2-pw',  f0(dc.Power) + ' W');
+    const a2 = el('anim-bms2');
+    if (a2 && dc.Current != null) {
+      const charging = dc.Current >= 0;
+      a2.setAttribute('from', charging ? '27' : '0');
+      a2.setAttribute('to',   charging ? '0'  : '27');
+    }
+  }
+}
+
+// ── WebSocket BMS updates ────────────────────────────────────────
+window.onBmsUpdate = function(snaps) {
+  for (const s of snaps) { bmsMap[s.address] = s; }
+  applyBms();
+};
+
+// ── ET112 polling ─────────────────────────────────────────────────
+async function pollEt112() {
+  let solarW = 0, solarKwh = 0, loadW = 0, loadKwh = 0;
+  const ts = new Date().toLocaleTimeString('fr-FR');
+
+  for (const dev of ET112_DEVS) {
+    try {
+      const r = await fetch(`/api/v1/et112/${dev.addr}/status`);
+      if (!r.ok) continue;
+      const d = await r.json();
+      et112Map[dev.addr] = d;
+
+      const kwh = (d.energy_import_wh || 0) / 1000;
+      set(`et-pw-${dev.addr}`, f0(d.power_w) + ' W');
+
+      if (dev.type === 'pvinverter') {
+        solarW   += d.power_w || 0;
+        solarKwh += kwh;
+      } else if (dev.type === 'heatpump') {
+        loadW    += d.power_w || 0;
+        loadKwh  += kwh;
+      }
+    } catch(_) {}
+  }
+
+  // Update solar panel
+  set('solar-w',    f0(solarW));
+  set('solar-kwh',  solarKwh.toFixed(2));
+  set('solar-ts',   ts);
+  set('f-solar-w',  f0(solarW) + ' W');
+
+  // Update loads panel
+  set('loads-w',   f0(loadW));
+  set('loads-kwh', loadKwh.toFixed(1));
+  set('loads-ts',  ts);
+  set('f-loads-w',  f0(loadW) + ' W');
+  set('f-loads-kwh', loadKwh.toFixed(1) + ' kWh');
+
+  return { solarW, loadW, solarKwh };
+}
+
+// ── Irradiance polling ───────────────────────────────────────────
+async function pollIrr() {
   try {
-    const resp = await fetch('/api/v1/irradiance/status');
-    if (!resp.ok) return;
-    const d = await resp.json();
-    if (!d.connected) return;
-    const wm2 = d.irradiance_wm2;
-    const ts   = new Date(d.timestamp).toLocaleTimeString('fr-FR');
-    const tsEl = document.getElementById('irr-ts');
-    const lblEl = document.getElementById('irr-val-label');
-    if (tsEl)  tsEl.textContent  = ts;
-    if (lblEl) lblEl.textContent = wm2.toFixed(0) + ' W/m²';
-    if (irrGauge) irrGauge.setOption({ series: [{ data: [{ value: wm2.toFixed(0) }] }] });
-    irrHistory.xs.push(ts);
-    irrHistory.ys.push(wm2.toFixed(1));
-    if (irrHistory.xs.length > 60) { irrHistory.xs.shift(); irrHistory.ys.shift(); }
-    if (irrHist) irrHist.setOption({ xAxis: { data: irrHistory.xs }, series: [{ data: irrHistory.ys }] });
-  } catch(e) {}
+    const r = await fetch('/api/v1/irradiance/status');
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.connected) return 0;
+    irrWm2 = d.irradiance_wm2;
+    set('irr-w',    f0(irrWm2));
+    set('solar-ts', new Date().toLocaleTimeString('fr-FR'));
+    set('f-irr',    f0(irrWm2) + ' W/m²');
+    return irrWm2;
+  } catch(_) { return null; }
 }
 
-updateEt112();
-updateIrradiance();
-setInterval(updateEt112,    5000);
-setInterval(updateIrradiance, 10000);
+// ── Full refresh cycle ───────────────────────────────────────────
+async function refresh() {
+  const [et112, irrVal] = await Promise.all([pollEt112(), pollIrr()]);
+  set('flow-ts', new Date().toLocaleTimeString('fr-FR'));
+
+  // Feed rolling history
+  const t    = new Date().toLocaleTimeString('fr-FR');
+  const soc  = combinedSoc();
+  const solW = et112 ? et112.solarW : 0;
+  const ldW  = et112 ? et112.loadW  : 0;
+
+  hTime .push(t);    if (hTime .length > MAX_PTS) hTime .shift();
+  hSolar.push(Math.round(solW));    if (hSolar.length > MAX_PTS) hSolar.shift();
+  hLoad .push(Math.round(ldW));     if (hLoad .length > MAX_PTS) hLoad .shift();
+  hSoc  .push(+soc.toFixed(1));    if (hSoc  .length > MAX_PTS) hSoc  .shift();
+  hIrr  .push(irrVal != null ? Math.round(irrVal) : null);
+                                    if (hIrr  .length > MAX_PTS) hIrr  .shift();
+
+  if (hist) {
+    hist.setOption({
+      xAxis:  { data: hTime },
+      series: [
+        { data: hSolar },
+        { data: hLoad  },
+        { data: hIrr   },
+        { data: hSoc   },
+      ]
+    });
+  }
+}
+
+// ── Boot ─────────────────────────────────────────────────────────
+refresh();
+setInterval(refresh, 5000);
 </script>
 {% endblock %}
