@@ -208,4 +208,148 @@ Contrôle à distance → double ouverture
    `03 06 27 00 00 FF C2 DC`
 
 ---
+# =====================================================================
+# CHINT ATS - Registres Modbus détectés (adresse 6)
+# D'après le fichier CHINT-NXZBN-63S-2DT.pdf
+# Trames de lecture (fonction 03) avec CRC inclus
+# Adresse Modbus du device : 6 (0x06)
+# =====================================================================
+
+# ----- Tensions et mesures (lecture seule) -----
+
+# 0x0006 : Tension phase A - Source I (UINT, V)
+# Réponse : 232V (0x00E8)
+Adresse: 6 | Registre: 0x0006 | Trame: 06 03 00 06 00 01 25 F4
+Signification: Tension phase A (Source I) = 232V
+
+# 0x0007 : Tension phase B - Source I (UINT, V)
+# Réponse : 232V (0x00E8)
+Adresse: 6 | Registre: 0x0007 | Trame: 06 03 00 07 00 01 74 34
+Signification: Tension phase B (Source I) = 232V
+
+# 0x0008 : Tension phase C - Source I (UINT, V)
+# Réponse : 232V (0x00E8)
+Adresse: 6 | Registre: 0x0008 | Trame: 06 03 00 08 00 01 35 F4
+Signification: Tension phase C (Source I) = 232V
+
+# 0x0009 : Tension phase A - Source II (UINT, V)
+# Réponse : 0V (0x0000)
+Adresse: 6 | Registre: 0x0009 | Trame: 06 03 00 09 00 01 64 34
+Signification: Tension phase A (Source II) = 0V
+
+# 0x000A : Tension phase B - Source II (UINT, V)
+# Réponse : 0V (0x0000)
+Adresse: 6 | Registre: 0x000A | Trame: 06 03 00 0A 00 01 25 F5
+Signification: Tension phase B (Source II) = 0V
+
+# 0x000B : Tension phase C - Source II (UINT, V)
+# Réponse : 0V (0x0000)
+Adresse: 6 | Registre: 0x000B | Trame: 06 03 00 0B 00 01 74 35
+Signification: Tension phase C (Source II) = 0V
+
+# 0x000C : Version logicielle (UINT)
+# Réponse : 256 (0x0100) = version 1.00
+Adresse: 6 | Registre: 0x000C | Trame: 06 03 00 0C 00 01 45 F5
+Signification: Version logicielle = 1.00
+
+# 0x000E : Parité Modbus (UINT, R/W)
+# Réponse : 2 (0x0002) = Even (parité paire)
+Adresse: 6 | Registre: 0x000E | Trame: 06 03 00 0E 00 01 C5 F4
+Signification: Parité = 2 (Even / paire)
+
+# ----- Tensions maximales enregistrées -----
+
+# 0x000F : Tension max phase A - Source I (UINT, V)
+# Réponse : 289V (0x0121)
+Adresse: 6 | Registre: 0x000F | Trame: 06 03 00 0F 00 01 94 34
+Signification: Tension max phase A (Source I) = 289V
+
+# 0x0010 : Tension max phase B - Source I (UINT, V)
+# Réponse : 289V (0x0121)
+Adresse: 6 | Registre: 0x0010 | Trame: 06 03 00 10 00 01 D5 F5
+Signification: Tension max phase B (Source I) = 289V
+
+# 0x0011 : Tension max phase C - Source I (UINT, V)
+# Réponse : 290V (0x0122)
+Adresse: 6 | Registre: 0x0011 | Trame: 06 03 00 11 00 01 84 35
+Signification: Tension max phase C (Source I) = 290V
+
+# 0x0012 : Tension max phase A - Source II (UINT, V)
+# Réponse : 244V (0x00F4)
+Adresse: 6 | Registre: 0x0012 | Trame: 06 03 00 12 00 01 C5 F4
+Signification: Tension max phase A (Source II) = 244V
+
+# 0x0013 : Tension max phase B - Source II (UINT, V)
+# Réponse : 243V (0x00F3)
+Adresse: 6 | Registre: 0x0013 | Trame: 06 03 00 13 00 01 94 34
+Signification: Tension max phase B (Source II) = 243V
+
+# 0x0014 : Tension max phase C - Source II (UINT, V)
+# Réponse : 241V (0x00F1)
+Adresse: 6 | Registre: 0x0014 | Trame: 06 03 00 14 00 01 D5 F5
+Signification: Tension max phase C (Source II) = 241V
+
+# ----- Compteurs et statistiques -----
+
+# 0x0015 : Nombre de commutations - Source I (UINT)
+# Réponse : 1 (0x0001)
+Adresse: 6 | Registre: 0x0015 | Trame: 06 03 00 15 00 01 84 35
+Signification: Nombre de commutations Source I = 1
+
+# 0x0016 : Nombre de commutations - Source II (UINT)
+# Réponse : 0 (0x0000)
+Adresse: 6 | Registre: 0x0016 | Trame: 06 03 00 16 00 01 C5 F4
+Signification: Nombre de commutations Source II = 0
+
+# 0x0017 : Temps de fonctionnement total (UINT, heures)
+# Réponse : 0 (0x0000)
+Adresse: 6 | Registre: 0x0017 | Trame: 06 03 00 17 00 01 94 34
+Signification: Temps de fonctionnement = 0 heures (s'efface à la coupure)
+
+# ----- États et commandes -----
+
+# 0x004F : État des sources (UINT, R)
+# Réponse : 21 (0x0015) = 00010101 en binaire
+Adresse: 6 | Registre: 0x004F | Trame: 06 03 00 4F 00 01 75 F4
+Signification: État des sources (voir tableau bits du PDF)
+
+# 0x0050 : État du commutateur (UINT, R)
+# Réponse : 17 (0x0011) = 00010001 en binaire
+Adresse: 6 | Registre: 0x0050 | Trame: 06 03 00 50 00 01 44 BE
+Signification: État du commutateur (voir tableau bits du PDF)
+
+# ----- Paramètres de communication -----
+
+# 0x0100 : Adresse Modbus (UINT, R/W)
+# Réponse : 3 (0x0003) - Adresse actuelle du device
+Adresse: 6 | Registre: 0x0100 | Trame: 06 03 01 00 00 01 85 F5
+Signification: Adresse Modbus = 3 (avant modification) ou 6 (après)
+
+# 0x0101 : Vitesse de communication (UINT, R/W)
+# Réponse : 1 (0x0001) = 9600 bps
+Adresse: 6 | Registre: 0x0101 | Trame: 06 03 01 01 00 01 D4 35
+Signification: Baud rate = 1 (9600 bps)
+
+# =====================================================================
+# NOTES D'APRÈS LE PDF CHINT :
+# =====================================================================
+# 
+# Registre 0x000D (fréquence) - Non listé dans ton scan car probablement
+# réservé aux modèles NXZ(H)MN / NZ5(H)M uniquement
+#
+# Registres de réglage (R/W) disponibles sur NXZ(H)MN / NZ5(H)M :
+# - 0x2065 : Seuil sous-tension Source I (150-200V)
+# - 0x2066 : Seuil sous-tension Source II (150-200V)
+# - 0x2067 : Seuil surtension Source I (240-290V)
+# - 0x2068 : Seuil surtension Source II (240-290V)
+# - 0x2069 : Temps de transfert T1
+# - 0x206A : Temps de retour T2
+# - 0x206D : Mode de fonctionnement
+#
+# Registres de commande (écriture seule) :
+# - 0x2700 : Commande de forçage (0x0000=SourceI, 0x00AA=SourceII, 0x00FF=Double)
+# - 0x2800 : Commande de contrôle (0x0004=Remote ON, 0x0000=Remote OFF)
+#
+# =====================================================================
+
 
