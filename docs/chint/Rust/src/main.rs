@@ -13,7 +13,7 @@ use chrono::Local;
 struct AppState {
     port_name: Mutex<String>,
     debug_log: Mutex<bool>,
-    model_type: Mutex<String>,  // "MN", "BN", "unknown"
+    model_type: Mutex<String>,
 }
 
 #[derive(Serialize)]
@@ -111,7 +111,6 @@ fn read_register(port_name: &str, addr: u8, reg: u16, debug: bool) -> Option<u16
             if debug {
                 write_debug_log(&format!("📥 READ REG 0x{:04X} | Réponse: {}", reg, resp.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ")), debug);
             }
-            // Vérifier si c'est une erreur Modbus (fonction 0x83)
             if resp[1] == 0x83 {
                 if debug { write_debug_log(&format!("⚠️ Erreur Modbus: code {}", resp[2]), debug); }
                 return None;
@@ -166,7 +165,6 @@ fn write_register(port_name: &str, addr: u8, reg: u16, value: u16, debug: bool) 
             if debug {
                 write_debug_log(&format!("📥 WRITE REG 0x{:04X} | Réponse: {}", reg, resp.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" ")), debug);
             }
-            // Vérifier si c'est une erreur Modbus (fonction 0x86)
             if resp[1] == 0x86 {
                 if debug { write_debug_log(&format!("⚠️ Erreur écriture Modbus: code {}", resp[2]), debug); }
                 return false;
@@ -178,12 +176,12 @@ fn write_register(port_name: &str, addr: u8, reg: u16, value: u16, debug: bool) 
 }
 
 // Détection du modèle
-fn detect_model(port_name: &str, addr: u8, debug: bool) -> String {
-    // Test registre MN (0x2065) - si existe, c'est un modèle MN
+fn detect_model(port_name: &str, addr: u8, _debug: bool) -> String {
     if let Some(_) = read_register(port_name, addr, 0x2065, false) {
-        return "MN".to_string();
+        "MN".to_string()
+    } else {
+        "BN".to_string()
     }
-    "BN".to_string()  // Modèle BN (base)
 }
 
 // ==================== API ROUTES ====================
@@ -203,7 +201,7 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
     let fmt_h = |x: u16| format!("{} h", x);
     let fmt_s = |x: u16| format!("{} s", x);
     
-    // Registres de base (tous modèles)
+    // Registres de base
     let regs: Vec<(u16, &str, Box<dyn Fn(u16) -> String>)> = vec![
         (0x0006, "v1a", Box::new(fmt_v)),
         (0x0007, "v1b", Box::new(fmt_v)),
@@ -320,7 +318,7 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
         }.to_string());
     }
     
-    // Tensions maximales (pour BN aussi)
+    // Tensions maximales
     let max_regs = vec![
         (0x000F, "max1a"), (0x0010, "max1b"), (0x0011, "max1c"),
         (0x0012, "max2a"), (0x0013, "max2b"), (0x0014, "max2c"),
@@ -422,7 +420,7 @@ async fn force_source2(data: web::Data<Mutex<AppState>>) -> impl Responder {
     }))
 }
 
-// ==================== ROUTES DE RÉGLAGE (seulement si modèle MN) ====================
+// ==================== ROUTES DE RÉGLAGE (MN uniquement) ====================
 
 async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
     let state = data.lock().unwrap();
@@ -434,7 +432,7 @@ async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<R
     if model != "MN" {
         return HttpResponse::Ok().json(serde_json::json!({
             "success": false,
-            "error": "Cette fonction n'est pas disponible sur ce modèle (BN)"
+            "error": "Cette fonction n'est pas disponible sur ce modèle"
         }));
     }
     
@@ -460,7 +458,134 @@ async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<R
     }))
 }
 
-// ... (autres fonctions de réglage similaires avec vérification model)
+async fn set_undervoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let debug = *state.debug_log.lock().unwrap();
+    let model = state.model_type.lock().unwrap().clone();
+    let value = query.value;
+    
+    if model != "MN" {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Cette fonction n'est pas disponible sur ce modèle"
+        }));
+    }
+    
+    let remote_status = read_register(&port_name, 6, 0x0050, debug).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande"
+        }));
+    }
+    
+    if value < 150 || value > 200 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 150 et 200 V"
+        }));
+    }
+    
+    let success = write_register(&port_name, 6, 0x2066, value, debug);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Sous-tension Source II réglée à {} V", value)
+    }))
+}
+
+async fn set_overvoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let debug = *state.debug_log.lock().unwrap();
+    let model = state.model_type.lock().unwrap().clone();
+    let value = query.value;
+    
+    if model != "MN" {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Cette fonction n'est pas disponible sur ce modèle"
+        }));
+    }
+    
+    let remote_status = read_register(&port_name, 6, 0x0050, debug).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande"
+        }));
+    }
+    
+    if value < 240 || value > 290 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 240 et 290 V"
+        }));
+    }
+    
+    let success = write_register(&port_name, 6, 0x2067, value, debug);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Surtension Source I réglée à {} V", value)
+    }))
+}
+
+async fn set_overvoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let debug = *state.debug_log.lock().unwrap();
+    let model = state.model_type.lock().unwrap().clone();
+    let value = query.value;
+    
+    if model != "MN" {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Cette fonction n'est pas disponible sur ce modèle"
+        }));
+    }
+    
+    let remote_status = read_register(&port_name, 6, 0x0050, debug).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande"
+        }));
+    }
+    
+    if value < 240 || value > 290 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 240 et 290 V"
+        }));
+    }
+    
+    let success = write_register(&port_name, 6, 0x2068, value, debug);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Surtension Source II réglée à {} V", value)
+    }))
+}
+
+async fn debug_on(data: web::Data<Mutex<AppState>>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let mut debug = state.debug_log.lock().unwrap();
+    *debug = true;
+    write_debug_log("=== DEBUG ACTIVÉ ===", true);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": true,
+        "message": "Mode debug activé"
+    }))
+}
+
+async fn debug_off(data: web::Data<Mutex<AppState>>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let mut debug = state.debug_log.lock().unwrap();
+    *debug = false;
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": true,
+        "message": "Mode debug désactivé"
+    }))
+}
 
 async fn index() -> impl Responder {
     NamedFile::open_async("index.html").await.unwrap()
@@ -470,24 +595,21 @@ async fn index() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Détection du modèle au démarrage
     let port_name = "COM5";
     let addr = 6;
-    let debug = false;
     
     println!("========================================");
     println!("  CHINT ATS - Serveur Rust v2");
     println!("  Port: COM5 | 9600 Even | Adresse 6");
     println!("  Détection du modèle en cours...");
     
-    // Test registre MN (0x2065)
-    let model = if let Some(_) = read_register(port_name, addr, 0x2065, false) {
-        println!("  ✅ Modèle détecté: MN (série complète avec réglages)");
-        "MN".to_string()
+    let model = detect_model(port_name, addr, false);
+    println!("  ✅ Modèle détecté: {}", model);
+    if model == "BN" {
+        println!("  ℹ️  Modèle BN (série de base) - réglages de seuils non disponibles");
     } else {
-        println!("  ✅ Modèle détecté: BN (série de base, réglages non disponibles)");
-        "BN".to_string()
-    };
+        println!("  ℹ️  Modèle MN (série complète) - tous les réglages disponibles");
+    }
     
     println!("  Ouvrez http://localhost:5000");
     println!("  Actualisation automatique toutes les 5s");
@@ -508,9 +630,10 @@ async fn main() -> std::io::Result<()> {
             .route("/api/remote_off", web::get().to(remote_off))
             .route("/api/force_double", web::get().to(force_double))
             .route("/api/force_source1", web::get().to(force_source1))
-            .route("/api/force_source2", web::get().to(force_source2));
+            .route("/api/force_source2", web::get().to(force_source2))
+            .route("/api/debug_on", web::get().to(debug_on))
+            .route("/api/debug_off", web::get().to(debug_off));
         
-        // N'ajouter les routes de réglage que si le modèle le supporte
         let model = app_state.lock().unwrap().model_type.lock().unwrap().clone();
         if model == "MN" {
             app = app
