@@ -44,3 +44,8 @@ except serial.SerialException as e:
     print(f"❌ Erreur port série: {e}")
 except Exception as e:
     print(f"❌ Erreur: {e}")
+
+# python mini.py
+# ✅ Port COM5 ouvert avec 9600 Even 8N1
+# 📤 Envoi: 0603004F0001B46A
+# 📥 Réponse reçue (7 octets): 0603020015CC4B
