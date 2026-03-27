@@ -11,11 +11,17 @@ cd chint_ats
 
 C:\chint_ats\          ← Dossier du projet
 │
-├── Cargo.toml                      ← Fichier de configuration (ici !)
+
+├── Cargo.toml                      ← Fichier de configuration
+
 │
+
 ├── src\
-│   └── main.rs                     ← Ton code Rust
+
+│   └── main.rs                     ← code Rust
+
 │
-└── index.html                      ← Fichier HTML (à la racine)
+
+└── index.html                      ← Fichier HTML
 
 http://localhost:5000
