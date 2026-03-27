@@ -4,69 +4,103 @@ import time
 PORT = 'COM5'
 BAUDRATE = 9600
 
-# Trames à tester (adresse 6)
+def calculate_crc(data):
+    """Calcule le CRC16 Modbus pour un tableau d'octets"""
+    crc = 0xFFFF
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            if crc & 0x0001:
+                crc = (crc >> 1) ^ 0xA001
+            else:
+                crc >>= 1
+    return crc
+
+def build_frame(addr, func, reg, value=None):
+    """Construit une trame Modbus avec CRC"""
+    if func == 0x03:  # Lecture
+        data = bytes([addr, func, (reg >> 8) & 0xFF, reg & 0xFF, 0x00, 0x01])
+    elif func == 0x06:  # Écriture
+        data = bytes([addr, func, (reg >> 8) & 0xFF, reg & 0xFF, (value >> 8) & 0xFF, value & 0xFF])
+    else:
+        return None
+    
+    crc = calculate_crc(data)
+    return data + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+
+# Construction des trames avec la fonction
+ADDR = 6
+
 COMMANDS = {
-    "État sources": bytes([0x06, 0x03, 0x00, 0x4F, 0x00, 0x01, 0xB4, 0x6A]),
-    "État commutateur": bytes([0x06, 0x03, 0x00, 0x50, 0x00, 0x01, 0x44, 0xBE]),
-    "Tension A Source I": bytes([0x06, 0x03, 0x00, 0x06, 0x00, 0x01, 0x25, 0xF4]),
-    "Tension B Source I": bytes([0x06, 0x03, 0x00, 0x07, 0x00, 0x01, 0x74, 0x34]),
-    "Tension C Source I": bytes([0x06, 0x03, 0x00, 0x08, 0x00, 0x01, 0x35, 0xF4]),
-    "Version logicielle": bytes([0x06, 0x03, 0x00, 0x0C, 0x00, 0x01, 0x45, 0xF5]),
-    "Adresse Modbus": bytes([0x06, 0x03, 0x01, 0x00, 0x00, 0x01, 0x85, 0xF5]),
-    "Parité": bytes([0x06, 0x03, 0x00, 0x0E, 0x00, 0x01, 0xC5, 0xF4]),
+    "État sources (0x004F)": build_frame(ADDR, 0x03, 0x004F),
+    "État commutateur (0x0050)": build_frame(ADDR, 0x03, 0x0050),
+    "Tension A Source I (0x0006)": build_frame(ADDR, 0x03, 0x0006),
+    "Tension B Source I (0x0007)": build_frame(ADDR, 0x03, 0x0007),
+    "Tension C Source I (0x0008)": build_frame(ADDR, 0x03, 0x0008),
+    "Version logicielle (0x000C)": build_frame(ADDR, 0x03, 0x000C),
+    "Adresse Modbus (0x0100)": build_frame(ADDR, 0x03, 0x0100),
+    "Parité (0x000E)": build_frame(ADDR, 0x03, 0x000E),
 }
 
-# Commandes d'écriture (nécessitent télécommande activée d'abord)
 WRITE_COMMANDS = {
-    "Activer télécommande": bytes([0x06, 0x06, 0x28, 0x00, 0x00, 0x04, 0x49, 0x14]),
-    "Désactiver télécommande": bytes([0x06, 0x06, 0x28, 0x00, 0x00, 0x00, 0x48, 0xD4]),
-    "Forcer double": bytes([0x06, 0x06, 0x27, 0x00, 0x00, 0xFF, 0x83, 0x91]),
-    "Forcer Source I": bytes([0x06, 0x06, 0x27, 0x00, 0x00, 0x00, 0x43, 0xD1]),
-    "Forcer Source II": bytes([0x06, 0x06, 0x27, 0x00, 0x00, 0xAA, 0xC3, 0x98]),
+    "Activer télécommande": build_frame(ADDR, 0x06, 0x2800, 0x0004),
+    "Désactiver télécommande": build_frame(ADDR, 0x06, 0x2800, 0x0000),
+    "Forcer double": build_frame(ADDR, 0x06, 0x2700, 0x00FF),
+    "Forcer Source I": build_frame(ADDR, 0x06, 0x2700, 0x0000),
+    "Forcer Source II": build_frame(ADDR, 0x06, 0x2700, 0x00AA),
 }
 
-ser = serial.Serial(PORT, BAUDRATE, bytesize=8, parity='E', stopbits=1, timeout=1)
-time.sleep(0.5)
+print("=" * 70)
+print("  TEST MODBUS RTU - CHINT ATS")
+print(f"  Port: {PORT} | 9600 Even 8N1 | Adresse: {ADDR}")
+print("=" * 70)
 
-print("=" * 60)
-print("TEST DES COMMANDES DE LECTURE")
-print("=" * 60)
-
-for name, frame in COMMANDS.items():
-    print(f"\n📋 {name}:")
-    print(f"   Envoi: {frame.hex().upper()}")
+try:
+    ser = serial.Serial(PORT, BAUDRATE, bytesize=8, parity='E', stopbits=1, timeout=1.5)
+    time.sleep(0.3)
+    print("✅ Port série ouvert\n")
     
-    ser.write(frame)
-    time.sleep(0.1)
-    response = ser.read(256)
+    print("📖 LECTURES:")
+    print("-" * 70)
     
-    if response:
-        print(f"   ✅ Réponse: {response.hex().upper()}")
-        if len(response) >= 5:
-            value = (response[3] << 8) | response[4]
-            print(f"   📊 Valeur: {value} (0x{value:04X})")
-    else:
-        print(f"   ❌ TIMEOUT - Pas de réponse")
-
-print("\n" + "=" * 60)
-print("TEST DES COMMANDES D'ÉCRITURE")
-print("=" * 60)
-print("⚠️  Note: Certaines commandes peuvent ne pas répondre si la télécommande n'est pas activée")
-print("=" * 60)
-
-for name, frame in WRITE_COMMANDS.items():
-    print(f"\n📋 {name}:")
-    print(f"   Envoi: {frame.hex().upper()}")
+    for name, frame in COMMANDS.items():
+        print(f"\n🔍 {name}")
+        print(f"   Trame: {frame.hex().upper()}")
+        
+        ser.write(frame)
+        time.sleep(0.25)
+        response = ser.read(256)
+        
+        if response and len(response) >= 5:
+            print(f"   ✅ Réponse: {response.hex().upper()}")
+            if response[1] == 0x03 and len(response) >= 5:
+                value = (response[3] << 8) | response[4]
+                print(f"   📊 Valeur: {value} (0x{value:04X})")
+        else:
+            print(f"   ❌ PAS DE RÉPONSE")
     
-    ser.write(frame)
-    time.sleep(0.1)
-    response = ser.read(256)
+    print("\n" + "=" * 70)
+    print("✍️ ÉCRITURES (nécessite télécommande activée au préalable)")
+    print("-" * 70)
     
-    if response:
-        print(f"   ✅ Réponse: {response.hex().upper()}")
-    else:
-        print(f"   ❌ TIMEOUT - Pas de réponse")
-
-ser.close()
-print("\n" + "=" * 60)
-print("Test terminé")
+    for name, frame in WRITE_COMMANDS.items():
+        print(f"\n🔧 {name}")
+        print(f"   Trame: {frame.hex().upper()}")
+        
+        ser.write(frame)
+        time.sleep(0.25)
+        response = ser.read(256)
+        
+        if response:
+            print(f"   ✅ Réponse: {response.hex().upper()}")
+        else:
+            print(f"   ❌ PAS DE RÉPONSE")
+    
+    ser.close()
+    print("\n" + "=" * 70)
+    print("✅ Test terminé")
+    
+except serial.SerialException as e:
+    print(f"❌ Erreur port série: {e}")
+except Exception as e:
+    print(f"❌ Erreur: {e}")
