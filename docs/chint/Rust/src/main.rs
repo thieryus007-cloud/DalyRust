@@ -1,6 +1,6 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use actix_files::NamedFile;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use std::sync::Mutex;
 use std::time::Duration;
 use serialport::{self, SerialPort};
@@ -18,6 +18,11 @@ struct ModbusResponse {
     success: bool,
     values: std::collections::HashMap<String, String>,
     error: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct RegValue {
+    value: u16,
 }
 
 // ==================== FONCTIONS MODBUS ====================
@@ -124,14 +129,11 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
     let mut values = std::collections::HashMap::new();
     let addr = 6u8;
     
-    // Formateurs
     let fmt_v = |x: u16| format!("{} V", x);
     let fmt_ver = |x: u16| format!("{:.2}", x as f32 / 100.0);
     let fmt_cnt = |x: u16| x.to_string();
     let fmt_h = |x: u16| format!("{} h", x);
-    let fmt_s = |x: u16| format!("{} s", x);
     
-    // ===== LECTURES DE BASE =====
     let regs: Vec<(u16, &str, Box<dyn Fn(u16) -> String>)> = vec![
         (0x0006, "v1a", Box::new(fmt_v)),
         (0x0007, "v1b", Box::new(fmt_v)),
@@ -143,6 +145,14 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
         (0x0015, "cnt1", Box::new(fmt_cnt)),
         (0x0016, "cnt2", Box::new(fmt_cnt)),
         (0x0017, "runtime", Box::new(fmt_h)),
+        (0x2065, "uv1", Box::new(fmt_v)),
+        (0x2066, "uv2", Box::new(fmt_v)),
+        (0x2067, "ov1", Box::new(fmt_v)),
+        (0x2068, "ov2", Box::new(fmt_v)),
+        (0x2069, "t1", Box::new(|x| format!("{} s", x))),
+        (0x206A, "t2", Box::new(|x| format!("{} s", x))),
+        (0x206B, "t3", Box::new(|x| format!("{} s", x))),
+        (0x206C, "t4", Box::new(|x| format!("{} s", x))),
     ];
     
     for (reg, key, formatter) in regs {
@@ -153,32 +163,34 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
         }
     }
     
-    // ===== TENSIONS MAXIMALES =====
-    let max_regs: Vec<(u16, &str)> = vec![
+    // Tensions maximales
+    let max_regs = vec![
         (0x000F, "max1a"), (0x0010, "max1b"), (0x0011, "max1c"),
         (0x0012, "max2a"), (0x0013, "max2b"), (0x0014, "max2c"),
     ];
-    
     for (reg, key) in max_regs {
         if let Some(val) = read_register(&port_name, addr, reg) {
             values.insert(key.to_string(), format!("{} V", val));
-        } else {
-            values.insert(key.to_string(), "---".to_string());
         }
     }
-    
-    // ===== FRÉQUENCE (0x000D) =====
-    if let Some(freq) = read_register(&port_name, addr, 0x000D) {
-        let f1 = (freq >> 8) & 0xFF;
-        let f2 = freq & 0xFF;
-        values.insert("freq1".to_string(), format!("{} Hz", f1));
-        values.insert("freq2".to_string(), format!("{} Hz", f2));
-    } else {
-        values.insert("freq1".to_string(), "---".to_string());
-        values.insert("freq2".to_string(), "---".to_string());
+    if let (Some(a), Some(b), Some(c)) = (
+        values.get("max1a"), values.get("max1b"), values.get("max1c")
+    ) {
+        values.insert("max1".to_string(), format!("{}/{}/{}", a, b, c));
+    }
+    if let (Some(a), Some(b), Some(c)) = (
+        values.get("max2a"), values.get("max2b"), values.get("max2c")
+    ) {
+        values.insert("max2".to_string(), format!("{}/{}/{}", a, b, c));
     }
     
-    // ===== ÉTAT DES SOURCES (0x004F) =====
+    // Fréquence
+    if let Some(freq) = read_register(&port_name, addr, 0x000D) {
+        values.insert("freq1".to_string(), format!("{} Hz", (freq >> 8) & 0xFF));
+        values.insert("freq2".to_string(), format!("{} Hz", freq & 0xFF));
+    }
+    
+    // État des sources
     if let Some(power) = read_register(&port_name, addr, 0x004F) {
         let decode = |bit: u8| -> String {
             match (power >> bit) & 0x03 {
@@ -194,118 +206,44 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
         values.insert("s2a".to_string(), decode(0));
         values.insert("s2b".to_string(), decode(2));
         values.insert("s2c".to_string(), decode(4));
-    } else {
-        for k in ["s1a", "s1b", "s1c", "s2a", "s2b", "s2c"] {
-            values.insert(k.to_string(), "---".to_string());
-        }
     }
     
-    // ===== ÉTAT DU COMMUTATEUR (0x0050) =====
+    // État commutateur
     if let Some(switch) = read_register(&port_name, addr, 0x0050) {
         values.insert("sw1".to_string(), if switch & 0x02 != 0 { "✅ Fermé" } else { "⭕ Ouvert" }.to_string());
         values.insert("sw2".to_string(), if switch & 0x04 != 0 { "✅ Fermé" } else { "⭕ Ouvert" }.to_string());
-        values.insert("swMid".to_string(), if switch & 0x08 != 0 { "⚠️ Oui" } else { "⭕ Non" }.to_string());
-        values.insert("swMode".to_string(), if switch & 0x01 != 0 { "🤖 Automatique" } else { "👆 Manuel" }.to_string());
+        values.insert("swMode".to_string(), if switch & 0x01 != 0 { "🤖 Auto" } else { "👆 Manuel" }.to_string());
         values.insert("swRemote".to_string(), if switch & 0x0100 != 0 { "📡 Activé" } else { "🔒 Désactivé" }.to_string());
-        values.insert("swGen".to_string(), if switch & 0x10 != 0 { "🟢 Marche" } else { "🔴 Arrêt" }.to_string());
-        
-        // Type de défaut
         let fault = (switch >> 4) & 0x07;
-        let fault_str = match fault {
-            0 => "Aucun",
-            1 => "消防联动 (Fire)",
-            2 => "电机超时 (Motor timeout)",
-            3 => "电源I跳闸 (Trip I)",
-            4 => "电源II跳闸 (Trip II)",
-            5 => "合闸信号异常 (Close signal)",
-            6 => "电源I相序异常 (Phase order I)",
-            7 => "电源II相序异常 (Phase order II)",
+        values.insert("swFault".to_string(), match fault {
+            0 => "Aucun", 1 => "消防联动", 2 => "电机超时", 3 => "电源I跳闸",
+            4 => "电源II跳闸", 5 => "合闸信号异常", 6 => "相序异常 I", 7 => "相序异常 II",
             _ => "Inconnu",
-        };
-        values.insert("swFault".to_string(), fault_str.to_string());
-    } else {
-        for k in ["sw1", "sw2", "swMid", "swMode", "swRemote", "swGen", "swFault"] {
-            values.insert(k.to_string(), "---".to_string());
-        }
+        }.to_string());
     }
     
-    // ===== PARAMÈTRES MODBUS =====
+    // Mode fonctionnement
+    if let Some(mode) = read_register(&port_name, addr, 0x206D) {
+        values.insert("operation_mode".to_string(), match mode {
+            0 => "自投自复", 1 => "自投不自复", 2 => "互为备用",
+            3 => "发电机模式", 4 => "发电机不自复", 5 => "发电机备用",
+            _ => "Inconnu",
+        }.to_string());
+    }
+    
+    // Configuration Modbus
     if let Some(addr_val) = read_register(&port_name, addr, 0x0100) {
         values.insert("modbus_addr".to_string(), addr_val.to_string());
-    } else {
-        values.insert("modbus_addr".to_string(), "---".to_string());
     }
-    
     if let Some(baud) = read_register(&port_name, addr, 0x0101) {
-        let baud_str = match baud {
-            0 => "4800",
-            1 => "9600",
-            2 => "19200",
-            3 => "38400",
-            _ => "Inconnu",
-        };
-        values.insert("modbus_baud".to_string(), baud_str.to_string());
-    } else {
-        values.insert("modbus_baud".to_string(), "---".to_string());
+        values.insert("modbus_baud".to_string(), match baud {
+            0 => "4800", 1 => "9600", 2 => "19200", 3 => "38400", _ => "?",
+        }.to_string());
     }
-    
     if let Some(parity) = read_register(&port_name, addr, 0x000E) {
-        let parity_str = match parity {
-            0 => "None",
-            1 => "Odd",
-            2 => "Even",
-            _ => "Inconnu",
-        };
-        values.insert("modbus_parity".to_string(), parity_str.to_string());
-    } else {
-        values.insert("modbus_parity".to_string(), "---".to_string());
-    }
-    
-    // ===== PARAMÈTRES DE RÉGLAGE (NXZ(H)MN uniquement) =====
-    // Seuils sous-tension (150-200V)
-    if let Some(uv1) = read_register(&port_name, addr, 0x2065) {
-        values.insert("uv1".to_string(), format!("{} V", uv1));
-    }
-    if let Some(uv2) = read_register(&port_name, addr, 0x2066) {
-        values.insert("uv2".to_string(), format!("{} V", uv2));
-    }
-    
-    // Seuils surtension (240-290V)
-    if let Some(ov1) = read_register(&port_name, addr, 0x2067) {
-        values.insert("ov1".to_string(), format!("{} V", ov1));
-    }
-    if let Some(ov2) = read_register(&port_name, addr, 0x2068) {
-        values.insert("ov2".to_string(), format!("{} V", ov2));
-    }
-    
-    // Temporisations
-    if let Some(t1) = read_register(&port_name, addr, 0x2069) {
-        values.insert("t1".to_string(), format!("{} s", t1));
-    }
-    if let Some(t2) = read_register(&port_name, addr, 0x206A) {
-        values.insert("t2".to_string(), format!("{} s", t2));
-    }
-    if let Some(t3) = read_register(&port_name, addr, 0x206B) {
-        values.insert("t3".to_string(), format!("{} s", t3));
-    }
-    if let Some(t4) = read_register(&port_name, addr, 0x206C) {
-        values.insert("t4".to_string(), format!("{} s", t4));
-    }
-    
-    // Mode de fonctionnement
-    if let Some(mode) = read_register(&port_name, addr, 0x206D) {
-        let mode_str = match mode {
-            0 => "自投自复 (Auto-recovery)",
-            1 => "自投不自复 (Auto no-recovery)",
-            2 => "互为备用 (Mutual backup)",
-            3 => "发电机模式 (Generator)",
-            4 => "发电机不自复 (Gen no-recovery)",
-            5 => "发电机互为备用 (Gen backup)",
-            _ => "Inconnu",
-        };
-        values.insert("operation_mode".to_string(), mode_str.to_string());
-    } else {
-        values.insert("operation_mode".to_string(), "---".to_string());
+        values.insert("modbus_parity".to_string(), match parity {
+            0 => "None", 1 => "Odd", 2 => "Even", _ => "?",
+        }.to_string());
     }
     
     let success = values.values().any(|v| v != "---");
@@ -315,6 +253,8 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
         error: if success { None } else { Some("Aucune réponse".to_string()) },
     })
 }
+
+// ==================== ROUTES DE COMMANDES ====================
 
 async fn remote_on(data: web::Data<Mutex<AppState>>) -> impl Responder {
     let state = data.lock().unwrap();
@@ -366,9 +306,81 @@ async fn force_source2(data: web::Data<Mutex<AppState>>) -> impl Responder {
     }))
 }
 
+// ==================== ROUTES DE RÉGLAGE ====================
+
+async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let value = query.value;
+    if value < 150 || value > 200 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 150 et 200 V"
+        }));
+    }
+    let success = write_register(&port_name, 6, 0x2065, value);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Sous-tension Source I réglée à {} V", value)
+    }))
+}
+
+async fn set_undervoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let value = query.value;
+    if value < 150 || value > 200 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 150 et 200 V"
+        }));
+    }
+    let success = write_register(&port_name, 6, 0x2066, value);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Sous-tension Source II réglée à {} V", value)
+    }))
+}
+
+async fn set_overvoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let value = query.value;
+    if value < 240 || value > 290 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 240 et 290 V"
+        }));
+    }
+    let success = write_register(&port_name, 6, 0x2067, value);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Surtension Source I réglée à {} V", value)
+    }))
+}
+
+async fn set_overvoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
+    let state = data.lock().unwrap();
+    let port_name = state.port_name.lock().unwrap();
+    let value = query.value;
+    if value < 240 || value > 290 {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "La valeur doit être entre 240 et 290 V"
+        }));
+    }
+    let success = write_register(&port_name, 6, 0x2068, value);
+    HttpResponse::Ok().json(serde_json::json!({
+        "success": success,
+        "message": format!("Surtension Source II réglée à {} V", value)
+    }))
+}
+
 async fn index() -> impl Responder {
     NamedFile::open_async("index.html").await.unwrap()
 }
+
+// ==================== MAIN ====================
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -377,6 +389,7 @@ async fn main() -> std::io::Result<()> {
     println!("  Port: COM5 | 9600 Even | Adresse 6");
     println!("  Ouvrez http://localhost:5000");
     println!("  Actualisation automatique toutes les 5s");
+    println!("  Réglages: sous-tension (150-200V), surtension (240-290V)");
     println!("========================================");
     
     let app_state = web::Data::new(Mutex::new(AppState {
@@ -393,6 +406,10 @@ async fn main() -> std::io::Result<()> {
             .route("/api/force_double", web::get().to(force_double))
             .route("/api/force_source1", web::get().to(force_source1))
             .route("/api/force_source2", web::get().to(force_source2))
+            .route("/api/set_undervoltage1", web::get().to(set_undervoltage1))
+            .route("/api/set_undervoltage2", web::get().to(set_undervoltage2))
+            .route("/api/set_overvoltage1", web::get().to(set_overvoltage1))
+            .route("/api/set_overvoltage2", web::get().to(set_overvoltage2))
     })
     .bind("localhost:5000")?
     .run()
