@@ -133,6 +133,7 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
     let fmt_ver = |x: u16| format!("{:.2}", x as f32 / 100.0);
     let fmt_cnt = |x: u16| x.to_string();
     let fmt_h = |x: u16| format!("{} h", x);
+    let fmt_s = |x: u16| format!("{} s", x);
     
     let regs: Vec<(u16, &str, Box<dyn Fn(u16) -> String>)> = vec![
         (0x0006, "v1a", Box::new(fmt_v)),
@@ -149,10 +150,10 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
         (0x2066, "uv2", Box::new(fmt_v)),
         (0x2067, "ov1", Box::new(fmt_v)),
         (0x2068, "ov2", Box::new(fmt_v)),
-        (0x2069, "t1", Box::new(|x| format!("{} s", x))),
-        (0x206A, "t2", Box::new(|x| format!("{} s", x))),
-        (0x206B, "t3", Box::new(|x| format!("{} s", x))),
-        (0x206C, "t4", Box::new(|x| format!("{} s", x))),
+        (0x2069, "t1", Box::new(fmt_s)),
+        (0x206A, "t2", Box::new(fmt_s)),
+        (0x206B, "t3", Box::new(fmt_s)),
+        (0x206C, "t4", Box::new(fmt_s)),
     ];
     
     for (reg, key, formatter) in regs {
@@ -306,12 +307,22 @@ async fn force_source2(data: web::Data<Mutex<AppState>>) -> impl Responder {
     }))
 }
 
-// ==================== ROUTES DE RÉGLAGE ====================
+// ==================== ROUTES DE RÉGLAGE (avec vérification télécommande) ====================
 
 async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
     let state = data.lock().unwrap();
     let port_name = state.port_name.lock().unwrap();
     let value = query.value;
+    
+    // Vérifier si télécommande activée
+    let remote_status = read_register(&port_name, 6, 0x0050).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande (/api/remote_on)"
+        }));
+    }
+    
     if value < 150 || value > 200 {
         return HttpResponse::Ok().json(serde_json::json!({
             "success": false,
@@ -329,6 +340,15 @@ async fn set_undervoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<R
     let state = data.lock().unwrap();
     let port_name = state.port_name.lock().unwrap();
     let value = query.value;
+    
+    let remote_status = read_register(&port_name, 6, 0x0050).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande (/api/remote_on)"
+        }));
+    }
+    
     if value < 150 || value > 200 {
         return HttpResponse::Ok().json(serde_json::json!({
             "success": false,
@@ -346,6 +366,15 @@ async fn set_overvoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<Re
     let state = data.lock().unwrap();
     let port_name = state.port_name.lock().unwrap();
     let value = query.value;
+    
+    let remote_status = read_register(&port_name, 6, 0x0050).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande (/api/remote_on)"
+        }));
+    }
+    
     if value < 240 || value > 290 {
         return HttpResponse::Ok().json(serde_json::json!({
             "success": false,
@@ -363,6 +392,15 @@ async fn set_overvoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<Re
     let state = data.lock().unwrap();
     let port_name = state.port_name.lock().unwrap();
     let value = query.value;
+    
+    let remote_status = read_register(&port_name, 6, 0x0050).map(|s| (s & 0x0100) != 0).unwrap_or(false);
+    if !remote_status {
+        return HttpResponse::Ok().json(serde_json::json!({
+            "success": false,
+            "error": "Activez d'abord la télécommande (/api/remote_on)"
+        }));
+    }
+    
     if value < 240 || value > 290 {
         return HttpResponse::Ok().json(serde_json::json!({
             "success": false,
@@ -389,7 +427,7 @@ async fn main() -> std::io::Result<()> {
     println!("  Port: COM5 | 9600 Even | Adresse 6");
     println!("  Ouvrez http://localhost:5000");
     println!("  Actualisation automatique toutes les 5s");
-    println!("  Réglages: sous-tension (150-200V), surtension (240-290V)");
+    println!("  ⚠️ Pour modifier les seuils: activer d'abord la télécommande");
     println!("========================================");
     
     let app_state = web::Data::new(Mutex::new(AppState {
