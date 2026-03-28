@@ -387,9 +387,14 @@ Pour toute question ou problème, consulter la documentation CHINT :
 
 ---
 
-## Licence
+## commande
 
-Application développée pour usage interne. Non commerciale.
+06 06 28 00 00 04 80 1E		# Activation mode télécommande (0x2800) >> Screen Blinking
+06 06 27 00 00 00 37 4B			Left Position 	# Forçage position source I (0x2700 = 0x0000)
+06 06 27 00 00 FF C2 89			Middle Position # Forçage position double déclenché (0x2700 = 0x00FF)
+06 06 27 00 00 AA 02 B6			Right position	# Forçage position source II (0x2700 = 0x00AA)
+06 06 28 00 00 00 81 DD		# Sortie mode télécommande
+
 
 ---
 
