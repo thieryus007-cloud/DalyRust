@@ -1,1 +1,55 @@
+warning: unused import: `warn`
+  --> src\main.rs:13:17
+   |
+13 | use log::{info, warn, error};
+   |                 ^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
+error[E0614]: type `bool` cannot be dereferenced
+   --> src\main.rs:560:5
+    |
+560 |     *state.config.debug_enabled = true; // Sync with config
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't be dereferenced
+
+error[E0599]: no variant or associated item named `Both` found for enum `ClearBuffer` in the current scope
+   --> src\main.rs:179:53
+    |
+179 |         let _ = port.clear(serialport::ClearBuffer::Both);
+    |                                                     ^^^^ variant or associated item not found in `ClearBuffer`
+
+error[E0599]: no variant or associated item named `Both` found for enum `ClearBuffer` in the current scope
+   --> src\main.rs:221:53
+    |
+221 |         let _ = port.clear(serialport::ClearBuffer::Both);
+    |                                                     ^^^^ variant or associated item not found in `ClearBuffer`
+
+error[E0599]: no variant or associated item named `Both` found for enum `ClearBuffer` in the current scope
+   --> src\main.rs:259:53
+    |
+259 |         let _ = port.clear(serialport::ClearBuffer::Both);
+    |                                                     ^^^^ variant or associated item not found in `ClearBuffer`
+
+error[E0599]: no method named `clone` found for struct `Config` in the current scope
+   --> src\main.rs:587:24
+    |
+ 16 | struct Config {
+    | ------------- method `clone` not found for this struct
+...
+587 |         config: config.clone(),
+    |                        ^^^^^ method not found in `Config`
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following trait defines an item `clone`, perhaps you need to implement it:
+            candidate #1: `Clone`
+
+error[E0599]: no method named `clone` found for struct `Cors` in the current scope
+   --> src\main.rs:616:24
+    |
+616 |             .wrap(cors.clone())
+    |                        ^^^^^ method not found in `Cors`
+
+Some errors have detailed explanations: E0599, E0614.
+For more information about an error, try `rustc --explain E0599`.
+warning: `chint-ats-server` (bin "chint-ats-server") generated 1 warning
+error: could not compile `chint-ats-server` (bin "chint-ats-server") due to 6 previous errors; 1 warning emitted
