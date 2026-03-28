@@ -3,24 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ATS - Supervision CHINT</title>
+<title>CHINT ATS - Supervision</title>
 <style>
-:root {
-    --bg-dark: #0f172a;
-    --bg-card: rgba(30, 41, 59, 0.7);
-    --primary: #3b82f6;
-    --success: #22c55e;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --text-main: #f1f5f9;
-    --text-muted: #94a3b8;
-    --border: rgba(255, 255, 255, 0.1);
-}
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { 
     font-family: 'Segoe UI', system-ui, sans-serif; 
     background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
-    color: var(--text-main); 
+    color: #f1f5f9; 
     padding: 20px; 
     min-height: 100vh; 
 }
@@ -28,208 +17,411 @@ body {
 
 /* HEADER */
 .header { 
-    background: var(--bg-card); 
-    backdrop-filter: blur(12px); 
-    border-radius: 20px; 
+    background: rgba(30, 41, 59, 0.8); 
+    backdrop-filter: blur(10px); 
+    border-radius: 24px; 
     padding: 20px 28px; 
     margin-bottom: 24px; 
-    border: 1px solid var(--border); 
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1); 
 }
-.header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.header-top { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    flex-wrap: wrap; 
+    gap: 20px; 
+}
 .header h1 { 
-    font-size: 24px; 
+    font-size: 26px; 
     background: linear-gradient(135deg, #fbbf24, #f59e0b); 
     -webkit-background-clip: text; 
     -webkit-text-fill-color: transparent; 
-    font-weight: 800;
 }
-.status-bar { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.status-bar { 
+    display: flex; 
+    align-items: center; 
+    gap: 16px; 
+    flex-wrap: wrap; 
+    margin-top: 12px;
+}
 .led { 
-    width: 12px; height: 12px; border-radius: 50%; 
-    background: var(--danger); 
+    width: 14px; 
+    height: 14px; 
+    border-radius: 50%; 
+    background: #ef4444; 
     transition: all 0.3s; 
-    box-shadow: 0 0 5px var(--danger);
 }
 .led.connected { 
-    background: var(--success); 
-    box-shadow: 0 0 10px var(--success); 
+    background: #22c55e; 
+    box-shadow: 0 0 8px #22c55e; 
 }
 .badge { 
-    padding: 4px 12px; border-radius: 20px; 
-    font-size: 12px; font-weight: 700; 
-    text-transform: uppercase;
+    padding: 4px 12px; 
+    border-radius: 20px; 
+    font-size: 12px; 
+    font-weight: bold; 
 }
-.badge-model { background: #fbbf24; color: #0f172a; }
-.badge-remote { background: var(--success); color: white; display: none; }
-.badge-remote.active { display: inline-block; }
+.badge-model { 
+    background: #fbbf24; 
+    color: #0f172a; 
+}
+.btn { 
+    background: linear-gradient(135deg, #3b82f6, #2563eb); 
+    border: none; 
+    color: white; 
+    padding: 8px 20px; 
+    border-radius: 40px; 
+    font-weight: 600; 
+    cursor: pointer; 
+    transition: 0.2s; 
+}
+.btn-small { 
+    padding: 4px 12px; 
+    font-size: 11px; 
+    background: #334155; 
+}
+.btn:hover { transform: scale(1.02); }
 
 /* INFO BAR */
 .info-bar { 
-    background: rgba(15, 23, 42, 0.6); 
+    background: rgba(15, 23, 42, 0.8); 
     border-radius: 16px; 
     padding: 16px 24px; 
     margin: 15px 0; 
     display: flex; 
     flex-wrap: wrap; 
     justify-content: center; 
-    gap: 24px; 
-    border: 1px solid var(--border); 
+    align-items: center; 
+    gap: 32px; 
+    border: 1px solid rgba(255,255,255,0.1); 
 }
 .info-item { 
-    display: flex; flex-direction: column; align-items: center; 
-    background: rgba(0,0,0,0.2); padding: 8px 16px; 
-    border-radius: 12px; min-width: 100px;
+    display: flex; 
+    align-items: baseline; 
+    gap: 8px; 
+    font-size: 14px; 
+    background: rgba(0,0,0,0.2); 
+    padding: 6px 16px; 
+    border-radius: 40px; 
 }
-.info-label { color: var(--text-muted); font-size: 11px; margin-bottom: 4px; }
-.info-value { font-weight: 700; font-family: monospace; font-size: 16px; color: #fbbf24; }
+.info-label { color: #94a3b8; font-size: 12px; }
+.info-value { 
+    font-weight: 700; 
+    font-family: monospace; 
+    font-size: 15px; 
+    color: #fbbf24; 
+}
 
 /* GRIDS */
-.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 20px; }
-.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
-.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px; }
+.grid-2 { 
+    display: grid; 
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 20px; 
+    margin-bottom: 20px; 
+}
+.grid-3 { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); 
+    gap: 20px; 
+    margin-bottom: 20px; 
+}
 
 /* CARDS */
 .card { 
-    background: var(--bg-card); 
-    backdrop-filter: blur(12px); 
-    border-radius: 16px; 
+    background: rgba(30, 41, 59, 0.8); 
+    backdrop-filter: blur(10px); 
+    border-radius: 20px; 
     padding: 20px; 
-    border: 1px solid var(--border); 
-    transition: transform 0.2s, border-color 0.2s; 
+    border: 1px solid rgba(255,255,255,0.1); 
+    transition: transform 0.2s; 
 }
 .card:hover { transform: translateY(-2px); }
-.card.active-source { border-color: var(--success); box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
 .card-title { 
-    font-size: 16px; font-weight: 700; margin-bottom: 16px; 
-    padding-bottom: 12px; border-bottom: 1px solid var(--border); 
-    display: flex; align-items: center; gap: 10px; 
-    color: #fbbf24;
+    font-size: 18px; 
+    font-weight: 700; 
+    margin-bottom: 16px; 
+    padding-bottom: 12px; 
+    border-bottom: 1px solid rgba(255,255,255,0.1); 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+}
+
+/* SOURCE STATUS */
+.source-header { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    margin-bottom: 16px; 
+}
+.source-dot { 
+    width: 16px; 
+    height: 16px; 
+    border-radius: 50%; 
+    transition: all 0.3s; 
+}
+.source-dot.active { 
+    background: #22c55e; 
+    box-shadow: 0 0 8px #22c55e; 
+}
+.source-dot.inactive { 
+    background: #ef4444; 
+}
+.source-name { 
+    font-size: 18px; 
+    font-weight: 700; 
 }
 
 /* DATA ROWS */
 .data-row { 
-    display: flex; justify-content: space-between; 
-    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); 
+    display: flex; 
+    justify-content: space-between; 
+    padding: 8px 0; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
     align-items: center; 
 }
-.data-row:last-child { border-bottom: none; }
-.data-label { color: var(--text-muted); font-size: 13px; }
+.data-label { color: #94a3b8; font-size: 13px; }
 .data-value { 
-    font-weight: 600; font-family: 'Consolas', monospace; 
-    font-size: 14px; color: var(--text-main); 
+    font-weight: 600; 
+    font-family: monospace; 
+    font-size: 14px; 
 }
 
-/* BADGES STATUS */
-.badge-status { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-.status-normal { background: rgba(34,197,94,0.2); color: var(--success); }
-.status-warning { background: rgba(245,158,11,0.2); color: var(--warning); }
-.status-danger { background: rgba(239,68,68,0.2); color: var(--danger); }
-
-/* SOURCE INDICATORS */
-.source-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.source-dot { 
-    width: 14px; height: 14px; border-radius: 50%; 
-    background: var(--danger); 
-    transition: all 0.3s; 
+/* BADGES */
+.badge-normal { 
+    background: rgba(34,197,94,0.2); 
+    color: #4ade80; 
+    padding: 2px 8px; 
+    border-radius: 12px; 
+    font-size: 11px; 
+    display: inline-block; 
+    margin-left: 8px;
 }
-.source-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
-.source-name { font-size: 18px; font-weight: 700; }
-
-/* BUTTONS */
-.btn { 
-    background: linear-gradient(135deg, var(--primary), #2563eb); 
-    border: none; color: white; padding: 10px 24px; 
-    border-radius: 8px; font-weight: 600; cursor: pointer; 
-    transition: all 0.2s; 
+.badge-warning { 
+    background: rgba(245,158,11,0.2); 
+    color: #fbbf24; 
+    padding: 2px 8px; 
+    border-radius: 12px; 
+    font-size: 11px; 
+    display: inline-block;
+    margin-left: 8px;
 }
-.btn:hover { transform: scale(1.02); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); }
-.btn-small { padding: 6px 16px; font-size: 12px; background: #334155; }
-.btn-danger { background: linear-gradient(135deg, var(--danger), #dc2626); }
-.btn-success { background: linear-gradient(135deg, var(--success), #16a34a); }
+.badge-danger { 
+    background: rgba(239,68,68,0.2); 
+    color: #f87171; 
+    padding: 2px 8px; 
+    border-radius: 12px; 
+    font-size: 11px; 
+    display: inline-block;
+    margin-left: 8px;
+}
 
 /* ACTION BUTTONS */
-.action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-.action-btn { 
-    background: rgba(59,130,246,0.1); 
-    border: 1px solid rgba(59,130,246,0.3); 
-    color: #60a5fa; padding: 12px 16px; 
-    border-radius: 8px; font-size: 13px; cursor: pointer; 
-    transition: all 0.2s; text-align: center;
+.action-buttons { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 10px; 
+    margin-top: 15px; 
 }
-.action-btn:hover { background: var(--primary); color: white; }
-.action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.action-btn { 
+    background: rgba(59,130,246,0.2); 
+    border: 1px solid rgba(59,130,246,0.5); 
+    color: #60a5fa; 
+    padding: 8px 16px; 
+    border-radius: 40px; 
+    font-size: 12px; 
+    cursor: pointer; 
+    transition: 0.2s; 
+}
+.action-btn:hover { 
+    background: #3b82f6; 
+    color: white; 
+}
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 /* CONSOLE */
 .console-card { 
     background: rgba(15, 23, 42, 0.95); 
-    border-radius: 16px; padding: 20px; 
-    border: 1px solid var(--primary); 
-    margin-top: 20px;
+    border-radius: 20px; 
+    padding: 20px; 
+    margin-top: 20px; 
+    border: 1px solid #3b82f6; 
 }
-.console-input-group { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.console-title { 
+    font-size: 18px; 
+    font-weight: 700; 
+    color: #3b82f6; 
+    margin-bottom: 16px; 
+}
+.console-input-group { 
+    display: flex; 
+    gap: 12px; 
+    flex-wrap: wrap; 
+    margin-bottom: 16px; 
+    align-items: center; 
+}
 .console-input { 
-    flex: 2; min-width: 300px; background: #0f172a; 
-    border: 1px solid var(--primary); color: #4ade80; 
-    padding: 12px 16px; border-radius: 8px; 
-    font-family: 'Consolas', monospace; font-size: 14px; 
+    flex: 2; 
+    min-width: 300px; 
+    background: #0f172a; 
+    border: 1px solid #3b82f6; 
+    color: #4ade80; 
+    padding: 12px 16px; 
+    border-radius: 12px; 
+    font-family: monospace; 
+    font-size: 14px; 
 }
-.console-input:focus { outline: none; border-color: #fbbf24; }
+.console-input:focus { 
+    outline: none; 
+    border-color: #fbbf24; 
+}
+.console-checkbox { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    background: #0f172a; 
+    padding: 8px 16px; 
+    border-radius: 12px; 
+    cursor: pointer;
+}
+.console-checkbox input { 
+    width: 18px; 
+    height: 18px; 
+    cursor: pointer; 
+}
 .console-send-btn { 
-    background: var(--primary); border: none; color: white; 
-    padding: 12px 24px; border-radius: 8px; font-weight: 700; 
-    cursor: pointer; transition: all 0.2s; 
+    background: #3b82f6; 
+    border: none; 
+    color: white; 
+    padding: 12px 24px; 
+    border-radius: 12px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    transition: 0.2s; 
 }
-.console-send-btn:hover { background: #2563eb; }
+.console-send-btn:hover { 
+    background: #2563eb; 
+    transform: scale(1.02); 
+}
+.console-crc-btn { 
+    background: #334155; 
+    border: none; 
+    color: white; 
+    padding: 12px 20px; 
+    border-radius: 12px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    transition: 0.2s; 
+}
 .console-response { 
-    background: #0f172a; border-radius: 8px; padding: 16px; 
-    margin-top: 16px; border: 1px solid #334155; 
-    font-family: 'Consolas', monospace; font-size: 13px; 
-    min-height: 60px;
+    background: #0f172a; 
+    border-radius: 12px; 
+    padding: 16px; 
+    margin-top: 16px; 
+    border: 1px solid #334155; 
 }
+.console-response-content { 
+    font-family: monospace; 
+    font-size: 13px; 
+    color: #4ade80; 
+    word-break: break-all; 
+}
+.console-error { color: #f87171; }
 .console-history { 
-    margin-top: 16px; max-height: 150px; overflow-y: auto; 
-    background: #0a0f1a; border-radius: 8px; padding: 12px; 
-    font-family: 'Consolas', monospace; font-size: 11px; 
+    margin-top: 16px; 
+    max-height: 150px; 
+    overflow-y: auto; 
+    background: #0a0f1a; 
+    border-radius: 12px; 
+    padding: 12px; 
+    font-family: monospace; 
+    font-size: 11px; 
 }
-.history-entry { padding: 4px 0; border-bottom: 1px solid #1e293b; }
+.history-entry { 
+    padding: 4px 0; 
+    border-bottom: 1px solid #1e293b; 
+}
 .history-send { color: #60a5fa; }
 .history-recv { color: #4ade80; }
 
-/* SETTINGS PANEL (MN Only) */
-.settings-panel { display: none; }
-.settings-panel.visible { display: block; }
-.setting-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+/* REMOTE BANNER */
+.remote-banner { 
+    background: linear-gradient(135deg, #f59e0b, #d97706); 
+    border-radius: 12px; 
+    padding: 12px 20px; 
+    margin-top: 20px; 
+    text-align: center; 
+    font-weight: 600; 
+    display: none;
+}
+.remote-banner.active { 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* LOG */
+.compact-log { 
+    background: #0f172a; 
+    border-radius: 12px; 
+    padding: 8px 15px; 
+    min-width: 320px; 
+    border-left: 3px solid #fbbf24; 
+    max-height: 100px;
+    overflow-y: auto;
+}
+.log-lines { 
+    font-family: monospace; 
+    font-size: 11px; 
+}
+.log-line { 
+    padding: 2px 0; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+.log-line.success { color: #4ade80; }
+.log-line.error { color: #f87171; }
+.log-line.send { color: #60a5fa; }
+
+footer { 
+    text-align: center; 
+    margin-top: 24px; 
+    font-size: 12px; 
+    color: #475569; 
+}
+
+/* SETTINGS PANEL (MN only) */
+.settings-panel { 
+    display: none; 
+}
+.settings-panel.visible { 
+    display: block; 
+}
+.setting-row { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    margin-bottom: 12px; 
+}
 .setting-input { 
-    width: 100px; background: #0f172a; border: 1px solid #334155; 
-    color: white; padding: 8px 12px; border-radius: 6px; 
-    font-family: monospace; text-align: right;
+    width: 100px; 
+    background: #0f172a; 
+    border: 1px solid #334155; 
+    color: white; 
+    padding: 8px 12px; 
+    border-radius: 6px; 
+    font-family: monospace; 
+    text-align: right;
 }
 
-/* LOGS */
-.log-container { 
-    background: #0f172a; border-radius: 12px; padding: 12px 16px; 
-    min-width: 280px; border-left: 3px solid #fbbf24; 
-    max-height: 120px; overflow-y: auto;
-}
-.log-line { font-family: monospace; font-size: 11px; padding: 2px 0; }
-.log-line.success { color: var(--success); }
-.log-line.error { color: var(--danger); }
-.log-line.info { color: var(--text-muted); }
-
-/* FOOTER */
-footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--text-muted); padding-bottom: 20px; }
-
-/* ANIMATIONS */
-@keyframes pulse { 0% { opacity: 0.7; } 100% { opacity: 1; } }
-.refreshing { animation: pulse 1s infinite; }
-
-/* RESPONSIVE */
 @media (max-width: 768px) {
-    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
     .header-top { flex-direction: column; align-items: flex-start; }
-    .info-bar { flex-direction: column; align-items: stretch; }
-    .info-item { flex-direction: row; justify-content: space-between; }
 }
 </style>
 </head>
@@ -240,18 +432,18 @@ footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--tex
         <div class="header-top">
             <div>
                 <h1>⚡ CHINT ATS - Supervision</h1>
-                <div class="status-bar" style="margin-top: 12px;">
+                <div class="status-bar">
                     <div class="led" id="led"></div>
-                    <span id="statusText" style="font-size: 14px;">Connexion...</span>
+                    <span id="statusText">Connexion...</span>
                     <span class="badge badge-model" id="modelBadge">--</span>
-                    <span class="badge badge-remote" id="remoteBadge">📡 Remote</span>
-                    <span id="lastRefresh" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">--:--:--</span>
-                    <button class="btn btn-small" onclick="refreshNow()">🔄</button>
-                    <button class="btn btn-small" id="debugBtn" onclick="toggleDebug()">🐛</button>
+                    <button class="btn" onclick="refreshNow()">🔄 Actualiser</button>
+                    <button class="btn btn-small" id="debugBtn" onclick="toggleDebug()">🐛 Debug</button>
                 </div>
             </div>
-            <div class="log-container" id="compactLog">
-                <div class="log-line info">✨ Système prêt</div>
+            <div class="compact-log">
+                <div class="log-lines" id="compactLog">
+                    <div class="log-line">✨ Système prêt</div>
+                </div>
             </div>
         </div>
     </div>
@@ -265,6 +457,10 @@ footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--tex
         <div class="info-item">
             <span class="info-label">🤖 MODE</span>
             <span class="info-value" id="swMode">---</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">📡 TÉLÉCOM</span>
+            <span class="info-value" id="swRemote">---</span>
         </div>
         <div class="info-item">
             <span class="info-label">⚠️ DÉFAUT</span>
@@ -284,56 +480,140 @@ footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--tex
     <div class="grid-2">
         <div class="card" id="cardOnduleur">
             <div class="source-header">
-                <div class="source-dot" id="onduleurDot"></div>
+                <div class="source-dot inactive" id="onduleurDot"></div>
                 <span class="source-name">🔋 Onduleur (Source I)</span>
             </div>
-            <div class="data-row"><span class="data-label">Phase A</span><span class="data-value"><span id="v1a">---</span> <span id="s1a_badge" class="badge-status status-normal">Normal</span></span></div>
-            <div class="data-row"><span class="data-label">Phase B</span><span class="data-value"><span id="v1b">---</span> <span id="s1b_badge" class="badge-status status-normal">Normal</span></span></div>
-            <div class="data-row"><span class="data-label">Phase C</span><span class="data-value"><span id="v1c">---</span> <span id="s1c_badge" class="badge-status status-normal">Normal</span></span></div>
-            <div class="data-row"><span class="data-label">Fréquence</span><span class="data-value" id="freq1">---</span></div>
-            <div class="data-row"><span class="data-label">Max A/B/C</span><span class="data-value" id="max1">---</span></div>
+            <div class="data-row">
+                <span class="data-label">Phase A</span>
+                <span class="data-value">
+                    <span id="v1a">---</span>
+                    <span id="s1a_badge" class="badge-normal">Normal</span>
+                </span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Phase B</span>
+                <span class="data-value">
+                    <span id="v1b">---</span>
+                    <span id="s1b_badge" class="badge-normal">Normal</span>
+                </span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Phase C</span>
+                <span class="data-value">
+                    <span id="v1c">---</span>
+                    <span id="s1c_badge" class="badge-normal">Normal</span>
+                </span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Fréquence</span>
+                <span class="data-value" id="freq1">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Max A/B/C</span>
+                <span class="data-value" id="max1">---</span>
+            </div>
         </div>
+
         <div class="card" id="cardReseau">
             <div class="source-header">
-                <div class="source-dot" id="reseauDot"></div>
+                <div class="source-dot inactive" id="reseauDot"></div>
                 <span class="source-name">⚡ Réseau (Source II)</span>
             </div>
-            <div class="data-row"><span class="data-label">Phase A</span><span class="data-value"><span id="v2a">---</span> <span id="s2a_badge" class="badge-status status-normal">Normal</span></span></div>
-            <div class="data-row"><span class="data-label">Phase B</span><span class="data-value"><span id="v2b">---</span> <span id="s2b_badge" class="badge-status status-normal">Normal</span></span></div>
-            <div class="data-row"><span class="data-label">Phase C</span><span class="data-value"><span id="v2c">---</span> <span id="s2c_badge" class="badge-status status-normal">Normal</span></span></div>
-            <div class="data-row"><span class="data-label">Fréquence</span><span class="data-value" id="freq2">---</span></div>
-            <div class="data-row"><span class="data-label">Max A/B/C</span><span class="data-value" id="max2">---</span></div>
+            <div class="data-row">
+                <span class="data-label">Phase A</span>
+                <span class="data-value">
+                    <span id="v2a">---</span>
+                    <span id="s2a_badge" class="badge-normal">Normal</span>
+                </span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Phase B</span>
+                <span class="data-value">
+                    <span id="v2b">---</span>
+                    <span id="s2b_badge" class="badge-normal">Normal</span>
+                </span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Phase C</span>
+                <span class="data-value">
+                    <span id="v2c">---</span>
+                    <span id="s2c_badge" class="badge-normal">Normal</span>
+                </span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Fréquence</span>
+                <span class="data-value" id="freq2">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Max A/B/C</span>
+                <span class="data-value" id="max2">---</span>
+            </div>
         </div>
     </div>
 
-    <!-- TIMERS & CONFIG -->
+    <!-- TEMPORISATIONS, CONFIG, COMPTEURS -->
     <div class="grid-3">
         <div class="card">
             <div class="card-title"><span>⏱️</span> Temporisations</div>
-            <div class="data-row"><span class="data-label">T1 (Transfert)</span><span class="data-value" id="t1">---</span></div>
-            <div class="data-row"><span class="data-label">T2 (Retour)</span><span class="data-value" id="t2">---</span></div>
-            <div class="data-row mn-only"><span class="data-label">T3 (Démarrage Gen)</span><span class="data-value" id="t3">---</span></div>
-            <div class="data-row mn-only"><span class="data-label">T4 (Arrêt Gen)</span><span class="data-value" id="t4">---</span></div>
+            <div class="data-row">
+                <span class="data-label">T1 (Transfert)</span>
+                <span class="data-value" id="t1">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">T2 (Retour)</span>
+                <span class="data-value" id="t2">---</span>
+            </div>
+            <div class="data-row mn-only">
+                <span class="data-label">T3 (Démarrage Gen)</span>
+                <span class="data-value" id="t3">---</span>
+            </div>
+            <div class="data-row mn-only">
+                <span class="data-label">T4 (Arrêt Gen)</span>
+                <span class="data-value" id="t4">---</span>
+            </div>
         </div>
+
         <div class="card">
             <div class="card-title"><span>⚙️</span> Configuration Modbus</div>
-            <div class="data-row"><span class="data-label">Adresse</span><span class="data-value" id="modbus_addr">---</span></div>
-            <div class="data-row"><span class="data-label">Baud Rate</span><span class="data-value" id="modbus_baud">---</span></div>
-            <div class="data-row"><span class="data-label">Parité</span><span class="data-value" id="modbus_parity">---</span></div>
-            <div class="data-row"><span class="data-label">Mode Opératoire</span><span class="data-value" id="operation_mode">---</span></div>
+            <div class="data-row">
+                <span class="data-label">Adresse</span>
+                <span class="data-value" id="modbus_addr">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Baud Rate</span>
+                <span class="data-value" id="modbus_baud">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Parité</span>
+                <span class="data-value" id="modbus_parity">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Mode Opératoire</span>
+                <span class="data-value" id="operation_mode">---</span>
+            </div>
         </div>
+
         <div class="card">
             <div class="card-title"><span>📊</span> Compteurs</div>
-            <div class="data-row"><span class="data-label">Commutations I→II</span><span class="data-value" id="cnt1_display">---</span></div>
-            <div class="data-row"><span class="data-label">Commutations II→I</span><span class="data-value" id="cnt2_display">---</span></div>
-            <div class="data-row"><span class="data-label">Total Commutations</span><span class="data-value" id="cnt_total">---</span></div>
+            <div class="data-row">
+                <span class="data-label">Commutations I→II</span>
+                <span class="data-value" id="cnt1">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Commutations II→I</span>
+                <span class="data-value" id="cnt2">---</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">Total</span>
+                <span class="data-value" id="cnt_total">---</span>
+            </div>
         </div>
     </div>
 
-    <!-- SEUILS (MN Only) -->
+    <!-- SETTINGS PANEL (MN only) -->
     <div class="card settings-panel mn-only" id="settingsPanel">
         <div class="card-title"><span>🎛️</span> Réglages Seuils (Modèle MN)</div>
-        <div class="grid-4">
+        <div class="grid-2">
             <div class="setting-row">
                 <span class="data-label">Sous-tension I</span>
                 <input type="number" class="setting-input" id="uv1_input">
@@ -355,7 +635,7 @@ footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--tex
                 <button class="btn btn-small" onclick="saveSetting('set_overvoltage2', 'ov2_input')">💾</button>
             </div>
         </div>
-        <div style="margin-top: 12px; font-size: 12px; color: var(--warning);">
+        <div style="margin-top: 12px; font-size: 12px; color: #fbbf24;">
             ⚠️ La télécommande doit être activée pour modifier les réglages
         </div>
     </div>
@@ -363,7 +643,7 @@ footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--tex
     <!-- COMMANDES -->
     <div class="card">
         <div class="card-title"><span>🎮</span> Commandes à Distance</div>
-        <div class="action-grid">
+        <div class="action-buttons">
             <button class="action-btn" id="btnRemoteOn" onclick="sendCmd('remote_on')">📡 Activer Télécommande</button>
             <button class="action-btn" id="btnRemoteOff" onclick="sendCmd('remote_off')">🔒 Désactiver Télécommande</button>
             <button class="action-btn" id="btnForceDouble" onclick="sendCmd('force_double')" disabled>⏹️ Double Déclenché</button>
@@ -374,26 +654,34 @@ footer { text-align: center; margin-top: 30px; font-size: 12px; color: var(--tex
 
     <!-- CONSOLE MODBUS -->
     <div class="console-card">
-        <div class="card-title" style="border:none; padding-bottom:0; margin-bottom:12px;">
-            <span>🔧</span> Console Modbus RTU
-        </div>
+        <div class="console-title">🔧 Console Modbus RTU</div>
         <div class="console-input-group">
             <input type="text" id="hexFrameInput" class="console-input" placeholder="Ex: 06 03 00 4F 00 01" value="06 03 00 4F 00 01">
-            <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
-                <input type="checkbox" id="autoCrcCheckbox" checked> CRC Auto
+            <label class="console-checkbox">
+                <input type="checkbox" id="autoCrcCheckbox" checked>
+                CRC Auto
             </label>
-            <button class="btn btn-small" onclick="calculateAndShowCrc()">🔢 CRC</button>
+            <button class="console-crc-btn" onclick="calculateAndShowCrc()">🔢 CRC</button>
             <button class="console-send-btn" onclick="sendHexFrame()">📨 ENVOYER</button>
-            <button class="btn btn-small" onclick="clearHexHistory()" style="background:#334155;">🗑️</button>
+            <button class="console-send-btn" onclick="clearHexHistory()" style="background:#334155;">🗑️</button>
         </div>
-        <div class="console-response" id="consoleResponse">-- En attente de requête --</div>
+        <div class="console-response">
+            <div class="console-response-content" id="consoleResponse">-- En attente --</div>
+        </div>
         <div class="console-history" id="hexHistory">
-            <div class="history-entry" style="color:#64748b;">📋 Historique des trames</div>
+            <div class="history-entry" style="color:#64748b;">📋 Historique</div>
         </div>
     </div>
 
+    <!-- REMOTE BANNER -->
+    <div id="remoteBanner" class="remote-banner">
+        <span>📡</span>
+        <span>MODE TÉLÉCOMMANDE ACTIF</span>
+        <span>🔓</span>
+    </div>
+
     <footer>
-        CHINT ATS Controller · Rust Backend · Actualisation 5s · <span id="connectionInfo">Port: COM5 | 9600 Even</span>
+        CHINT ATS Controller · Rust Backend · Actualisation 5s
     </footer>
 </div>
 
@@ -446,9 +734,7 @@ function getFrameToSend() {
     let frameInput = document.getElementById('hexFrameInput').value.trim();
     const autoCrc = document.getElementById('autoCrcCheckbox').checked;
     if (!frameInput) return null;
-    // Si CRC auto et pas déjà présent (longueur paire + 4 pour CRC)
-    if (autoCrc && frameInput.split(/\s+/).length % 2 === 0) {
-        // Remove last 2 bytes if they look like CRC
+    if (autoCrc) {
         const parts = frameInput.split(/\s+/);
         if (parts.length >= 2) {
             frameInput = parts.slice(0, -2).join(' ');
@@ -468,9 +754,10 @@ function updateCompactLog(msg, type = 'info') {
     logLines = logLines.slice(0, 5);
     const container = document.getElementById('compactLog');
     container.innerHTML = logLines.map(line => {
-        let className = 'info';
+        let className = '';
         if (line.includes('✅')) className = 'success';
         if (line.includes('❌')) className = 'error';
+        if (line.includes('📤')) className = 'send';
         return `<div class="log-line ${className}">${line}</div>`;
     }).join('');
 }
@@ -494,7 +781,7 @@ function clearHexHistory() {
 async function sendHexFrame() {
     const frameToSend = getFrameToSend();
     if (!frameToSend) {
-        document.getElementById('consoleResponse').innerHTML = '<span style="color:var(--danger);">❌ Erreur: Trame invalide</span>';
+        document.getElementById('consoleResponse').innerHTML = '<span class="console-error">❌ Trame invalide</span>';
         return;
     }
     updateCompactLog(`Envoi: ${frameToSend}`, 'send');
@@ -506,16 +793,16 @@ async function sendHexFrame() {
         });
         const data = await resp.json();
         if (data.success) {
-            document.getElementById('consoleResponse').innerHTML = `<span style="color:var(--success);">✅ Réponse (${data.response_length} octets)</span><br><span style="font-family:monospace;">${data.response_hex}</span>`;
+            document.getElementById('consoleResponse').innerHTML = `<span style="color:#4ade80;">✅ Réponse (${data.response_length} octets)</span><br><span style="font-family:monospace;">${data.response_hex}</span>`;
             addHexHistory(frameToSend, data.response_hex, true);
             updateCompactLog(`Réponse: ${data.response_hex}`, 'success');
         } else {
-            document.getElementById('consoleResponse').innerHTML = `<span style="color:var(--danger);">❌ ${data.error || 'Erreur'}</span>`;
+            document.getElementById('consoleResponse').innerHTML = `<span class="console-error">❌ ${data.error || 'Erreur'}</span>`;
             addHexHistory(frameToSend, data.error || 'Timeout', false);
             updateCompactLog(`Erreur: ${data.error}`, 'error');
         }
     } catch(e) {
-        document.getElementById('consoleResponse').innerHTML = `<span style="color:var(--danger);">❌ Erreur réseau: ${e.message}</span>`;
+        document.getElementById('consoleResponse').innerHTML = `<span class="console-error">❌ Erreur réseau: ${e.message}</span>`;
         updateCompactLog(`Erreur réseau: ${e.message}`, 'error');
     }
 }
@@ -524,11 +811,20 @@ async function sendHexFrame() {
 function updateStatusBadge(elementId, status) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    el.className = 'badge-status';
-    if (status.includes("Normal")) { el.classList.add('status-normal'); el.innerHTML = "✅ Normal"; } 
-    else if (status.includes("Sous-tension")) { el.classList.add('status-warning'); el.innerHTML = "⚠️ Sous-tension"; } 
-    else if (status.includes("Surtension")) { el.classList.add('status-danger'); el.innerHTML = "⚠️ Surtension"; } 
-    else { el.classList.add('status-danger'); el.innerHTML = status; }
+    el.className = 'badge-normal';
+    if (status && status.includes("Normal")) { 
+        el.className = 'badge-normal'; 
+        el.innerHTML = "✅ Normal"; 
+    } else if (status && status.includes("Sous-tension")) { 
+        el.className = 'badge-warning'; 
+        el.innerHTML = "⚠️ Sous-tension"; 
+    } else if (status && status.includes("Surtension")) { 
+        el.className = 'badge-danger'; 
+        el.innerHTML = "⚠️ Surtension"; 
+    } else if (status) {
+        el.className = 'badge-danger';
+        el.innerHTML = status;
+    }
 }
 
 function toggleModelFeatures(model) {
@@ -545,21 +841,21 @@ function toggleModelFeatures(model) {
 
 function updateRemoteState(isActive) {
     remoteActive = isActive;
-    const badge = document.getElementById('remoteBadge');
+    const banner = document.getElementById('remoteBanner');
+    const btnForceDouble = document.getElementById('btnForceDouble');
+    const btnForce1 = document.getElementById('btnForce1');
+    const btnForce2 = document.getElementById('btnForce2');
+    
     if (isActive) {
-        badge.classList.add('active');
-        document.getElementById('btnForceDouble').disabled = false;
-        document.getElementById('btnForce1').disabled = false;
-        document.getElementById('btnForce2').disabled = false;
-        document.getElementById('btnRemoteOn').style.opacity = '0.5';
-        document.getElementById('btnRemoteOff').style.opacity = '1';
+        banner.classList.add('active');
+        if (btnForceDouble) btnForceDouble.disabled = false;
+        if (btnForce1) btnForce1.disabled = false;
+        if (btnForce2) btnForce2.disabled = false;
     } else {
-        badge.classList.remove('active');
-        document.getElementById('btnForceDouble').disabled = true;
-        document.getElementById('btnForce1').disabled = true;
-        document.getElementById('btnForce2').disabled = true;
-        document.getElementById('btnRemoteOn').style.opacity = '1';
-        document.getElementById('btnRemoteOff').style.opacity = '0.5';
+        banner.classList.remove('active');
+        if (btnForceDouble) btnForceDouble.disabled = true;
+        if (btnForce1) btnForce1.disabled = true;
+        if (btnForce2) btnForce2.disabled = true;
     }
 }
 
@@ -570,10 +866,12 @@ async function toggleDebug() {
         const data = await resp.json();
         if (data.success) {
             debugEnabled = !debugEnabled;
-            document.getElementById('debugBtn').style.background = debugEnabled ? 'var(--warning)' : '#334155';
+            document.getElementById('debugBtn').style.background = debugEnabled ? '#f59e0b' : '#334155';
             updateCompactLog(`Debug ${debugEnabled ? 'activé' : 'désactivé'}`, 'success');
         }
-    } catch(e) { updateCompactLog(`Erreur debug: ${e.message}`, 'error'); }
+    } catch(e) { 
+        updateCompactLog(`Erreur debug: ${e.message}`, 'error'); 
+    }
 }
 
 async function saveSetting(endpoint, inputId) {
@@ -581,7 +879,12 @@ async function saveSetting(endpoint, inputId) {
         alert('⚠️ Activez d\'abord la télécommande !');
         return;
     }
-    const value = document.getElementById(inputId).value;
+    const input = document.getElementById(inputId);
+    if (!input) {
+        alert('Champ de saisie introuvable');
+        return;
+    }
+    const value = input.value;
     if (!value) { alert('Valeur invalide'); return; }
     try {
         const resp = await fetch(`/api/${endpoint}?value=${value}`, { method: 'POST' });
@@ -592,7 +895,9 @@ async function saveSetting(endpoint, inputId) {
         } else {
             alert(`❌ ${data.error || data.message}`);
         }
-    } catch(e) { alert(`Erreur: ${e.message}`); }
+    } catch(e) { 
+        alert(`Erreur: ${e.message}`); 
+    }
 }
 
 async function sendCmd(cmd) {
@@ -606,37 +911,44 @@ async function sendCmd(cmd) {
         } else {
             updateCompactLog(`❌ ${data.error || 'Échec'}`, 'error');
         }
-    } catch(e) { updateCompactLog(`❌ Erreur: ${e.message}`, 'error'); }
+    } catch(e) { 
+        updateCompactLog(`❌ Erreur: ${e.message}`, 'error'); 
+    }
 }
 
 async function refreshNow() {
     refreshCount++;
-    document.getElementById('lastRefresh').innerHTML = new Date().toLocaleTimeString('fr-FR');
-    document.getElementById('led').classList.add('refreshing');
+    document.getElementById('led').classList.add('connected');
     
     try {
         const resp = await fetch('/api/read_all');
         const data = await resp.json();
-        document.getElementById('led').classList.remove('refreshing');
         
         if (data.success) {
-            document.getElementById('led').classList.add('connected');
             document.getElementById('statusText').innerHTML = '✅ Connecté';
-            document.getElementById('modelBadge').innerHTML = data.model;
-            
-            // Model detection
-            if (data.model && data.model !== currentModel) {
-                toggleModelFeatures(data.model);
+            if (data.model) {
+                document.getElementById('modelBadge').innerHTML = data.model;
+                if (data.model !== currentModel) {
+                    toggleModelFeatures(data.model);
+                }
             }
             
             // Voltages
-            ['v1a','v1b','v1c','v2a','v2b','v2c'].forEach(id => {
-                if (data.values[id]) document.getElementById(id).innerHTML = data.values[id];
+            const voltageIds = ['v1a','v1b','v1c','v2a','v2b','v2c'];
+            voltageIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && data.values[id]) el.innerHTML = data.values[id];
             });
             
             // Status badges
-            ['s1a','s1b','s1c','s2a','s2b','s2c'].forEach(id => {
-                if (data.values[id]) updateStatusBadge(id+'_badge', data.values[id]);
+            const badgeIds = ['s1a_badge','s1b_badge','s1c_badge','s2a_badge','s2b_badge','s2c_badge'];
+            const statusMap = {
+                's1a_badge': 's1a', 's1b_badge': 's1b', 's1c_badge': 's1c',
+                's2a_badge': 's2a', 's2b_badge': 's2b', 's2c_badge': 's2c'
+            };
+            badgeIds.forEach(id => {
+                const key = statusMap[id];
+                if (data.values[key]) updateStatusBadge(id, data.values[key]);
             });
             
             // Frequencies
@@ -649,50 +961,48 @@ async function refreshNow() {
             
             // Timers
             ['t1','t2','t3','t4'].forEach(id => {
-                if (data.values[id]) document.getElementById(id).innerHTML = data.values[id];
+                const el = document.getElementById(id);
+                if (el && data.values[id]) el.innerHTML = data.values[id];
             });
             
             // Settings inputs (MN only)
             if (data.model === 'MN') {
                 ['uv1','uv2','ov1','ov2'].forEach(id => {
-                    if (data.values[id]) {
+                    const input = document.getElementById(id + '_input');
+                    if (input && data.values[id]) {
                         const val = parseInt(data.values[id]);
-                        document.getElementById(id+'_input').value = val;
+                        if (!isNaN(val)) input.value = val;
                     }
                 });
             }
             
             // Config
             ['operation_mode','modbus_addr','modbus_baud','modbus_parity'].forEach(id => {
-                if (data.values[id]) document.getElementById(id).innerHTML = data.values[id];
+                const el = document.getElementById(id);
+                if (el && data.values[id]) el.innerHTML = data.values[id];
             });
             
             // Counters
             if (data.values.cnt1) {
-                document.getElementById('cnt1_display').innerHTML = data.values.cnt1;
                 document.getElementById('cnt1').innerHTML = data.values.cnt1;
             }
             if (data.values.cnt2) {
-                document.getElementById('cnt2_display').innerHTML = data.values.cnt2;
                 document.getElementById('cnt2').innerHTML = data.values.cnt2;
+            }
+            if (data.values.cnt1 && data.values.cnt2) {
                 const total = parseInt(data.values.cnt1) + parseInt(data.values.cnt2);
                 document.getElementById('cnt_total').innerHTML = total;
             }
             
             // Runtime & Version
-            if (data.values.runtime) {
-                document.getElementById('runtime').innerHTML = data.values.runtime;
-                document.getElementById('runtime_display').innerHTML = data.values.runtime;
-            }
-            if (data.values.swVer) {
-                document.getElementById('swVer').innerHTML = data.values.swVer;
-                document.getElementById('swVer_display').innerHTML = data.values.swVer;
-            }
+            if (data.values.runtime) document.getElementById('runtime').innerHTML = data.values.runtime;
+            if (data.values.swVer) document.getElementById('swVer').innerHTML = data.values.swVer;
             
             // Switch status
             if (data.values.swMode) document.getElementById('swMode').innerHTML = data.values.swMode;
             if (data.values.swFault) document.getElementById('swFault').innerHTML = data.values.swFault;
             if (data.values.swRemote) {
+                document.getElementById('swRemote').innerHTML = data.values.swRemote;
                 updateRemoteState(data.values.swRemote.includes("Activé"));
             }
             
@@ -703,36 +1013,35 @@ async function refreshNow() {
             document.getElementById('activeSource').innerHTML = activeSource;
             
             // Source cards visual
-            const onduleurCard = document.getElementById('cardOnduleur');
-            const reseauCard = document.getElementById('cardReseau');
             const onduleurDot = document.getElementById('onduleurDot');
             const reseauDot = document.getElementById('reseauDot');
+            const cardOnduleur = document.getElementById('cardOnduleur');
+            const cardReseau = document.getElementById('cardReseau');
             
             if (v1a > 50) {
-                onduleurDot.classList.add('active');
-                onduleurCard.classList.add('active-source');
-                reseauDot.classList.remove('active');
-                reseauCard.classList.remove('active-source');
+                onduleurDot.className = 'source-dot active';
+                reseauDot.className = 'source-dot inactive';
+                cardOnduleur.style.borderColor = '#22c55e';
+                cardReseau.style.borderColor = 'rgba(255,255,255,0.1)';
             } else if (v2a > 50) {
-                reseauDot.classList.add('active');
-                reseauCard.classList.add('active-source');
-                onduleurDot.classList.remove('active');
-                onduleurCard.classList.remove('active-source');
+                reseauDot.className = 'source-dot active';
+                onduleurDot.className = 'source-dot inactive';
+                cardReseau.style.borderColor = '#22c55e';
+                cardOnduleur.style.borderColor = 'rgba(255,255,255,0.1)';
             } else {
-                onduleurDot.classList.remove('active');
-                reseauDot.classList.remove('active');
-                onduleurCard.classList.remove('active-source');
-                reseauCard.classList.remove('active-source');
+                onduleurDot.className = 'source-dot inactive';
+                reseauDot.className = 'source-dot inactive';
+                cardOnduleur.style.borderColor = 'rgba(255,255,255,0.1)';
+                cardReseau.style.borderColor = 'rgba(255,255,255,0.1)';
             }
             
             updateCompactLog(`Actu #${refreshCount} OK`, 'success');
         } else {
-            document.getElementById('led').classList.remove('connected');
             document.getElementById('statusText').innerHTML = '⚠️ Erreur ATS';
             updateCompactLog(`Erreur: ${data.error || 'inconnu'}`, 'error');
         }
     } catch(e) {
-        document.getElementById('led').classList.remove('connected', 'refreshing');
+        document.getElementById('led').classList.remove('connected');
         document.getElementById('statusText').innerHTML = '⚠️ Réseau';
         updateCompactLog(`Réseau: ${e.message}`, 'error');
     }
@@ -746,7 +1055,6 @@ function startAutoRefresh() {
 window.onload = () => {
     startAutoRefresh();
     refreshNow();
-    document.getElementById('hexFrameInput').value = '06 03 00 4F 00 01';
 };
 </script>
 </body>
