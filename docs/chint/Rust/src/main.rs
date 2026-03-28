@@ -13,7 +13,7 @@ use std::env;
 
 struct AppState {
     port_name: String,
-    port: Mutex<Option<Box<dyn SerialPort>>>,
+    port: Mutex<Option<Box<dyn SerialPort + Send>>>,  // + Send pour spawn_blocking
     debug_log: Mutex<bool>,
     model_type: Mutex<String>,
     last_success: Mutex<Instant>,
@@ -95,14 +95,14 @@ fn build_frame(addr: u8, func: u8, reg: u16, value: Option<u16>) -> Vec<u8> {
 
 // ==================== PORT & RETRY ====================
 
-fn open_port(port_name: &str) -> Option<Box<dyn SerialPort>> {
+fn open_port(port_name: &str) -> Option<Box<dyn SerialPort + Send>> {
     serialport::new(port_name, 9600)
         .data_bits(serialport::DataBits::Eight)
         .parity(serialport::Parity::Even)
         .stop_bits(serialport::StopBits::One)
         .timeout(Duration::from_millis(600))
         .open()
-        .map(|p| Box::new(p) as Box<dyn SerialPort>)
+        .map(|p| Box::new(p) as Box<dyn SerialPort + Send>)
         .ok()
 }
 
@@ -152,8 +152,9 @@ fn read_register(state: &AppState, addr: u8, reg: u16, debug: bool) -> Option<u1
         match port.read(&mut buffer) {
             Ok(n) if n >= 5 => {
                 let resp = &buffer[0..n];
-                if resp[1] == 0x83 { None }
-                else if resp[1] == 0x03 && resp.len() >= 5 {
+                if resp[1] == 0x83 {
+                    None
+                } else if resp[1] == 0x03 && resp.len() >= 5 {
                     Some(((resp[3] as u16) << 8) | resp[4] as u16)
                 } else {
                     None
@@ -291,7 +292,10 @@ async fn start_monitoring(state: web::Data<Mutex<AppState>>) {
 // ==================== ROUTES ====================
 
 async fn index() -> impl Responder {
-    NamedFile::open_async("index.html").await.unwrap_or_else(|_| HttpResponse::NotFound().body("index.html non trouvé"))
+    match NamedFile::open_async("index.html").await {
+        Ok(file) => file.into_response(),
+        Err(_) => HttpResponse::NotFound().body("index.html non trouvé"),
+    }
 }
 
 async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
@@ -391,7 +395,6 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
             }.to_string());
         }
 
-        // Mode opération
         if let Some(mode) = read_register(&guard, addr, 0x206D, debug) {
             values.insert("operation_mode".to_string(), match mode {
                 0 => "Auto-réarmement automatique", 1 => "Auto-non-réarmement",
@@ -444,7 +447,7 @@ async fn read_all(data: web::Data<Mutex<AppState>>) -> impl Responder {
     })
 }
 
-// Macro pour les commandes
+// Macro pour commandes
 macro_rules! make_cmd {
     ($name:ident, $reg:expr, $val:expr, $msg:literal) => {
         async fn $name(data: web::Data<Mutex<AppState>>) -> impl Responder {
@@ -466,7 +469,7 @@ make_cmd!(force_double, 0x2700, 0x00FF, "Forçage double déclenché");
 make_cmd!(force_source1, 0x2700, 0x0000, "Forçage Onduleur");
 make_cmd!(force_source2, 0x2700, 0x00AA, "Forçage Réseau");
 
-// Routes de réglage MN
+// Routes réglage MN
 async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<RegValue>) -> impl Responder {
     let state = data.clone();
     let value = query.value;
@@ -483,7 +486,7 @@ async fn set_undervoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<R
 
     HttpResponse::Ok().json(serde_json::json!({
         "success": result.0,
-        "message": if result.0 { result.1.clone() } else { "".to_string() },
+        "message": if result.0 { result.1.clone() } else { String::new() },
         "error": if !result.0 { Some(result.1) } else { None }
     }))
 }
@@ -504,7 +507,7 @@ async fn set_undervoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<R
 
     HttpResponse::Ok().json(serde_json::json!({
         "success": result.0,
-        "message": if result.0 { result.1.clone() } else { "".to_string() },
+        "message": if result.0 { result.1.clone() } else { String::new() },
         "error": if !result.0 { Some(result.1) } else { None }
     }))
 }
@@ -525,7 +528,7 @@ async fn set_overvoltage1(data: web::Data<Mutex<AppState>>, query: web::Query<Re
 
     HttpResponse::Ok().json(serde_json::json!({
         "success": result.0,
-        "message": if result.0 { result.1.clone() } else { "".to_string() },
+        "message": if result.0 { result.1.clone() } else { String::new() },
         "error": if !result.0 { Some(result.1) } else { None }
     }))
 }
@@ -546,7 +549,7 @@ async fn set_overvoltage2(data: web::Data<Mutex<AppState>>, query: web::Query<Re
 
     HttpResponse::Ok().json(serde_json::json!({
         "success": result.0,
-        "message": if result.0 { result.1.clone() } else { "".to_string() },
+        "message": if result.0 { result.1.clone() } else { String::new() },
         "error": if !result.0 { Some(result.1) } else { None }
     }))
 }
@@ -600,7 +603,7 @@ async fn main() -> std::io::Result<()> {
     let port_name = env::var("SERIAL_PORT").unwrap_or_else(|_| "COM5".to_string());
 
     println!("========================================");
-    println!("  CHINT ATS - Serveur Rust v2.2 (Résilient)");
+    println!("  CHINT ATS - Serveur Rust v2.3 (Résilient)");
     println!("  Port: {} | 9600 Even | Adresse 6", port_name);
 
     let initial_port = open_port(&port_name);
@@ -610,7 +613,7 @@ async fn main() -> std::io::Result<()> {
 
     let temp_state = AppState {
         port_name: port_name.clone(),
-        port: Mutex::new(initial_port.clone()),
+        port: Mutex::new(initial_port.clone()), // clone de Option est OK ici car on vient de créer
         debug_log: Mutex::new(false),
         model_type: Mutex::new("?".to_string()),
         last_success: Mutex::new(Instant::now()),
