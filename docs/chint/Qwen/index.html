@@ -296,6 +296,7 @@ return addCRCToFrame(frameInput);
 return frameInput;
 }
 
+
 // ==================== FONCTIONS DE LOG ====================
 function updateCompactLog(msg, type = 'info') {
 const now = new Date();
@@ -523,21 +524,23 @@ updateCompactLog(`Réseau: ${e.message}`, 'error');
 }
 
 async function sendCmd(cmd) {
-updateCompactLog(`Cmd: ${cmd}`, 'send');
-try {
-const resp = await fetch('/api/' + cmd);
-const data = await resp.json();
-if (data.success) {
-updateCompactLog(`✅ ${data.message}`, 'success');
-setTimeout(refreshNow, 500);
-} else {
-updateCompactLog(`❌ ${data.error || 'Échec'}`, 'error');
+    updateCompactLog(`Cmd: ${cmd}`, 'send');
+    try {
+        const resp = await fetch('/api/' + cmd, { 
+            method: 'POST'  // <-- AJOUTER CETTE LIGNE
+        });
+        const data = await resp.json();
+        if (data.success) {
+            updateCompactLog(`✅ ${data.message}`, 'success');
+            setTimeout(refreshNow, 500);
+        } else {
+            updateCompactLog(`❌ ${data.error || 'Échec'}`, 'error');
+        }
+    } catch(e) { 
+        updateCompactLog(`❌ Erreur: ${e.message}`, 'error'); 
+    }
 }
-} catch(e) {
-updateCompactLog(`❌ Erreur: ${e.message}`, 'error');
-}
-}
-
+  
 function startAutoRefresh() {
 if (autoInterval) clearInterval(autoInterval);
 autoInterval = setInterval(refreshNow, 5000);
