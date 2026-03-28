@@ -1,16 +1,23 @@
-error[E0308]: mismatched types
-   --> src\main.rs:294:66
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+   --> src\main.rs:296:26
     |
-294 |     NamedFile::open_async("index.html").await.unwrap_or_else(|_| HttpResponse::NotFound().body("index.html non trouvé"))
-    |                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `NamedFile`, found `HttpResponse`
+296 |         Ok(file) => file.into_response(),
+    |                          ^^^^^^^^^^^^^-- argument #1 of type `&HttpRequest` is missing
     |
-    = note: expected struct `NamedFile`
-               found struct `HttpResponse`
+note: method defined here
+   --> C:\Users\thier\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\actix-files-0.6.10\src\named.rs:439:12
+    |
+439 |     pub fn into_response(self, req: &HttpRequest) -> HttpResponse<BoxBody> {
+    |            ^^^^^^^^^^^^^
+help: provide the argument
+    |
+296 |         Ok(file) => file.into_response(/* &HttpRequest */),
+    |                                        ++++++++++++++++++
 
 error[E0277]: the trait bound `Box<dyn SerialPort>: SerialPort` is not satisfied
    --> src\main.rs:105:18
     |
-105 |         .map(|p| Box::new(p) as Box<dyn SerialPort>)
+105 |         .map(|p| Box::new(p) as Box<dyn SerialPort + Send>)
     |                  ^^^^^^^^^^^ the trait `SerialPort` is not implemented for `Box<dyn SerialPort>`
     |
 help: the following other types implement trait `SerialPort`
@@ -23,18 +30,18 @@ help: the following other types implement trait `SerialPort`
     |
 263 | impl SerialPort for COMPort {
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `COMPort`
-    = note: required for the cast from `Box<Box<dyn SerialPort>>` to `Box<dyn SerialPort>`
+    = note: required for the cast from `Box<Box<dyn SerialPort>>` to `Box<dyn SerialPort + Send>`
 
-error[E0599]: the method `clone` exists for enum `std::option::Option<Box<dyn SerialPort>>`, but its trait bounds were not satisfied
-   --> src\main.rs:613:39
+error[E0599]: the method `clone` exists for enum `std::option::Option<Box<dyn SerialPort + Send>>`, but its trait bounds were not satisfied
+   --> src\main.rs:616:39
     |
-613 |         port: Mutex::new(initial_port.clone()),
-    |                                       ^^^^^ method cannot be called on `std::option::Option<Box<dyn SerialPort>>` due to unsatisfied trait bounds
+616 |         port: Mutex::new(initial_port.clone()), // clone de Option est OK ici car on vient de créer
+    |                                       ^^^^^ method cannot be called on `std::option::Option<Box<dyn SerialPort + Send>>` due to unsatisfied trait bounds
     |
     = note: the following trait bounds were not satisfied:
-            `Box<dyn SerialPort>: Clone`
-            which is required by `std::option::Option<Box<dyn SerialPort>>: Clone`
+            `Box<dyn SerialPort + Send>: Clone`
+            which is required by `std::option::Option<Box<dyn SerialPort + Send>>: Clone`
 
-Some errors have detailed explanations: E0277, E0308, E0599.
-For more information about an error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0061, E0277, E0599.
+For more information about an error, try `rustc --explain E0061`.
 error: could not compile `chint_ats` (bin "chint_ats") due to 3 previous errors
