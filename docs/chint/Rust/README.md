@@ -1,13 +1,8 @@
 # 
-http://localhost:5000.
-CRC-16/MODBUS.
-
-Voici le fichier `README.md` complet avec toutes les informations pour mettre en place et utiliser l'application :
-
 ---
 
 ```markdown
-# CHINT ATS - Supervision Modbus RTU
+# CHINT ATS - Supervision Modbus RTU CRC-16/MODBUS
 
 Application web de supervision pour les automatismes de transfert de source (ATS) CHINT séries NXZ(H)MN, NZ5(H)M, NXZ(H)BN, NZ5(H)B.
 
