@@ -5,6 +5,7 @@
 # CHINT ATS - Supervision Modbus RTU CRC-16/MODBUS
 
 Application web de supervision pour les automatismes de transfert de source (ATS) CHINT séries NXZ(H)MN, NZ5(H)M, NXZ(H)BN, NZ5(H)B.
+# Model : NXZBN-63 S/2 D T C 32A
 
 ## Table des matières
 
