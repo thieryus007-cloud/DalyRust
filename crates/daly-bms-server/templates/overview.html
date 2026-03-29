@@ -539,6 +539,24 @@ window.onBmsUpdate = function(snaps) {
   applyBms();
 };
 
+// ── Baseline journalière ET112 (localStorage) ────────────────────
+// energy_import_wh est le cumul total depuis installation.
+// On stocke la baseline du jour pour calculer le delta journalier,
+// exactement comme Node-RED fait avec pvinv_baseline.
+function et112DailyKwh(addr, currentWh) {
+  const today = new Date().toLocaleDateString('fr-FR');
+  const key   = 'et112_base_' + addr;
+  let stored;
+  try { stored = JSON.parse(localStorage.getItem(key)); } catch(_) {}
+  if (stored && stored.date === today) {
+    // Même journée : delta depuis la baseline
+    return Math.max(0, (currentWh - stored.wh) / 1000);
+  }
+  // Nouveau jour ou première visite : poser la baseline
+  localStorage.setItem(key, JSON.stringify({ date: today, wh: currentWh }));
+  return 0;
+}
+
 // ── ET112 polling ─────────────────────────────────────────────────
 async function pollEt112() {
   let solarW = 0, solarKwh = 0, loadW = 0, loadKwh = 0;
@@ -551,15 +569,16 @@ async function pollEt112() {
       const d = await r.json();
       et112Map[dev.addr] = d;
 
-      const kwh = (d.energy_import_wh || 0) / 1000;
+      // Delta journalier (cumul brut - baseline posée ce matin)
+      const dailyKwh = et112DailyKwh(dev.addr, d.energy_import_wh || 0);
       set(`et-pw-${dev.addr}`, f0(d.power_w) + ' W');
 
       if (dev.type === 'pvinverter') {
         solarW   += d.power_w || 0;
-        solarKwh += kwh;
+        solarKwh += dailyKwh;
       } else if (dev.type === 'heatpump') {
         loadW    += d.power_w || 0;
-        loadKwh  += kwh;
+        loadKwh  += dailyKwh;
       }
     } catch(_) {}
   }
