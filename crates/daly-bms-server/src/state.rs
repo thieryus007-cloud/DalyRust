@@ -155,6 +155,9 @@ pub struct AppState {
 
     /// Ring buffers Tasmota indexés par id de device.
     pub tasmota_buffers: Arc<RwLock<BTreeMap<u8, TasmotaRingBuffer>>>,
+
+    /// Production MPPT aujourd'hui en kWh (publiée par Node-RED via POST /api/v1/solar/mppt-yield).
+    pub mppt_yield_kwh: Arc<RwLock<f32>>,
 }
 
 impl AppState {
@@ -192,6 +195,7 @@ impl AppState {
             et112_buffers: Arc::new(RwLock::new(et112_buffers)),
             irradiance_value: Arc::new(RwLock::new(None)),
             tasmota_buffers: Arc::new(RwLock::new(tasmota_buffers)),
+            mppt_yield_kwh: Arc::new(RwLock::new(0.0)),
         }
     }
 

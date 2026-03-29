@@ -33,6 +33,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/config",         get(system::get_config))
         .route("/api/v1/discover",       get(system::discover))
         .route("/api/v1/irradiance/status", get(system::get_irradiance_status))
+        .route("/api/v1/solar/mppt-yield",  post(system::set_mppt_yield))
 
         // ── BMS — Lecture ────────────────────────────────────────────────────
         .route("/api/v1/bms/:id/status",      get(bms::get_bms_status))

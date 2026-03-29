@@ -564,9 +564,9 @@ async function pollEt112() {
     } catch(_) {}
   }
 
-  // Update solar panel
+  // Update solar panel — total = micro-onduleurs ET112 + MPPT (mis à jour par pollIrr)
   set('solar-w',    f0(solarW));
-  set('solar-kwh',  solarKwh.toFixed(2));
+  set('solar-kwh',  (solarKwh + mpptKwh).toFixed(2));
   set('solar-ts',   ts);
   set('f-solar-w',  f0(solarW) + ' W');
 
@@ -580,12 +580,14 @@ async function pollEt112() {
   return { solarW, loadW, solarKwh };
 }
 
-// ── Irradiance polling ───────────────────────────────────────────
+// ── Irradiance + MPPT polling ────────────────────────────────────
+let mpptKwh = 0;
 async function pollIrr() {
   try {
     const r = await fetch('/api/v1/irradiance/status');
     if (!r.ok) return null;
     const d = await r.json();
+    mpptKwh = d.mppt_yield_kwh || 0;
     if (!d.connected) return 0;
     irrWm2 = d.irradiance_wm2;
     set('irr-w',    f0(irrWm2));

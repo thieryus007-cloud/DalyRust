@@ -7,7 +7,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
 
@@ -96,6 +96,7 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
                 "name": snap.name,
                 "irradiance_wm2": snap.irradiance_wm2,
                 "timestamp": snap.timestamp.to_rfc3339(),
+                "mppt_yield_kwh": *state.mppt_yield_kwh.read().await,
             })),
         ),
         None => (
@@ -103,9 +104,29 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
             Json(json!({
                 "connected": false,
                 "irradiance_wm2": 0.0,
+                "mppt_yield_kwh": *state.mppt_yield_kwh.read().await,
             })),
         ),
     }
+}
+
+/// Corps de la requête POST /api/v1/solar/mppt-yield
+#[derive(Deserialize, Serialize)]
+pub struct MpptYieldBody {
+    /// Production MPPT aujourd'hui en kWh (publiée par Node-RED).
+    pub mppt_yield_kwh: f32,
+}
+
+/// POST /api/v1/solar/mppt-yield
+///
+/// Permet à Node-RED de pousser la production MPPT journalière.
+/// Node-RED appelle ce endpoint chaque fois que `mppt_yield_today` est mis à jour.
+pub async fn set_mppt_yield(
+    State(state): State<AppState>,
+    Json(body): Json<MpptYieldBody>,
+) -> impl IntoResponse {
+    *state.mppt_yield_kwh.write().await = body.mppt_yield_kwh;
+    (StatusCode::OK, Json(json!({ "ok": true, "mppt_yield_kwh": body.mppt_yield_kwh })))
 }
 
 /// GET /api/v1/discover
