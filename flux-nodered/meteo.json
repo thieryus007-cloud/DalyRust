@@ -227,9 +227,9 @@
     "id": "pvinv_daily_fn",
     "type": "function",
     "z": "e6e3a16384301f83",
-    "name": "Delta journalier PVInverter (mqtt_7 instance 32)",
-    "func": "// Gérer payload string ou objet (datatype auto)\nlet payload = msg.payload;\nif (typeof payload === 'string') {\n    try { payload = JSON.parse(payload); } catch(e) { return null; }\n}\nconst val = payload && payload.value !== undefined ? payload.value : payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(parseFloat(val).toFixed(3));\nif (isNaN(current) || current <= 0) return null;\n\n// Baseline posée au 1er message de la journée (ou après reset minuit)\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\n// Sécurité : si le compteur ET112 a été remis à zéro\nif (current < baseline) {\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst pvinvToday = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', pvinvToday);\n\nconst mpptToday = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptToday + pvinvToday).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'green', shape:'dot', text:'PVInv: ' + pvinvToday.toFixed(2) + ' + MPPT: ' + mpptToday.toFixed(2) + ' = ' + total.toFixed(2) + ' kWh'});\n\n// out1=debug | out2=persist baseline | out3=InfluxDB trigger\nreturn [msg, {payload: String(baseline)}, {}];",
-    "outputs": 3,
+    "name": "Delta journalier PVInverter (mqtt_7 instance 32) → total_yield",
+    "func": "// Gérer payload string ou objet (datatype auto)\nlet payload = msg.payload;\nif (typeof payload === 'string') {\n    try { payload = JSON.parse(payload); } catch(e) { return null; }\n}\nconst val = payload && payload.value !== undefined ? payload.value : payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nconst current = parseFloat(parseFloat(val).toFixed(3));\nif (isNaN(current) || current <= 0) return null;\n\n// Baseline posée au 1er message de la journée (ou après reset minuit)\nlet baseline = global.get('pvinv_baseline');\nif (baseline === null || baseline === undefined) {\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\n// Sécurité : si le compteur ET112 a été remis à zéro\nif (current < baseline) {\n    global.set('pvinv_baseline', current);\n    baseline = current;\n}\n\nconst pvinvToday = Math.max(0, parseFloat((current - baseline).toFixed(3)));\nglobal.set('pvinv_yield_today', pvinvToday);\n\nconst mpptToday = global.get('mppt_yield_today') || 0;\nconst total = parseFloat((mpptToday + pvinvToday).toFixed(3));\nglobal.set('total_yield_today', total);\n\nnode.status({fill:'green', shape:'dot', text:'PVInv: ' + pvinvToday.toFixed(2) + ' + MPPT: ' + mpptToday.toFixed(2) + ' = ' + total.toFixed(2) + ' kWh'});\n\n// out1=debug | out2=persist baseline | out3=InfluxDB trigger | out4=push serveur\nreturn [msg, {payload: String(baseline)}, {}, {}];",
+    "outputs": 4,
     "timeout": "",
     "noerr": 0,
     "initialize": "",
@@ -246,6 +246,9 @@
       ],
       [
         "influx_write_fn"
+      ],
+      [
+        "mppt_to_http"
       ]
     ]
   },
@@ -554,7 +557,7 @@
     "type": "function",
     "z": "e6e3a16384301f83",
     "name": "Préparer POST mppt-yield",
-    "func": "// Envoyer mppt_yield_today vers daly-bms-server\n// Déclenché : à chaque mise à jour MPPT + keepalive 5 min\nconst kwh = global.get('mppt_yield_today') || 0;\nmsg.payload = { mppt_yield_kwh: kwh };\nmsg.headers = { 'Content-Type': 'application/json' };\nnode.status({fill:'blue', shape:'dot', text: kwh.toFixed(2) + ' kWh → serveur'});\nreturn msg;",
+    "func": "// Envoyer total_yield_today vers daly-bms-server\n// total = MPPT + ET112 delta journalier (même valeur que Victron 'Solaire totale')\n// Déclenché : à chaque mise à jour MPPT ou PVInverter + keepalive 5 min\nconst kwh = global.get('total_yield_today') || 0;\nmsg.payload = { total_yield_kwh: kwh };\nmsg.headers = { 'Content-Type': 'application/json' };\nnode.status({fill:'blue', shape:'dot', text: kwh.toFixed(2) + ' kWh → serveur'});\nreturn msg;",
     "outputs": 1,
     "timeout": "",
     "noerr": 0,
