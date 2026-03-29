@@ -577,7 +577,7 @@
     "method": "POST",
     "ret": "obj",
     "paytoqs": "ignore",
-    "url": "http://localhost:8080/api/v1/solar/mppt-yield",
+    "url": "http://192.168.1.141:8080/api/v1/solar/mppt-yield",
     "tls": "",
     "persist": false,
     "proxy": "",
