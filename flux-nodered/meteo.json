@@ -557,7 +557,7 @@
     "type": "function",
     "z": "e6e3a16384301f83",
     "name": "Préparer POST mppt-yield",
-    "func": "// Envoyer total_yield_today vers daly-bms-server\n// total = MPPT + ET112 delta journalier (même valeur que Victron 'Solaire totale')\n// Déclenché : à chaque mise à jour MPPT ou PVInverter + keepalive 5 min\nconst kwh = global.get('total_yield_today') || 0;\nmsg.payload = { total_yield_kwh: kwh };\nmsg.headers = { 'Content-Type': 'application/json' };\nnode.status({fill:'blue', shape:'dot', text: kwh.toFixed(2) + ' kWh → serveur'});\nreturn msg;",
+    "func": "// Envoyer total_yield_today + mppt_power_w vers daly-bms-server\n// total_yield_kwh = MPPT + ET112 delta journalier (même valeur que Victron 'Solaire totale')\n// mppt_power_w    = puissance instantanée totale des chargeurs MPPT en W\nconst kwh = global.get('total_yield_today') || 0;\nconst pw  = global.get('mppt_power_w')      || 0;\nmsg.payload = { total_yield_kwh: kwh, mppt_power_w: pw };\nmsg.headers = { 'Content-Type': 'application/json' };\nnode.status({fill:'blue', shape:'dot', text: kwh.toFixed(2) + ' kWh / ' + Math.round(pw) + ' W → serveur'});\nreturn msg;",
     "outputs": 1,
     "timeout": "",
     "noerr": 0,
@@ -592,6 +592,47 @@
     "y": 440,
     "wires": [
       []
+    ]
+  },
+  {
+    "id": "mppt_power_in",
+    "type": "mqtt in",
+    "z": "e6e3a16384301f83",
+    "name": "MPPT Dc/Power instantané (W)",
+    "topic": "N/c0619ab9929a/solarcharger/+/Dc/Power",
+    "qos": "0",
+    "datatype": "json",
+    "broker": "pi5_mqtt_broker",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 200,
+    "y": 390,
+    "wires": [
+      [
+        "mppt_power_fn"
+      ]
+    ]
+  },
+  {
+    "id": "mppt_power_fn",
+    "type": "function",
+    "z": "e6e3a16384301f83",
+    "name": "Accumuler puissance MPPT",
+    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptPowers = global.get('mppt_powers') || {};\nmpptPowers[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_powers', mpptPowers);\n\nconst mpptTotal = Object.values(mpptPowers).reduce((a, b) => a + b, 0);\nglobal.set('mppt_power_w', mpptTotal);\n\nnode.status({fill:'blue', shape:'dot', text: Math.round(mpptTotal) + ' W'});\nreturn msg;",
+    "outputs": 1,
+    "timeout": "",
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 460,
+    "y": 390,
+    "wires": [
+      [
+        "mppt_to_http"
+      ]
     ]
   }
 ]

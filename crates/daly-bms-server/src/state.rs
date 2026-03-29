@@ -159,6 +159,10 @@ pub struct AppState {
     /// Production solaire totale aujourd'hui en kWh (MPPT + delta ET112 micro-onduleurs).
     /// Publiée par Node-RED via POST /api/v1/solar/mppt-yield.
     pub mppt_yield_kwh: Arc<RwLock<f32>>,
+
+    /// Puissance MPPT instantanée totale en W (somme de tous les chargeurs solaires).
+    /// Publiée par Node-RED via POST /api/v1/solar/mppt-yield.
+    pub mppt_power_w: Arc<RwLock<f32>>,
 }
 
 impl AppState {
@@ -197,6 +201,7 @@ impl AppState {
             irradiance_value: Arc::new(RwLock::new(None)),
             tasmota_buffers: Arc::new(RwLock::new(tasmota_buffers)),
             mppt_yield_kwh: Arc::new(RwLock::new(0.0)),
+            mppt_power_w:   Arc::new(RwLock::new(0.0)),
         }
     }
 

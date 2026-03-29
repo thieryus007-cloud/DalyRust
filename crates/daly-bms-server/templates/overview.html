@@ -564,11 +564,13 @@ async function pollEt112() {
     } catch(_) {}
   }
 
-  // kWh auj. = total_yield_kwh depuis Node-RED (MPPT + ET112 delta) = valeur Victron
-  set('solar-w',    f0(solarW));
+  // W total = ET112 micro-onduleurs + MPPT (depuis Node-RED via pollIrr)
+  // kWh auj. = total_yield_kwh Node-RED = même valeur que Victron "Solaire totale"
+  const totalSolarW = solarW + mpptPowerW;
+  set('solar-w',    f0(totalSolarW));
   set('solar-kwh',  totalYieldKwh.toFixed(2));
   set('solar-ts',   ts);
-  set('f-solar-w',  f0(solarW) + ' W');
+  set('f-solar-w',  f0(totalSolarW) + ' W');
 
   // Update loads panel
   set('loads-w',   f0(loadW));
@@ -581,15 +583,17 @@ async function pollEt112() {
 }
 
 // ── Irradiance + production totale (Node-RED) polling ────────────
-// total_yield_kwh = MPPT + ET112 delta journalier (calculé par Node-RED)
-// C'est la même valeur que "Solaire totale" dans Victron VRM.
+// total_yield_kwh = MPPT + ET112 delta journalier (même valeur que Victron VRM)
+// mppt_power_w    = puissance instantanée MPPT (W), additionée aux ET112 pour total solaire
 let totalYieldKwh = 0;
+let mpptPowerW    = 0;
 async function pollIrr() {
   try {
     const r = await fetch('/api/v1/irradiance/status');
     if (!r.ok) return null;
     const d = await r.json();
     totalYieldKwh = d.total_yield_kwh || 0;
+    mpptPowerW    = d.mppt_power_w    || 0;
     if (!d.connected) return 0;
     irrWm2 = d.irradiance_wm2;
     set('irr-w',    f0(irrWm2));
