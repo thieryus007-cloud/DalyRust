@@ -109,6 +109,7 @@ pub struct CellInfo {
 
 /// Résumé d'un BMS pour la carte de la page d'accueil.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct BmsSummary {
     pub address:               u8,
     pub address_hex:           String,   // "0x01"
@@ -534,6 +535,7 @@ pub async fn dashboard_et112_list(State(state): State<AppState>) -> Response {
 
 /// Résumé d'une prise Tasmota pour la page d'ensemble.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct TasmotaDeviceSummary {
     pub id:                   u8,
     pub name:                 String,
@@ -702,6 +704,7 @@ pub async fn dashboard_tasmota(
 
 /// Résumé d'un ET112 pour la page overview.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct OverviewEt112 {
     pub name:         String,
     pub addr_hex:     String,
