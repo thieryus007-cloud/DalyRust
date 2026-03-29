@@ -539,27 +539,11 @@ window.onBmsUpdate = function(snaps) {
   applyBms();
 };
 
-// ── Baseline journalière ET112 (localStorage) ────────────────────
-// energy_import_wh est le cumul total depuis installation.
-// On stocke la baseline du jour pour calculer le delta journalier,
-// exactement comme Node-RED fait avec pvinv_baseline.
-function et112DailyKwh(addr, currentWh) {
-  const today = new Date().toLocaleDateString('fr-FR');
-  const key   = 'et112_base_' + addr;
-  let stored;
-  try { stored = JSON.parse(localStorage.getItem(key)); } catch(_) {}
-  if (stored && stored.date === today) {
-    // Même journée : delta depuis la baseline
-    return Math.max(0, (currentWh - stored.wh) / 1000);
-  }
-  // Nouveau jour ou première visite : poser la baseline
-  localStorage.setItem(key, JSON.stringify({ date: today, wh: currentWh }));
-  return 0;
-}
-
 // ── ET112 polling ─────────────────────────────────────────────────
+// kWh auj. solaire = total_yield_kwh depuis Node-RED (via pollIrr)
+// kWh auj. PAC = non disponible côté serveur → affiché via MPPT uniquement
 async function pollEt112() {
-  let solarW = 0, solarKwh = 0, loadW = 0, loadKwh = 0;
+  let solarW = 0, loadW = 0, loadKwh = 0;
   const ts = new Date().toLocaleTimeString('fr-FR');
 
   for (const dev of ET112_DEVS) {
@@ -569,23 +553,20 @@ async function pollEt112() {
       const d = await r.json();
       et112Map[dev.addr] = d;
 
-      // Delta journalier (cumul brut - baseline posée ce matin)
-      const dailyKwh = et112DailyKwh(dev.addr, d.energy_import_wh || 0);
       set(`et-pw-${dev.addr}`, f0(d.power_w) + ' W');
 
       if (dev.type === 'pvinverter') {
-        solarW   += d.power_w || 0;
-        solarKwh += dailyKwh;
+        solarW += d.power_w || 0;
       } else if (dev.type === 'heatpump') {
         loadW    += d.power_w || 0;
-        loadKwh  += dailyKwh;
+        loadKwh  += (d.energy_import_wh || 0) / 1000; // cumul brut (affiché tel quel)
       }
     } catch(_) {}
   }
 
-  // Update solar panel — total = micro-onduleurs ET112 + MPPT (mis à jour par pollIrr)
+  // kWh auj. = total_yield_kwh depuis Node-RED (MPPT + ET112 delta) = valeur Victron
   set('solar-w',    f0(solarW));
-  set('solar-kwh',  (solarKwh + mpptKwh).toFixed(2));
+  set('solar-kwh',  totalYieldKwh.toFixed(2));
   set('solar-ts',   ts);
   set('f-solar-w',  f0(solarW) + ' W');
 
@@ -596,17 +577,19 @@ async function pollEt112() {
   set('f-loads-w',  f0(loadW) + ' W');
   set('f-loads-kwh', loadKwh.toFixed(1) + ' kWh');
 
-  return { solarW, loadW, solarKwh };
+  return { solarW, loadW };
 }
 
-// ── Irradiance + MPPT polling ────────────────────────────────────
-let mpptKwh = 0;
+// ── Irradiance + production totale (Node-RED) polling ────────────
+// total_yield_kwh = MPPT + ET112 delta journalier (calculé par Node-RED)
+// C'est la même valeur que "Solaire totale" dans Victron VRM.
+let totalYieldKwh = 0;
 async function pollIrr() {
   try {
     const r = await fetch('/api/v1/irradiance/status');
     if (!r.ok) return null;
     const d = await r.json();
-    mpptKwh = d.mppt_yield_kwh || 0;
+    totalYieldKwh = d.total_yield_kwh || 0;
     if (!d.connected) return 0;
     irrWm2 = d.irradiance_wm2;
     set('irr-w',    f0(irrWm2));

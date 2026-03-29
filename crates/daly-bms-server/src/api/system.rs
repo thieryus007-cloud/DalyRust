@@ -96,7 +96,7 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
                 "name": snap.name,
                 "irradiance_wm2": snap.irradiance_wm2,
                 "timestamp": snap.timestamp.to_rfc3339(),
-                "mppt_yield_kwh": *state.mppt_yield_kwh.read().await,
+                "total_yield_kwh": *state.mppt_yield_kwh.read().await,
             })),
         ),
         None => (
@@ -104,7 +104,7 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
             Json(json!({
                 "connected": false,
                 "irradiance_wm2": 0.0,
-                "mppt_yield_kwh": *state.mppt_yield_kwh.read().await,
+                "total_yield_kwh": *state.mppt_yield_kwh.read().await,
             })),
         ),
     }
@@ -113,20 +113,24 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
 /// Corps de la requête POST /api/v1/solar/mppt-yield
 #[derive(Deserialize, Serialize)]
 pub struct MpptYieldBody {
-    /// Production MPPT aujourd'hui en kWh (publiée par Node-RED).
-    pub mppt_yield_kwh: f32,
+    /// Production solaire totale aujourd'hui en kWh (MPPT + ET112 delta).
+    /// Accepte `total_yield_kwh` (nouveau) ou `mppt_yield_kwh` (ancien — rétrocompat).
+    pub total_yield_kwh: Option<f32>,
+    pub mppt_yield_kwh:  Option<f32>,
 }
 
 /// POST /api/v1/solar/mppt-yield
 ///
-/// Permet à Node-RED de pousser la production MPPT journalière.
-/// Node-RED appelle ce endpoint chaque fois que `mppt_yield_today` est mis à jour.
+/// Permet à Node-RED de pousser la production solaire totale journalière.
+/// Accepte `total_yield_kwh` (production complète MPPT + ET112 delta)
+/// ou `mppt_yield_kwh` (MPPT seul, rétrocompat).
 pub async fn set_mppt_yield(
     State(state): State<AppState>,
     Json(body): Json<MpptYieldBody>,
 ) -> impl IntoResponse {
-    *state.mppt_yield_kwh.write().await = body.mppt_yield_kwh;
-    (StatusCode::OK, Json(json!({ "ok": true, "mppt_yield_kwh": body.mppt_yield_kwh })))
+    let val = body.total_yield_kwh.or(body.mppt_yield_kwh).unwrap_or(0.0);
+    *state.mppt_yield_kwh.write().await = val;
+    (StatusCode::OK, Json(json!({ "ok": true, "total_yield_kwh": val })))
 }
 
 /// GET /api/v1/discover

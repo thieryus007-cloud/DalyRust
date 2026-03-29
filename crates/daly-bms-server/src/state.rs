@@ -156,7 +156,8 @@ pub struct AppState {
     /// Ring buffers Tasmota indexés par id de device.
     pub tasmota_buffers: Arc<RwLock<BTreeMap<u8, TasmotaRingBuffer>>>,
 
-    /// Production MPPT aujourd'hui en kWh (publiée par Node-RED via POST /api/v1/solar/mppt-yield).
+    /// Production solaire totale aujourd'hui en kWh (MPPT + delta ET112 micro-onduleurs).
+    /// Publiée par Node-RED via POST /api/v1/solar/mppt-yield.
     pub mppt_yield_kwh: Arc<RwLock<f32>>,
 }
 
