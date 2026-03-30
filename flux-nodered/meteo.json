@@ -595,44 +595,13 @@
     ]
   },
   {
-    "id": "mppt_power_in",
-    "type": "mqtt in",
+    "id": "meteo_comment_solar_power",
+    "type": "comment",
     "z": "e6e3a16384301f83",
-    "name": "MPPT Dc/Power instantané (W)",
-    "topic": "N/c0619ab9929a/solarcharger/+/Dc/Power",
-    "qos": "0",
-    "datatype": "json",
-    "broker": "pi5_mqtt_broker",
-    "nl": false,
-    "rap": true,
-    "rh": 0,
-    "inputs": 0,
-    "x": 200,
+    "name": "mppt_power_w → global posé par Solar_power.json (topics Yield/Power corrects)",
+    "info": "La puissance MPPT instantanée (global.mppt_power_w) est alimentée par\nle flow Solar_power.json qui subscribe aux topics corrects :\n  N/c0619ab9929a/solarcharger/273/Yield/Power\n  N/c0619ab9929a/solarcharger/289/Yield/Power\n\nLes nœuds mppt_power_in / mppt_power_fn ont été supprimés car ils\nutilisaient le mauvais topic solarcharger/+/Dc/Power.",
+    "x": 300,
     "y": 390,
-    "wires": [
-      [
-        "mppt_power_fn"
-      ]
-    ]
-  },
-  {
-    "id": "mppt_power_fn",
-    "type": "function",
-    "z": "e6e3a16384301f83",
-    "name": "Accumuler puissance MPPT",
-    "func": "const val = msg.payload && msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nif (val === null || val === undefined || isNaN(val)) return null;\n\nlet mpptPowers = global.get('mppt_powers') || {};\nmpptPowers[msg.topic] = parseFloat(val) || 0;\nglobal.set('mppt_powers', mpptPowers);\n\nconst mpptTotal = Object.values(mpptPowers).reduce((a, b) => a + b, 0);\nglobal.set('mppt_power_w', mpptTotal);\n\nnode.status({fill:'blue', shape:'dot', text: Math.round(mpptTotal) + ' W'});\nreturn msg;",
-    "outputs": 1,
-    "timeout": "",
-    "noerr": 0,
-    "initialize": "",
-    "finalize": "",
-    "libs": [],
-    "x": 460,
-    "y": 390,
-    "wires": [
-      [
-        "mppt_to_http"
-      ]
-    ]
+    "wires": []
   }
 ]
