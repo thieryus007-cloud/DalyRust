@@ -33,6 +33,44 @@ body { font-family: 'Segoe UI', system-ui; background: linear-gradient(135deg, #
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px; }
 .card { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.2s; }
 .card:hover { transform: translateY(-2px); }
+
+/* Styles pour les contours clignotants */
+.card-active-source1 {
+    border: 3px solid #3b82f6;
+    box-shadow: 0 0 15px rgba(59,130,246,0.5);
+    animation: pulseBlue 1.5s ease-in-out infinite;
+}
+
+.card-active-source2 {
+    border: 3px solid #f59e0b;
+    box-shadow: 0 0 15px rgba(245,158,11,0.5);
+    animation: pulseOrange 1.5s ease-in-out infinite;
+}
+
+.card-active-middle {
+    border: 3px solid #ef4444;
+    box-shadow: 0 0 15px rgba(239,68,68,0.5);
+    animation: pulseRed 1s ease-in-out infinite;
+}
+
+@keyframes pulseBlue {
+    0% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.3); }
+    50% { border-color: #60a5fa; box-shadow: 0 0 20px rgba(59,130,246,0.8); }
+    100% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.3); }
+}
+
+@keyframes pulseOrange {
+    0% { border-color: #f59e0b; box-shadow: 0 0 5px rgba(245,158,11,0.3); }
+    50% { border-color: #fbbf24; box-shadow: 0 0 20px rgba(245,158,11,0.8); }
+    100% { border-color: #f59e0b; box-shadow: 0 0 5px rgba(245,158,11,0.3); }
+}
+
+@keyframes pulseRed {
+    0% { border-color: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,0.3); }
+    50% { border-color: #f87171; box-shadow: 0 0 25px rgba(239,68,68,0.9); }
+    100% { border-color: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,0.3); }
+}
+
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .source-status { display: flex; align-items: center; gap: 12px; }
 .source-dot { width: 16px; height: 16px; border-radius: 50%; transition: all 0.3s; }
@@ -127,7 +165,7 @@ footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; 
 <!-- Grid principale -->
 <div class="grid-3">
 
-<!-- Carte 1: Onduleur AMELIOREE -->
+<!-- Carte 1: Onduleur -->
 <div class="card" id="cardOnduleur">
 <div class="card-title">
 <div class="source-status">
@@ -172,7 +210,7 @@ footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; 
 <div class="warning-text" style="margin-top: 8px;">⚠️ Les boutons "Forcer OFF" et "Direct" nécessitent télécommande active</div>
 </div>
 
-<!-- Carte 3: Réseau AMELIOREE -->
+<!-- Carte 3: Réseau -->
 <div class="card" id="cardReseau">
 <div class="card-title">
 <div class="source-status">
@@ -196,7 +234,6 @@ footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; 
 </div>
 </div>
 </div>
-
 
 <!-- Console Modbus -->
 <div class="console-card">
@@ -268,7 +305,7 @@ function calculateAndShowCrc() {
     if (withCrc) alert(`CRC calculé :\nSans CRC : ${input}\nAvec CRC : ${withCrc}`);
 }
 
-// ==================== NOUVELLES FONCTIONS AUTO ====================
+// ==================== FONCTIONS AUTO ====================
 async function forceSource1WithRemote() {
     if (isExecutingCommand) {
         updateCompactLog('⏳ Commande en cours, veuillez patienter...', 'warning');
@@ -350,6 +387,40 @@ async function forceSource2WithRemote() {
         btn.classList.remove('action-btn-loading');
         btn.disabled = false;
         setTimeout(refreshNow, 300);
+    }
+}
+
+// ==================== GESTION DES CONTOURS CLIGNOTANTS ====================
+function updateBlinkingBorders(v1a, v2a, middleOFF) {
+    const cardOnduleur = document.getElementById('cardOnduleur');
+    const cardReseau = document.getElementById('cardReseau');
+    const cardReg50 = document.getElementById('cardReg50');
+    
+    // Retirer toutes les classes de clignotement
+    cardOnduleur.classList.remove('card-active-source1', 'card-active-source2', 'card-active-middle');
+    cardReseau.classList.remove('card-active-source1', 'card-active-source2', 'card-active-middle');
+    cardReg50.classList.remove('card-active-source1', 'card-active-source2', 'card-active-middle');
+    
+    const tensionOnduleur = parseFloat(v1a) || 0;
+    const tensionReseau = parseFloat(v2a) || 0;
+    
+    // Vérifier si middleOFF est actif (position centrale)
+    const isMiddleOFF = middleOFF === "✅ Actif" || middleOFF === "Actif" || middleOFF === true;
+    
+    if (isMiddleOFF || (tensionOnduleur < 50 && tensionReseau < 50)) {
+        // Aucune source sélectionnée - contour ROUGE clignotant sur cardReg50
+        cardReg50.classList.add('card-active-middle');
+        updateCompactLog('⚠️ Aucune source active - position centrale', 'warning');
+    } 
+    else if (tensionOnduleur > 50 && tensionOnduleur > tensionReseau) {
+        // Source Onduleur active - contour BLEU clignotant
+        cardOnduleur.classList.add('card-active-source1');
+        updateCompactLog('🔵 Source Onduleur active - contour bleu', 'info');
+    }
+    else if (tensionReseau > 50 && tensionReseau > tensionOnduleur) {
+        // Source Réseau active - contour ORANGE clignotant
+        cardReseau.classList.add('card-active-source2');
+        updateCompactLog('🟠 Source Réseau active - contour orange', 'info');
     }
 }
 
@@ -449,7 +520,6 @@ async function refreshNow() {
                 const isRemoteActive = data.values.swRemote === "📡 Activé";
                 updateRemoteBanner(isRemoteActive);
                 updateRemoteIndicators(isRemoteActive);
-                //document.getElementById('globalRemoteState').innerHTML = isRemoteActive ? '📡 Activée' : '🔒 Inactive';
                 document.getElementById('remoteBadgeReg').innerHTML = isRemoteActive ? '📡 Télécom: ON' : '🔒 Télécom: OFF';
                 if (isRemoteActive) document.getElementById('remoteBadgeReg').style.background = '#22c55e';
                 else document.getElementById('remoteBadgeReg').style.background = '#e2e8f0';
@@ -461,6 +531,8 @@ async function refreshNow() {
 
             const v1a = parseInt(data.values.v1a) || 0;
             const v2a = parseInt(data.values.v2a) || 0;
+            const middleOFF = data.values.middleOFF || "";
+            
             document.getElementById('activeSource').innerHTML = v1a > 50 ? "🔋 Onduleur" : (v2a > 50 ? "⚡ Réseau" : "❌ Aucune");
 
             const onduleurConnected = v1a > 50;
@@ -470,8 +542,8 @@ async function refreshNow() {
             document.getElementById('onduleurStatus').innerHTML = onduleurConnected ? "✅ Connecté" : "❌ Déconnecté";
             document.getElementById('reseauStatus').innerHTML = reseauConnected ? "✅ Connecté" : "❌ Déconnecté";
 
-            document.getElementById('cardOnduleur').style.border = onduleurConnected ? "2px solid #22c55e" : "1px solid #e2e8f0";
-            document.getElementById('cardReseau').style.border = reseauConnected ? "2px solid #22c55e" : "1px solid #e2e8f0";
+            // Appliquer les contours clignotants
+            updateBlinkingBorders(v1a, v2a, middleOFF);
 
             if (data.values.s1a) updateStatusBadge('s1a_badge', data.values.s1a);
             if (data.values.s2a) updateStatusBadge('s2a_badge', data.values.s2a);
