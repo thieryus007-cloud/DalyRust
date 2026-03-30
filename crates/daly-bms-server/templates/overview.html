@@ -7,128 +7,128 @@
 {% block head %}
 <style>
 /* ═══════════════════════════════════════════════════════════════
-   ESS Overview — Sunsynk-inspired layout
+   Overview page — light theme, ESS flow diagram
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Layout grid ─────────────────────────────────────────────── */
-.ov-wrap {
+/* ── KPI bar ─────────────────────────────────────────────────── */
+.kpi-bar {
   display: grid;
-  grid-template-rows: 270px 1fr;
-  gap: 0.6rem;
-  height: calc(100vh - 56px - 1.4rem);
-  min-height: 560px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
 }
-.ov-top {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr 1fr;
-  gap: 0.6rem;
+.kpi-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
 }
-.ov-bot {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 0.6rem;
-  min-height: 0;
+.kpi-label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kpi-value {
+  font: 800 1.55rem/1 'JetBrains Mono', monospace;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.kpi-sub {
+  font-size: 0.6rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
 }
 
-/* ── Panel ───────────────────────────────────────────────────── */
-.ov-p {
-  background: #090c10;
-  border: 1px solid #161d28;
-  border-radius: 10px;
+/* ── Two-column layout ───────────────────────────────────────── */
+.ov-body {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 0.55rem;
+  height: calc(100vh - 56px - 2.2rem - 80px);
+  min-height: 400px;
+}
+
+/* ── Card ────────────────────────────────────────────────────── */
+.ov-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-.ov-ph {
+.ov-card-hdr {
+  padding: 0.45rem 0.85rem 0.35rem;
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.45rem 0.8rem 0.35rem;
-  border-bottom: 1px solid #161d28;
   flex-shrink: 0;
 }
-.ov-pt {
+.ov-card-title {
   font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: .13em;
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: #374151;
+  color: var(--muted);
 }
-.ov-ptime {
+.ov-card-ts {
   font-size: 0.58rem;
-  color: #1f2937;
+  color: var(--muted2);
   font-family: 'JetBrains Mono', monospace;
 }
-
-/* ── Hero number ─────────────────────────────────────────────── */
-.ov-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.25rem 0.75rem; }
-.ov-big  { font: 800 3rem/1 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
-.ov-unit { font-size: 0.6rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; margin-top: 0.15rem; }
-.ov-sub  { display: flex; gap: 1.5rem; margin-top: 0.65rem; }
-.ov-sub-cell { text-align: center; }
-.ov-sub-val  { font: 700 1.05rem/1 'JetBrains Mono', monospace; }
-.ov-sub-lbl  { font-size: 0.52rem; letter-spacing: .08em; text-transform: uppercase; color: #374151; margin-top: 0.1rem; }
-
-/* ── Metrics strip ───────────────────────────────────────────── */
-.ov-strip { display: grid; border-top: 1px solid #161d28; flex-shrink: 0; }
-.ov-strip.c2 { grid-template-columns: 1fr 1fr; }
-.ov-strip.c3 { grid-template-columns: 1fr 1fr 1fr; }
-.ov-m { padding: 0.4rem 0.6rem; border-right: 1px solid #161d28; text-align: center; }
-.ov-m:last-child { border-right: none; }
-.ov-ml { font-size: 0.52rem; letter-spacing: .08em; text-transform: uppercase; color: #374151; margin-bottom: 0.1rem; }
-.ov-mv { font: 700 0.88rem/1 'JetBrains Mono', monospace; color: #d1d5db; }
-
-/* ── Device list ─────────────────────────────────────────────── */
-.ov-dlist { border-top: 1px solid #161d28; padding: 0.25rem 0.7rem 0.3rem; flex-shrink: 0; }
-.ov-drow  { display: flex; align-items: center; justify-content: space-between; padding: 0.18rem 0; font-size: 0.68rem; }
-.ov-dname { color: #6b7280; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ov-dval  { font: 700 0.7rem 'JetBrains Mono', monospace; color: #d1d5db; margin-left: 0.5rem; }
-.ov-dot-on  { color: #10b981; font-size: 0.5rem; margin-left: 0.35rem; }
-.ov-dot-off { color: #1f2937; font-size: 0.5rem; margin-left: 0.35rem; }
-
-/* ── Battery gauge ───────────────────────────────────────────── */
-.ov-gauge-wrap { flex: 1; position: relative; min-height: 0; }
-#batt-gauge { width: 100%; height: 100%; }
-.ov-batt-names {
-  position: absolute; bottom: 6px; left: 0; right: 0;
-  display: flex; justify-content: center; gap: 1.25rem;
-  font-size: 0.6rem; font-family: 'JetBrains Mono', monospace;
+.ov-card-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
 }
-.ov-batt-name-soc { color: #9ca3af; font-weight: 700; }
-.ov-batt-name-lbl { color: #374151; font-size: 0.52rem; margin-left: 0.2rem; }
 
-/* ── Colours ─────────────────────────────────────────────────── */
-.c-solar { color: #f59e0b; }
-.c-batt  { color: #10b981; }
-.c-load  { color: #8b5cf6; }
-.c-irr   { color: #fbbf24; }
-.c-grid  { color: #60a5fa; }
-
-/* ── Flow diagram ────────────────────────────────────────────── */
-.ov-flow { min-height: 0; }
-.ov-flow-inner { flex: 1; padding: 0.4rem; min-height: 0; }
-#flow-svg { width: 100%; height: 100%; }
-
-/* ── History chart ───────────────────────────────────────────── */
-.ov-chart { min-height: 0; }
-.ov-chdr {
-  padding: 0.4rem 0.8rem 0.3rem;
-  border-bottom: 1px solid #161d28;
-  display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
-  flex-shrink: 0;
+/* ── Flow SVG ────────────────────────────────────────────────── */
+#flow-svg {
+  width: 100%;
+  height: 100%;
 }
-.ov-leg { display: flex; align-items: center; gap: 0.28rem; font-size: 0.58rem; color: #4b5563; }
-.ov-leg-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-#hist-chart { flex: 1; min-height: 0; }
+
+/* ── Chart range buttons ─────────────────────────────────────── */
+.chart-range-btns {
+  display: flex;
+  gap: 0.3rem;
+}
+.rng-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.18rem 0.55rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.rng-btn:hover { background: var(--surface3); }
+.rng-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+#hist-chart {
+  flex: 1;
+  min-height: 0;
+}
 
 /* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 1100px) {
-  .ov-top { grid-template-columns: 1fr 1fr; }
-  .ov-bot { grid-template-columns: 1fr; }
-  .ov-wrap { height: auto; grid-template-rows: auto auto; }
+@media (max-width: 1050px) {
+  .kpi-bar { grid-template-columns: repeat(3, 1fr); }
+  .ov-body { grid-template-columns: 1fr; height: auto; }
 }
-@media (max-width: 680px) {
-  .ov-top { grid-template-columns: 1fr; }
+@media (max-width: 640px) {
+  .kpi-bar { grid-template-columns: 1fr 1fr; }
 }
 </style>
 {% endblock %}
@@ -143,201 +143,190 @@ const BMS_NAMES = { {% for b in bms_list %}"{{ b.address }}":"{{ b.name }}"{% if
 const ET112_DEVS = [{% for d in et112_list %}{"addr":{{ d.address }},"type":"{{ d.service_type }}","name":"{{ d.name }}"}{% if !loop.last %},{% endif %}{% endfor %}];
 </script>
 
-<div class="ov-wrap">
+{# ── KPI bar ──────────────────────────────────────────────────────────── #}
+<div class="kpi-bar">
+  <div class="kpi-tile">
+    <span class="kpi-label">☀ Solaire</span>
+    <span class="kpi-value" id="kpi-solar" style="color:#b45309">—</span>
+    <span class="kpi-sub">W production</span>
+  </div>
+  <div class="kpi-tile">
+    <span class="kpi-label">🔋 SOC</span>
+    <span class="kpi-value" id="kpi-soc" style="color:#16a34a">—</span>
+    <span class="kpi-sub">% batterie</span>
+  </div>
+  <div class="kpi-tile">
+    <span class="kpi-label">⚡ Charges</span>
+    <span class="kpi-value" id="kpi-load" style="color:#7c3aed">—</span>
+    <span class="kpi-sub">W consommé</span>
+  </div>
+  <div class="kpi-tile">
+    <span class="kpi-label">📡 Irradiance</span>
+    <span class="kpi-value" id="kpi-irr" style="color:#ca8a04">{% match irradiance_wm2 %}{% when Some with (v) %}{{ v|f0 }}{% when None %}—{% endmatch %}</span>
+    <span class="kpi-sub">W/m²</span>
+  </div>
+  <div class="kpi-tile">
+    <span class="kpi-label">⚡ Prod. jour</span>
+    <span class="kpi-value" id="kpi-kwh" style="color:#0891b2">—</span>
+    <span class="kpi-sub">kWh aujourd'hui</span>
+  </div>
+</div>
 
-  {# ═══════════════════════ TOP ROW ═══════════════════════ #}
-  <div class="ov-top">
+{# ── Two-column body ──────────────────────────────────────────────────── #}
+<div class="ov-body">
 
-    {# ── SOLAR ──────────────────────────────────────────── #}
-    <div class="ov-p">
-      <div class="ov-ph">
-        <span class="ov-pt">☀ Solaire</span>
-        <span class="ov-ptime" id="solar-ts">{% match irradiance_wm2 %}{% when Some with (_) %}{{ irradiance_ts }}{% when None %}—{% endmatch %}</span>
-      </div>
+  {# ── ESS FLOW DIAGRAM ──────────────────────────────────────────────── #}
+  <div class="ov-card">
+    <div class="ov-card-hdr">
+      <span class="ov-card-title">⚡ Flux d'énergie ESS</span>
+      <span class="ov-card-ts" id="flow-ts">{{ irradiance_ts }}</span>
+    </div>
+    <div class="ov-card-body">
+      <svg id="flow-svg" viewBox="0 0 530 400" preserveAspectRatio="xMidYMid meet">
 
-      <div class="ov-hero">
-        <div class="ov-big c-solar" id="solar-w">—</div>
-        <div class="ov-unit c-solar">W Production solaire</div>
+        {# ── PATH DEFINITIONS (for animateMotion) ─────────────── #}
+        <defs>
+          <path id="p-pv1-ess"  d="M145,67 L145,115 L205,115 L205,153"/>
+          <path id="p-pv2-ess"  d="M300,67 L300,115 L252,115 L252,153"/>
+          <path id="p-grid-ess" d="M125,191 L163,185"/>
+          <path id="p-ess-mai"  d="M293,185 L315,185"/>
+          <path id="p-mai-clim" d="M430,171 L445,161"/>
+          <path id="p-mai-ce"   d="M430,185 L445,202"/>
+          <path id="p-mai-aut"  d="M430,199 C438,199 438,243 445,243"/>
+          <path id="p-ess-sto"  d="M228,217 L229,272"/>
+          <path id="p-sto-b1"   d="M185,324 L145,338"/>
+          <path id="p-sto-b2"   d="M273,324 L293,338"/>
+        </defs>
 
-        <div class="ov-sub">
-          <div class="ov-sub-cell">
-            <div class="ov-sub-val c-irr" id="irr-w">{% match irradiance_wm2 %}{% when Some with (v) %}{{ v|f0 }}{% when None %}—{% endmatch %}</div>
-            <div class="ov-sub-lbl" style="color:#a16207">W/m² Irrad.</div>
-          </div>
-          <div class="ov-sub-cell">
-            <div class="ov-sub-val c-solar" id="solar-kwh">—</div>
-            <div class="ov-sub-lbl" style="color:#92400e">kWh Auj.</div>
-          </div>
-        </div>
-      </div>
+        {# ── VISIBLE PATHS ────────────────────────────────────── #}
+        <path d="M145,67 L145,115 L205,115 L205,153"  fill="none" stroke="#fde68a" stroke-width="2" stroke-dasharray="6,4" opacity="0.7"/>
+        <path d="M300,67 L300,115 L252,115 L252,153"  fill="none" stroke="#fde68a" stroke-width="2" stroke-dasharray="6,4" opacity="0.7"/>
+        <path d="M125,191 L163,185"                   fill="none" stroke="#93c5fd" stroke-width="2" stroke-dasharray="5,4" opacity="0.7" id="vis-grid"/>
+        <path d="M293,185 L315,185"                   fill="none" stroke="#c4b5fd" stroke-width="2" stroke-dasharray="5,4" opacity="0.7"/>
+        <path d="M430,171 L445,161"                   fill="none" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+        <path d="M430,185 L445,202"                   fill="none" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+        <path d="M430,199 C438,199 438,243 445,243"   fill="none" stroke="#c4b5fd" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+        <path d="M228,217 L229,272"                   fill="none" stroke="#86efac" stroke-width="2" stroke-dasharray="5,4" opacity="0.7"/>
+        <path d="M185,324 L145,338"                   fill="none" stroke="#86efac" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+        <path d="M273,324 L293,338"                   fill="none" stroke="#86efac" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
 
-      <div class="ov-dlist">
-        {% for d in et112_list %}{% if d.service_type == "pvinverter" %}
-        <div class="ov-drow">
-          <span class="ov-dname">{{ d.name }}</span>
-          <span class="ov-dval c-solar" id="et-pw-{{ d.address }}">{{ d.power_w|f0 }} W</span>
-          <span class="{% if d.connected %}ov-dot-on{% else %}ov-dot-off{% endif %}">●</span>
-        </div>
+        {# ── PARTICLES ─────────────────────────────────────────── #}
+        {# PV1 → ESS #}
+        <circle r="3.5" fill="#f59e0b" opacity="0.85">
+          <animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#p-pv1-ess"/></animateMotion>
+        </circle>
+        {# PV2 → ESS #}
+        <circle r="3.5" fill="#f59e0b" opacity="0.85">
+          <animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#p-pv2-ess"/></animateMotion>
+        </circle>
+        {# Grid ↔ ESS (direction controlled by JS) #}
+        <circle r="3" fill="#3b82f6" opacity="0.85" id="ptcl-grid">
+          <animateMotion dur="1.0s" repeatCount="indefinite"><mpath href="#p-grid-ess"/></animateMotion>
+        </circle>
+        {# ESS → Maison #}
+        <circle r="3" fill="#8b5cf6" opacity="0.85">
+          <animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#p-ess-mai"/></animateMotion>
+        </circle>
+        {# Maison → PAC Clim #}
+        <circle r="2.5" fill="#8b5cf6" opacity="0.7">
+          <animateMotion dur="1.0s" repeatCount="indefinite"><mpath href="#p-mai-clim"/></animateMotion>
+        </circle>
+        {# Maison → PAC CE #}
+        <circle r="2.5" fill="#8b5cf6" opacity="0.7">
+          <animateMotion dur="1.1s" repeatCount="indefinite"><mpath href="#p-mai-ce"/></animateMotion>
+        </circle>
+        {# Maison → Autres #}
+        <circle r="2.5" fill="#8b5cf6" opacity="0.7">
+          <animateMotion dur="1.3s" repeatCount="indefinite"><mpath href="#p-mai-aut"/></animateMotion>
+        </circle>
+        {# ESS ↔ Stockage (direction by JS) #}
+        <circle r="3" fill="#16a34a" opacity="0.85">
+          <animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#p-ess-sto"/></animateMotion>
+        </circle>
+
+        {# ── BOX: MICRO-ONDULEURS (PV1) ─────────────────────── #}
+        <rect x="70" y="15" width="150" height="52" rx="7" fill="#fefce8" stroke="#fde68a" stroke-width="1.5"/>
+        <text x="145" y="32" fill="#78350f" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">MICRO-ONDULEURS</text>
+        <text x="145" y="50" fill="#b45309" font-size="14" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-pv1-w">— W</text>
+
+        {# ── BOX: MPPT (PV2) ────────────────────────────────── #}
+        <rect x="235" y="15" width="130" height="52" rx="7" fill="#fefce8" stroke="#fde68a" stroke-width="1.5"/>
+        <text x="300" y="32" fill="#78350f" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">MPPT</text>
+        <text x="300" y="50" fill="#b45309" font-size="14" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-pv2-w">— W</text>
+
+        {# ── BOX: GRID ──────────────────────────────────────── #}
+        <rect x="10" y="163" width="115" height="56" rx="7" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+        <text x="67" y="180" fill="#1e3a5f" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">RÉSEAU</text>
+        <text x="67" y="197" fill="#1d4ed8" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-grid-w">— W</text>
+        <text x="67" y="210" fill="#3b82f6" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-grid-dir">—</text>
+
+        {# ── BOX: ESS (centre) ──────────────────────────────── #}
+        <rect x="163" y="153" width="130" height="64" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+        <text x="228" y="173" fill="#1e3a5f" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.1em">ESS</text>
+        <text x="228" y="192" fill="#1d4ed8" font-size="14" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-ess-v">— V</text>
+        <text x="228" y="208" fill="#3b82f6" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-ess-a">—</text>
+
+        {# ── BOX: MAISON ─────────────────────────────────────── #}
+        <rect x="315" y="158" width="115" height="54" rx="7" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5"/>
+        <text x="372" y="176" fill="#3b0764" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">MAISON</text>
+        <text x="372" y="194" fill="#7c3aed" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-mai-w">— W</text>
+
+        {# ── BOX: PAC CLIM ───────────────────────────────────── #}
+        <rect x="445" y="143" width="110" height="36" rx="6" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1.2"/>
+        <text x="500" y="156" fill="#581c87" font-size="6.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">PAC CLIM</text>
+        <text x="500" y="171" fill="#7c3aed" font-size="11" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-clim-w">— W</text>
+
+        {# ── BOX: PAC CHAUFFE-EAU ────────────────────────────── #}
+        <rect x="445" y="184" width="110" height="36" rx="6" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1.2"/>
+        <text x="500" y="197" fill="#581c87" font-size="6.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">PAC CHAUFFE-EAU</text>
+        <text x="500" y="212" fill="#7c3aed" font-size="11" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-ce-w">— W</text>
+
+        {# ── BOX: AUTRES ─────────────────────────────────────── #}
+        <rect x="445" y="225" width="110" height="36" rx="6" fill="#fdf4ff" stroke="#d8b4fe" stroke-width="1.2"/>
+        <text x="500" y="238" fill="#581c87" font-size="6.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">AUTRES</text>
+        <text x="500" y="253" fill="#7c3aed" font-size="11" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-aut-w">— W</text>
+
+        {# ── BOX: STOCKAGE (consolidated) ───────────────────── #}
+        <rect x="135" y="272" width="188" height="52" rx="7" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+        <text x="229" y="290" fill="#14532d" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700" letter-spacing="0.08em">STOCKAGE</text>
+        <text x="229" y="307" fill="#16a34a" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-sto-soc">—%</text>
+        <text x="229" y="319" fill="#4ade80" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-sto-w">— W</text>
+
+        {# ── BOX: BMS-1 ──────────────────────────────────────── #}
+        <rect x="75" y="338" width="140" height="48" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2"/>
+        {% for b in bms_list %}{% if loop.index == 1 %}
+        <text x="145" y="354" fill="#14532d" font-size="7" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700">{{ b.name }}</text>
+        <text x="145" y="369" fill="#16a34a" font-size="12" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-soc">{{ b.soc|f0 }}%</text>
+        <text x="145" y="381" fill="#4ade80" font-size="7" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-pw">{{ b.power|f0 }} W</text>
         {% endif %}{% endfor %}
-      </div>
-    </div>
 
-    {# ── BATTERY ────────────────────────────────────────── #}
-    <div class="ov-p">
-      <div class="ov-ph">
-        <span class="ov-pt">🔋 Batterie</span>
-        <span class="ov-ptime" id="batt-ts">—</span>
-      </div>
-
-      <div class="ov-gauge-wrap">
-        <div id="batt-gauge"></div>
-        <div class="ov-batt-names">
-          {% for b in bms_list %}
-          <div>
-            <span class="ov-batt-name-soc" id="bsoc-{{ b.address }}">{{ b.soc|f0 }}%</span>
-            <span class="ov-batt-name-lbl">{{ b.name }}</span>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="ov-strip c3">
-        <div class="ov-m">
-          <div class="ov-ml">Tension</div>
-          <div class="ov-mv c-grid" id="batt-v">{% for b in bms_list %}{% if loop.first %}{{ b.voltage|f1 }}V{% endif %}{% endfor %}</div>
-        </div>
-        <div class="ov-m">
-          <div class="ov-ml">Courant</div>
-          <div class="ov-mv" id="batt-a">{% for b in bms_list %}{% if loop.first %}{{ b.current|f1 }}A{% endif %}{% endfor %}</div>
-        </div>
-        <div class="ov-m">
-          <div class="ov-ml">Puissance</div>
-          <div class="ov-mv" id="batt-w">{% for b in bms_list %}{% if loop.first %}{{ b.power|f0 }}W{% endif %}{% endfor %}</div>
-        </div>
-      </div>
-    </div>
-
-    {# ── CHARGES ────────────────────────────────────────── #}
-    <div class="ov-p">
-      <div class="ov-ph">
-        <span class="ov-pt">⚡ Charges PAC</span>
-        <span class="ov-ptime" id="loads-ts">—</span>
-      </div>
-
-      <div class="ov-hero">
-        <div class="ov-big c-load" id="loads-w">—</div>
-        <div class="ov-unit c-load">W Total consommé</div>
-
-        <div class="ov-sub">
-          <div class="ov-sub-cell">
-            <div class="ov-sub-val c-load" id="loads-kwh">{% for d in et112_list %}{% if d.service_type == "heatpump" %}{{ d.energy_kwh|f1 }} {% endif %}{% endfor %}</div>
-            <div class="ov-sub-lbl" style="color:#5b21b6">kWh Auj.</div>
-          </div>
-          <div class="ov-sub-cell">
-            <div class="ov-sub-val" id="loads-count" style="color:#6b7280">{% for d in et112_list %}{% if d.service_type == "heatpump" %}{% if loop.last %}{{ loop.index }}{% endif %}{% endif %}{% endfor %}</div>
-            <div class="ov-sub-lbl">Appareils</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="ov-dlist">
-        {% for d in et112_list %}{% if d.service_type == "heatpump" %}
-        <div class="ov-drow">
-          <span class="ov-dname">{{ d.name }}</span>
-          <span class="ov-dval c-load" id="et-pw-{{ d.address }}">{{ d.power_w|f0 }} W</span>
-          <span class="{% if d.connected %}ov-dot-on{% else %}ov-dot-off{% endif %}">●</span>
-        </div>
+        {# ── BOX: BMS-2 ──────────────────────────────────────── #}
+        <rect x="243" y="338" width="140" height="48" rx="6" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2"/>
+        {% for b in bms_list %}{% if loop.index == 2 %}
+        <text x="313" y="354" fill="#14532d" font-size="7" font-family="'JetBrains Mono',monospace" text-anchor="middle" font-weight="700">{{ b.name }}</text>
+        <text x="313" y="369" fill="#16a34a" font-size="12" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-soc">{{ b.soc|f0 }}%</text>
+        <text x="313" y="381" fill="#4ade80" font-size="7" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-pw">{{ b.power|f0 }} W</text>
         {% endif %}{% endfor %}
+
+      </svg>
+    </div>
+  </div>
+
+  {# ── HISTORY CHART ──────────────────────────────────────────────────── #}
+  <div class="ov-card">
+    <div class="ov-card-hdr">
+      <span class="ov-card-title">📈 Historique</span>
+      <div class="chart-range-btns">
+        <button class="rng-btn active" data-range="live" onclick="setRange('live')">Live</button>
+        <button class="rng-btn" data-range="60"  onclick="setRange(60)">1h</button>
+        <button class="rng-btn" data-range="360" onclick="setRange(360)">6h</button>
+        <button class="rng-btn" data-range="720" onclick="setRange(720)">12h</button>
       </div>
     </div>
+    <div id="hist-chart" style="flex:1;min-height:0;"></div>
+  </div>
 
-  </div>{# /ov-top #}
-
-  {# ═══════════════════════ BOTTOM ROW ═══════════════════════ #}
-  <div class="ov-bot">
-
-    {# ── ENERGY FLOW ────────────────────────────────────── #}
-    <div class="ov-p ov-flow">
-      <div class="ov-ph">
-        <span class="ov-pt">⚡ Flux d'énergie</span>
-        <span class="ov-ptime" id="flow-ts">—</span>
-      </div>
-      <div class="ov-flow-inner">
-        <svg id="flow-svg" viewBox="0 0 420 280" preserveAspectRatio="xMidYMid meet">
-
-          {# ── SOLAR box ───────────────────────────────── #}
-          <rect x="30" y="20" width="130" height="60" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
-          <text x="95" y="38" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" letter-spacing="1">SOLAIRE</text>
-          <text x="95" y="56" fill="#f59e0b" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-solar-w">— W</text>
-          <text x="95" y="70" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-irr">— W/m²</text>
-
-          {# ── SYSTEM box ──────────────────────────────── #}
-          <rect x="155" y="105" width="110" height="64" rx="8" fill="#0c1520" stroke="#1e3552" stroke-width="1.5"/>
-          <text x="210" y="124" fill="#2d4a6e" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" letter-spacing="1">SYSTÈME</text>
-          <text x="210" y="141" fill="#60a5fa" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-sys-v">— V</text>
-          <text x="210" y="157" fill="#2d4a6e" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-sys-a">— A</text>
-
-          {# ── LOADS box ───────────────────────────────── #}
-          <rect x="260" y="20" width="130" height="60" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
-          <text x="325" y="38" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" letter-spacing="1">CHARGES PAC</text>
-          <text x="325" y="56" fill="#8b5cf6" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-loads-w">— W</text>
-          <text x="325" y="70" fill="#4b5563" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-loads-kwh">— kWh</text>
-
-          {# ── BMS boxes ───────────────────────────────── #}
-          {% for b in bms_list %}
-          {% if loop.index == 1 %}
-          <rect x="30" y="195" width="130" height="62" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
-          <text x="95" y="213" fill="#374151" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-name">{{ b.name }}</text>
-          <text x="95" y="230" fill="#10b981" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-soc">{{ b.soc|f0 }}%</text>
-          <text x="95" y="246" fill="#374151" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms1-pw">{{ b.power|f0 }} W</text>
-          {% endif %}
-          {% if loop.index == 2 %}
-          <rect x="260" y="195" width="130" height="62" rx="8" fill="#0c1117" stroke="#1a2535" stroke-width="1.5"/>
-          <text x="325" y="213" fill="#374151" font-size="7.5" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-name">{{ b.name }}</text>
-          <text x="325" y="230" fill="#10b981" font-size="13" font-weight="800" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-soc">{{ b.soc|f0 }}%</text>
-          <text x="325" y="246" fill="#374151" font-size="8" font-family="'JetBrains Mono',monospace" text-anchor="middle" id="f-bms2-pw">{{ b.power|f0 }} W</text>
-          {% endif %}
-          {% endfor %}
-
-          {# ── SOLAR → SYSTEM line ─────────────────────── #}
-          <line x1="160" y1="50" x2="185" y2="118" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,3" opacity="0.8">
-            <animate attributeName="stroke-dashoffset" from="27" to="0" dur="1.1s" repeatCount="indefinite"/>
-          </line>
-
-          {# ── SYSTEM → LOADS line ─────────────────────── #}
-          <line x1="235" y1="118" x2="262" y2="50" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="6,3" opacity="0.8">
-            <animate attributeName="stroke-dashoffset" from="27" to="0" dur="1.1s" repeatCount="indefinite"/>
-          </line>
-
-          {# ── SYSTEM ↕ BMS-1 line ─────────────────────── #}
-          <line x1="190" y1="160" x2="115" y2="194" stroke="#10b981" stroke-width="2" stroke-dasharray="6,3" opacity="0.7">
-            <animate id="anim-bms1" attributeName="stroke-dashoffset" from="27" to="0" dur="1.3s" repeatCount="indefinite"/>
-          </line>
-
-          {# ── SYSTEM ↕ BMS-2 line ─────────────────────── #}
-          <line x1="230" y1="160" x2="305" y2="194" stroke="#10b981" stroke-width="2" stroke-dasharray="6,3" opacity="0.7">
-            <animate id="anim-bms2" attributeName="stroke-dashoffset" from="27" to="0" dur="1.3s" repeatCount="indefinite"/>
-          </line>
-
-        </svg>
-      </div>
-    </div>
-
-    {# ── HISTORY CHART ──────────────────────────────────── #}
-    <div class="ov-p ov-chart">
-      <div class="ov-chdr">
-        <span class="ov-pt" style="font-size:0.6rem">📈 Historique 10 min</span>
-        <span class="ov-leg"><span class="ov-leg-dot" style="background:#f59e0b"></span>Solaire W</span>
-        <span class="ov-leg"><span class="ov-leg-dot" style="background:#8b5cf6"></span>PAC W</span>
-        <span class="ov-leg"><span class="ov-leg-dot" style="background:#ef4444"></span>SOC %</span>
-        <span class="ov-leg"><span class="ov-leg-dot" style="background:#fbbf24;border-radius:2px"></span>Irr. W/m²</span>
-      </div>
-      <div id="hist-chart"></div>
-    </div>
-
-  </div>{# /ov-bot #}
-
-</div>{# /ov-wrap #}
+</div>{# /ov-body #}
 
 {% endblock %}
 
@@ -348,13 +337,16 @@ const ET112_DEVS = [{% for d in et112_list %}{"addr":{{ d.address }},"type":"{{ 
 // ════════════════════════════════════════════════════════════════
 
 // ── State ────────────────────────────────────────────────────────
-let bmsMap  = {};  // addr:u8 → BmsSnapshot JSON
-let et112Map = {}; // addr:u8 → {power_w, energy_import_wh}
-let irrWm2  = null;
+let bmsMap   = {};
+let et112Map = {};
+let irrWm2   = null;
+let totalYieldKwh = 0;
+let mpptPowerW    = 0;
+let chartRange    = 'live';
 
-// ── Rolling history (120 pts × 5s = 10 min) ─────────────────────
-const MAX_PTS = 120;
-const hTime = [], hSolar = [], hLoad = [], hSoc = [], hIrr = [];
+// ── Rolling history (720 pts × 5s = 60 min) ─────────────────────
+const MAX_PTS = 720;
+const hTime = [], hSolar = [], hLoad = [], hSoc = [];
 
 // ── Helpers ──────────────────────────────────────────────────────
 const el  = id => document.getElementById(id);
@@ -374,115 +366,77 @@ function combinedSoc() {
   return cap > 0 ? wSum / cap : 0;
 }
 
-// ── ECharts Gauge ────────────────────────────────────────────────
-const gaugeEl = el('batt-gauge');
-let gauge = null;
-if (gaugeEl) {
-  gauge = echarts.init(gaugeEl);
-  gauge.setOption({
-    backgroundColor: 'transparent',
-    series: [{
-      type: 'gauge',
-      startAngle: 210, endAngle: -30,
-      min: 0, max: 100,
-      radius: '90%', center: ['50%', '58%'],
-      pointer: { show: false },
-      progress: { show: true, width: 18, roundCap: true, itemStyle: { color: '#10b981' } },
-      axisLine: { lineStyle: { width: 18, color: [[1, '#161d28']] }, roundCap: true },
-      splitLine: { show: false },
-      axisTick:  { show: false },
-      axisLabel: { show: false },
-      title: { show: true, offsetCenter: [0, '30%'], fontSize: 9, color: '#374151', fontFamily: "'JetBrains Mono',monospace" },
-      detail: {
-        valueAnimation: true, offsetCenter: [0, 0],
-        fontSize: 40, fontWeight: 800, color: '#10b981',
-        fontFamily: "'JetBrains Mono',monospace",
-        formatter: '{value}%',
-      },
-      data: [{ value: 0, name: 'SOC' }],
-    }]
-  });
-}
-
-function setGauge(soc) {
-  if (!gauge) return;
-  const col = soc < 20 ? '#ef4444' : soc < 40 ? '#f97316' : soc < 60 ? '#eab308' : '#10b981';
-  gauge.setOption({
-    series: [{
-      progress: { itemStyle: { color: col } },
-      detail:   { color: col },
-      data:     [{ value: Math.round(soc), name: 'SOC' }],
-    }]
-  });
-}
-
-// ── ECharts History ──────────────────────────────────────────────
+// ── ECharts History chart ────────────────────────────────────────
 const histEl = el('hist-chart');
 let hist = null;
 if (histEl) {
-  hist = echarts.init(histEl);
+  hist = echarts.init(histEl, null, { renderer: 'canvas' });
   hist.setOption({
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: '#161b22', borderColor: '#30363d',
-      textStyle: { color: '#e6edf3', fontSize: 10 },
+      backgroundColor: '#ffffff',
+      borderColor: '#d6dce5',
+      textStyle: { color: '#0f172a', fontSize: 10 },
     },
-    grid: { left: 52, right: 52, top: 12, bottom: 26 },
+    legend: {
+      top: 4, right: 8,
+      textStyle: { color: '#4b5563', fontSize: 9 },
+      itemWidth: 10, itemHeight: 6,
+    },
+    grid: { left: 52, right: 52, top: 32, bottom: 28 },
     xAxis: {
       type: 'category', data: [], boundaryGap: false,
-      axisLine: { lineStyle: { color: '#1e2530' } },
-      axisLabel: { color: '#374151', fontSize: 9 },
+      axisLine: { lineStyle: { color: '#d6dce5' } },
+      axisLabel: { color: '#6b7280', fontSize: 9 },
       splitLine: { show: false },
     },
     yAxis: [
       {
         type: 'value', name: 'W',
-        nameTextStyle: { color: '#374151', fontSize: 9 },
-        axisLabel: { color: '#374151', fontSize: 9 },
+        nameTextStyle: { color: '#6b7280', fontSize: 9 },
+        axisLabel: { color: '#6b7280', fontSize: 9 },
         axisLine: { show: false },
-        splitLine: { lineStyle: { color: '#161d28' } },
+        splitLine: { lineStyle: { color: '#e5e7eb' } },
+        min: 0,
       },
       {
-        type: 'value', name: 'SOC%', min: 0, max: 100,
-        nameTextStyle: { color: '#ef4444', fontSize: 9 },
-        axisLabel: { color: '#ef4444', fontSize: 9 },
+        type: 'value', name: 'SOC %', min: 0, max: 100,
+        nameTextStyle: { color: '#16a34a', fontSize: 9 },
+        axisLabel: { color: '#16a34a', fontSize: 9 },
         axisLine: { show: false },
         splitLine: { show: false },
       }
     ],
     series: [
-      { name: 'Solaire', type: 'bar', stack: 'pw', data: [], itemStyle: { color: '#f59e0b' }, barMaxWidth: 10 },
-      { name: 'PAC',     type: 'bar', stack: 'pw', data: [], itemStyle: { color: '#8b5cf6' }, barMaxWidth: 10 },
-      { name: 'Irr.',    type: 'line', yAxisIndex: 0, data: [],
+      { name: 'Solaire W', type: 'line', data: [],
         smooth: true, symbol: 'none',
-        lineStyle: { color: '#fbbf24', width: 1.5 },
-        areaStyle: { color: 'rgba(251,191,36,0.05)' } },
-      { name: 'SOC%',    type: 'line', yAxisIndex: 1, data: [],
+        lineStyle: { color: '#f59e0b', width: 2 },
+        areaStyle: { color: 'rgba(245,158,11,0.12)' } },
+      { name: 'Charges W', type: 'line', data: [],
         smooth: true, symbol: 'none',
-        lineStyle: { color: '#ef4444', width: 2 } },
+        lineStyle: { color: '#7c3aed', width: 1.5 },
+        areaStyle: { color: 'rgba(124,58,237,0.07)' } },
+      { name: 'SOC %', type: 'line', yAxisIndex: 1, data: [],
+        smooth: true, symbol: 'none',
+        lineStyle: { color: '#16a34a', width: 2 } },
     ]
   });
 }
 
-window.addEventListener('resize', () => {
-  gauge && gauge.resize();
-  hist  && hist.resize();
-});
+window.addEventListener('resize', () => { hist && hist.resize(); });
 
 // ── Apply BMS state to UI ────────────────────────────────────────
 function applyBms() {
   const soc = combinedSoc();
-  setGauge(soc);
 
-  // Per-BMS SOC labels
-  for (const addr of BMS_ADDRS) {
-    const b = bmsMap[addr]; if (!b) continue;
-    set(`bsoc-${addr}`, f0(b.Soc) + '%');
-  }
+  // KPI
+  set('kpi-soc', f0(soc) + '%');
 
-  // Metrics strip — aggregate all BMS
-  let totalV = 0, totalA = 0, totalW = 0, n = 0;
+  // Per-BMS SVG values
+  const bArr = BMS_ADDRS.map(a => bmsMap[a]).filter(Boolean);
+  let totalW = 0, totalV = 0, totalA = 0, n = 0;
+
   for (const addr of BMS_ADDRS) {
     const b = bmsMap[addr]; if (!b) continue;
     const dc = b.Dc || {};
@@ -491,43 +445,25 @@ function applyBms() {
     totalW += dc.Power   || 0;
     n++;
   }
+
   if (n > 0) {
-    set('batt-v', f1(totalV / n) + 'V');
-    const aEl = el('batt-a');
-    if (aEl) {
-      aEl.textContent = (totalA >= 0 ? '+' : '') + f1(totalA) + 'A';
-      aEl.style.color = totalA >= 0 ? '#10b981' : '#f97316';
-    }
-    set('batt-w', f0(totalW) + 'W');
-    set('batt-ts', new Date().toLocaleTimeString('fr-FR'));
+    set('f-ess-v', f1(totalV / n) + ' V');
+    set('f-ess-a', (totalA >= 0 ? '+' : '') + f1(totalA) + ' A');
+    set('f-sto-w', f0(totalW) + ' W');
   }
 
-  // Flow SVG BMS values
-  const bArr = BMS_ADDRS.map(a => bmsMap[a]).filter(Boolean);
+  // Combined storage SOC
+  set('f-sto-soc', f0(soc) + '%');
+
   if (bArr[0]) {
     const dc = bArr[0].Dc || {};
     set('f-bms1-soc', f0(bArr[0].Soc) + '%');
     set('f-bms1-pw',  f0(dc.Power) + ' W');
-    set('f-sys-v',  f1(dc.Voltage) + ' V');
-    set('f-sys-a',  (dc.Current >= 0 ? '+' : '') + f1(dc.Current) + ' A');
-    // animate: charge direction
-    const a1 = el('anim-bms1');
-    if (a1 && dc.Current != null) {
-      const charging = dc.Current >= 0;
-      a1.setAttribute('from', charging ? '27' : '0');
-      a1.setAttribute('to',   charging ? '0'  : '27');
-    }
   }
   if (bArr[1]) {
     const dc = bArr[1].Dc || {};
     set('f-bms2-soc', f0(bArr[1].Soc) + '%');
     set('f-bms2-pw',  f0(dc.Power) + ' W');
-    const a2 = el('anim-bms2');
-    if (a2 && dc.Current != null) {
-      const charging = dc.Current >= 0;
-      a2.setAttribute('from', charging ? '27' : '0');
-      a2.setAttribute('to',   charging ? '0'  : '27');
-    }
   }
 }
 
@@ -538,10 +474,8 @@ window.onBmsUpdate = function(snaps) {
 };
 
 // ── ET112 polling ─────────────────────────────────────────────────
-// kWh auj. solaire = total_yield_kwh depuis Node-RED (via pollIrr)
-// kWh auj. PAC = non disponible côté serveur → affiché via MPPT uniquement
 async function pollEt112() {
-  let solarW = 0, loadW = 0, loadKwh = 0;
+  let solarW = 0, climW = 0, ceW = 0, autW = 0;
   const ts = new Date().toLocaleTimeString('fr-FR');
 
   for (const dev of ET112_DEVS) {
@@ -551,40 +485,39 @@ async function pollEt112() {
       const d = await r.json();
       et112Map[dev.addr] = d;
 
-      set(`et-pw-${dev.addr}`, f0(d.power_w) + ' W');
+      const pw = d.power_w || 0;
 
       if (dev.type === 'pvinverter') {
-        solarW += d.power_w || 0;
+        solarW += pw;
       } else if (dev.type === 'heatpump') {
-        loadW    += d.power_w || 0;
-        loadKwh  += (d.energy_import_wh || 0) / 1000; // cumul brut (affiché tel quel)
+        // Map by addr: 8=PAC CE, 9=PAC Clim, others=Autres
+        if (dev.addr === 8)  ceW   += pw;
+        else if (dev.addr === 9)  climW += pw;
+        else                      autW  += pw;
       }
     } catch(_) {}
   }
 
-  // W total = ET112 micro-onduleurs + MPPT (depuis Node-RED via pollIrr)
-  // kWh auj. = total_yield_kwh Node-RED = même valeur que Victron "Solaire totale"
   const totalSolarW = solarW + mpptPowerW;
-  set('solar-w',    f0(totalSolarW));
-  set('solar-kwh',  totalYieldKwh.toFixed(2));
-  set('solar-ts',   ts);
-  set('f-solar-w',  f0(totalSolarW) + ' W');
+  const totalLoadW  = climW + ceW + autW;
+  const maisonW     = totalLoadW; // all loads come via ESS → Maison
 
-  // Update loads panel
-  set('loads-w',   f0(loadW));
-  set('loads-kwh', loadKwh.toFixed(1));
-  set('loads-ts',  ts);
-  set('f-loads-w',  f0(loadW) + ' W');
-  set('f-loads-kwh', loadKwh.toFixed(1) + ' kWh');
+  set('f-pv1-w',  f0(solarW)       + ' W');
+  set('f-pv2-w',  f0(mpptPowerW)   + ' W');
+  set('f-clim-w', f0(climW)        + ' W');
+  set('f-ce-w',   f0(ceW)          + ' W');
+  set('f-aut-w',  f0(autW)         + ' W');
+  set('f-mai-w',  f0(maisonW)      + ' W');
 
-  return { solarW, loadW };
+  set('kpi-solar', f0(totalSolarW));
+  set('kpi-load',  f0(totalLoadW));
+
+  set('flow-ts', ts);
+
+  return { solarW: totalSolarW, loadW: totalLoadW };
 }
 
-// ── Irradiance + production totale (Node-RED) polling ────────────
-// total_yield_kwh = MPPT + ET112 delta journalier (même valeur que Victron VRM)
-// mppt_power_w    = puissance instantanée MPPT (W), additionée aux ET112 pour total solaire
-let totalYieldKwh = 0;
-let mpptPowerW    = 0;
+// ── Irradiance + production polling ─────────────────────────────
 async function pollIrr() {
   try {
     const r = await fetch('/api/v1/irradiance/status');
@@ -594,41 +527,67 @@ async function pollIrr() {
     mpptPowerW    = d.mppt_power_w    || 0;
     if (!d.connected) return 0;
     irrWm2 = d.irradiance_wm2;
-    set('irr-w',    f0(irrWm2));
-    set('solar-ts', new Date().toLocaleTimeString('fr-FR'));
-    set('f-irr',    f0(irrWm2) + ' W/m²');
+    set('kpi-irr',  f0(irrWm2));
+    set('kpi-kwh',  totalYieldKwh.toFixed(2));
     return irrWm2;
   } catch(_) { return null; }
+}
+
+// ── Chart range selector ─────────────────────────────────────────
+function setRange(range) {
+  chartRange = range;
+  document.querySelectorAll('.rng-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === String(range));
+  });
+  if (range !== 'live') {
+    fetchHistoryChart(range);
+  }
+}
+
+async function fetchHistoryChart(minutes) {
+  if (!hist) return;
+  try {
+    const r = await fetch(`/api/v1/chart/history?minutes=${minutes}`);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.ok) return;
+    hist.setOption({
+      xAxis:  { data: d.solar.map(p => p.t) },
+      series: [
+        { data: d.solar.map(p => p.v) },
+        { data: d.load.map(p => p.v)  },
+        { data: d.soc.map(p => p.v)   },
+      ]
+    });
+  } catch(_) {}
 }
 
 // ── Full refresh cycle ───────────────────────────────────────────
 async function refresh() {
   const [et112, irrVal] = await Promise.all([pollEt112(), pollIrr()]);
-  set('flow-ts', new Date().toLocaleTimeString('fr-FR'));
 
-  // Feed rolling history
-  const t    = new Date().toLocaleTimeString('fr-FR');
-  const soc  = combinedSoc();
-  const solW = (et112 ? et112.solarW : 0) + mpptPowerW;
-  const ldW  = et112 ? et112.loadW  : 0;
+  if (chartRange === 'live') {
+    // Feed rolling history
+    const t   = new Date().toLocaleTimeString('fr-FR');
+    const soc = combinedSoc();
+    const solW = (et112 ? et112.solarW : 0);
+    const ldW  = et112 ? et112.loadW : 0;
 
-  hTime .push(t);    if (hTime .length > MAX_PTS) hTime .shift();
-  hSolar.push(Math.round(solW));    if (hSolar.length > MAX_PTS) hSolar.shift();
-  hLoad .push(Math.round(ldW));     if (hLoad .length > MAX_PTS) hLoad .shift();
-  hSoc  .push(+soc.toFixed(1));    if (hSoc  .length > MAX_PTS) hSoc  .shift();
-  hIrr  .push(irrVal != null ? Math.round(irrVal) : null);
-                                    if (hIrr  .length > MAX_PTS) hIrr  .shift();
+    hTime .push(t);  if (hTime .length > MAX_PTS) hTime .shift();
+    hSolar.push(Math.round(solW)); if (hSolar.length > MAX_PTS) hSolar.shift();
+    hLoad .push(Math.round(ldW));  if (hLoad .length > MAX_PTS) hLoad .shift();
+    hSoc  .push(+soc.toFixed(1)); if (hSoc  .length > MAX_PTS) hSoc  .shift();
 
-  if (hist) {
-    hist.setOption({
-      xAxis:  { data: hTime },
-      series: [
-        { data: hSolar },
-        { data: hLoad  },
-        { data: hIrr   },
-        { data: hSoc   },
-      ]
-    });
+    if (hist) {
+      hist.setOption({
+        xAxis:  { data: hTime },
+        series: [
+          { data: hSolar },
+          { data: hLoad  },
+          { data: hSoc   },
+        ]
+      });
+    }
   }
 }
 
