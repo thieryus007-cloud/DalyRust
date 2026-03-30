@@ -6,189 +6,226 @@
   <title>ATS Mimic Diagram - Onduleur & Grid</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { font-family: system-ui, -apple-system, sans-serif; }
-    .dial {
-      transition: transform 0.6s ease;
+    .dial { transition: all 0.6s ease; }
+    .slider-thumb {
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .selector {
-      transition: transform 0.5s ease;
-    }
-    .led {
-      width: 28px; height: 28px; border-radius: 50%; box-shadow: 0 0 15px currentColor;
+    .status-rect {
+      transition: background-color 0.5s ease, border-color 0.5s ease;
     }
   </style>
 </head>
-<body class="bg-zinc-100 py-12">
-  <div class="max-w-4xl mx-auto bg-white border-8 border-gray-800 rounded-3xl shadow-2xl overflow-hidden">
-    
-    <!-- En-tête du panneau -->
-    <div class="bg-gray-800 text-white py-4 px-8 flex justify-between items-center">
-      <h1 class="text-3xl font-bold tracking-wider">AUTOMATIC TRANSFER SWITCH</h1>
-      <div class="text-right">
+<body class="bg-zinc-950 py-12">
+  <div class="max-w-5xl mx-auto">
+    <div class="bg-white border-8 border-gray-900 rounded-3xl shadow-2xl overflow-hidden">
+      
+      <!-- En-tête -->
+      <div class="bg-gray-900 text-white py-5 px-10 flex justify-between items-center">
+        <h1 class="text-3xl font-bold">AUTOMATIC TRANSFER SWITCH</h1>
         <div class="text-sm text-gray-400">Onduleur ↔ Grid</div>
       </div>
-    </div>
 
-    <div class="p-10 bg-white">
-      <div class="grid grid-cols-2 gap-12">
+      <div class="p-12">
+        <div class="flex justify-between items-start gap-16">
 
-        <!-- Colonne gauche : Onduleur + Mode -->
-        <div>
-          <div class="flex items-center gap-4 mb-8">
-            <div class="flex-1">
-              <div class="flex items-center gap-3">
-                <div class="w-20 h-8 border-4 border-red-600 bg-white"></div>
-                <span class="text-xl font-semibold">Onduleur</span>
+          <!-- Colonne gauche : Onduleur + Timers + Modes -->
+          <div class="flex-1 space-y-10">
+
+            <!-- Onduleur + Statut Tension -->
+            <div class="flex items-center gap-6">
+              <div>
+                <div id="rect-ond-tension" 
+                     class="status-rect w-28 h-12 border-4 border-red-600 bg-red-600 flex items-center justify-center text-white font-bold text-lg">
+                  ONDULEUR
+                </div>
+                <div id="rect-ond-select" 
+                     class="status-rect mt-3 w-28 h-10 border-4 border-gray-400 bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                  SÉLECTION
+                </div>
+              </div>
+
+              <!-- Timers -->
+              <div class="flex gap-8">
+                <div class="text-center">
+                  <div class="text-xs font-medium mb-1">T1(s)</div>
+                  <svg width="92" height="92" viewBox="0 0 100 100" class="dial">
+                    <circle cx="50" cy="50" r="38" fill="#f3f4f6" stroke="#9ca3af" stroke-width="14"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#3b82f6" stroke-width="14" 
+                            stroke-dasharray="238" stroke-dashoffset="60" transform="rotate(-90 50 50)"/>
+                  </svg>
+                </div>
+
+                <div class="text-center">
+                  <div class="text-xs font-medium mb-1">T2(s)</div>
+                  <svg width="92" height="92" viewBox="0 0 100 100" class="dial">
+                    <circle cx="50" cy="50" r="38" fill="#f3f4f6" stroke="#9ca3af" stroke-width="14"/>
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#3b82f6" stroke-width="14" 
+                            stroke-dasharray="238" stroke-dashoffset="95" transform="rotate(-90 50 50)"/>
+                  </svg>
+                </div>
               </div>
             </div>
-            <div class="text-4xl font-light text-gray-300">↔</div>
-            <div class="flex-1">
-              <div class="flex items-center gap-3 justify-end">
-                <span class="text-xl font-semibold">Grid</span>
-                <div class="w-20 h-8 border-4 border-red-600 bg-white"></div>
+
+            <!-- Grand cercle Modes -->
+            <div class="flex justify-center">
+              <div class="relative">
+                <svg width="210" height="210" viewBox="0 0 210 210">
+                  <circle cx="105" cy="105" r="92" fill="#f8fafc" stroke="#64748b" stroke-width="28"/>
+                  <!-- Positions -->
+                  <text x="105" y="48" text-anchor="middle" font-size="17" font-weight="700" fill="#1e2937">Mode 1</text>
+                  <text x="170" y="105" text-anchor="middle" font-size="17" font-weight="700" fill="#1e2937">Mode 2</text>
+                  <text x="105" y="172" text-anchor="middle" font-size="17" font-weight="700" fill="#1e2937">Mode 3</text>
+                  <text x="40" y="105" text-anchor="middle" font-size="17" font-weight="700" fill="#1e2937">Mode 4</text>
+                  
+                  <!-- Sélecteur (Mode 1 par défaut) -->
+                  <g id="mode-pointer">
+                    <circle cx="105" cy="48" r="19" fill="#22c55e"/>
+                    <line x1="105" y1="105" x2="105" y2="48" stroke="#15803d" stroke-width="16" stroke-linecap="round"/>
+                  </g>
+                </svg>
+                <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-white px-6 py-1 rounded-full border border-gray-300 text-sm font-medium shadow">
+                  Mode sélectionné : <span id="current-mode" class="font-bold text-emerald-600">1</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Switch Auto / Manual -->
+            <div class="flex justify-center mt-8">
+              <div onclick="toggleAutoManual()" id="auto-switch"
+                   class="bg-gray-300 w-64 h-14 rounded-2xl relative cursor-pointer border-4 border-gray-800 flex items-center px-2">
+                <div id="auto-knob" 
+                     class="w-24 h-10 bg-blue-600 rounded-xl shadow-md flex items-center justify-center text-white font-bold text-sm transition-all">
+                  AUTO
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Timers -->
-          <div class="flex justify-center gap-16 mb-12">
-            <div class="text-center">
-              <svg width="110" height="110" viewBox="0 0 100 100" class="dial mx-auto">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e5e7eb" stroke-width="12"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#3b82f6" stroke-width="12" stroke-dasharray="264" stroke-dashoffset="80" transform="rotate(-90 50 50)"/>
-                <text x="50" y="55" text-anchor="middle" font-size="18" font-weight="600" fill="#1f2937">T1(s)</text>
-              </svg>
-              <div class="mt-3 text-sm font-medium">10  0  20<br>30</div>
+          <!-- Colonne droite : Grid + Slider 3 positions -->
+          <div class="flex-1">
+
+            <!-- Grid + Statut Tension -->
+            <div class="flex justify-end">
+              <div class="text-right">
+                <div id="rect-grid-tension" 
+                     class="status-rect w-28 h-12 border-4 border-red-600 bg-red-600 flex items-center justify-center text-white font-bold text-lg">
+                  GRID
+                </div>
+                <div id="rect-grid-select" 
+                     class="status-rect mt-3 w-28 h-10 border-4 border-gray-400 bg-gray-300 flex items-center justify-center text-xs font-semibold">
+                  SÉLECTION
+                </div>
+              </div>
             </div>
 
-            <div class="text-center">
-              <svg width="110" height="110" viewBox="0 0 100 100" class="dial mx-auto">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e5e7eb" stroke-width="12"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#3b82f6" stroke-width="12" stroke-dasharray="264" stroke-dashoffset="100" transform="rotate(-90 50 50)"/>
-                <text x="50" y="55" text-anchor="middle" font-size="18" font-weight="600" fill="#1f2937">T2(s)</text>
-              </svg>
-              <div class="mt-3 text-sm font-medium">10  0  20<br>30</div>
-            </div>
-          </div>
-
-          <!-- Sélecteur de Mode -->
-          <div class="flex flex-col items-center">
-            <div class="relative">
-              <svg width="180" height="180" viewBox="0 0 180 180">
-                <!-- Cercle principal -->
-                <circle cx="90" cy="90" r="75" fill="none" stroke="#d1d5db" stroke-width="35"/>
-                <!-- Positions -->
-                <text x="90" y="35" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Mode 1</text>
-                <text x="145" y="85" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Mode 2</text>
-                <text x="90" y="145" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Mode 3</text>
-                <text x="35" y="85" text-anchor="middle" font-size="15" font-weight="600" fill="#1f2937">Mode 4</text>
+            <!-- Grand Slider 3 positions -->
+            <div class="mt-16">
+              <div class="text-center text-sm font-medium mb-3 text-gray-600">Sélection de la source</div>
+              <div class="relative bg-gray-200 h-20 rounded-3xl border-8 border-gray-800 flex items-center px-6">
+                <!-- Track -->
+                <div class="absolute h-3 bg-gray-400 rounded-full left-12 right-12 top-1/2 -translate-y-1/2"></div>
                 
-                <!-- Sélecteur actuel (Mode 1) -->
-                <g id="mode-selector">
-                  <circle cx="90" cy="35" r="18" fill="#22c55e"/>
-                  <line x1="90" y1="90" x2="90" y2="35" stroke="#15803d" stroke-width="14" stroke-linecap="round"/>
-                </g>
-              </svg>
-            </div>
-            
-            <div class="mt-6 flex gap-8 text-sm">
-              <div class="flex items-center gap-2">
-                <div class="w-6 h-6 bg-green-500 rounded"></div>
-                <span class="font-medium">Mode sélectionné</span>
-              </div>
-              <div class="text-green-600 font-medium flex items-center gap-2">
-                ← Mode 1
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Colonne droite : Auto/Manual + Légende -->
-        <div class="space-y-10">
-          <!-- Bouton Auto / Manual -->
-          <div class="flex justify-center">
-            <div class="bg-gray-200 border-4 border-gray-800 rounded-xl p-2 w-64">
-              <div class="flex bg-white rounded-lg overflow-hidden shadow-inner">
-                <div onclick="setMode('auto')" id="btn-auto"
-                     class="flex-1 py-6 text-center font-bold text-lg bg-blue-500 text-white cursor-pointer transition">
-                  Auto
-                </div>
-                <div onclick="setMode('manual')" id="btn-manual"
-                     class="flex-1 py-6 text-center font-bold text-lg cursor-pointer transition">
-                  Manual/Reset
+                <!-- Positions labels -->
+                <div class="absolute left-8 top-1/2 -translate-y-1/2 text-xs font-bold">ONDULEUR</div>
+                <div class="absolute left-1/2 top-1/2 -translate-y-1/2 text-xs font-bold">NEUTRE</div>
+                <div class="absolute right-8 top-1/2 -translate-y-1/2 text-xs font-bold">GRID</div>
+                
+                <!-- Slider thumb -->
+                <div id="slider-thumb" 
+                     onclick="moveSlider(event)"
+                     class="slider-thumb absolute w-14 h-14 bg-white border-4 border-blue-600 rounded-2xl shadow-xl flex items-center justify-center cursor-grab active:cursor-grabbing">
+                  <span id="slider-label" class="font-bold text-blue-700 text-xs text-center leading-tight">ONDULEUR</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Légende des modes -->
-          <div class="bg-zinc-50 border border-gray-300 rounded-2xl p-6 text-sm">
-            <table class="w-full">
-              <thead>
-                <tr class="border-b">
-                  <th class="text-left py-2 font-semibold">Mode</th>
-                  <th class="text-left py-2 font-semibold">Description</th>
-                </tr>
-              </thead>
-              <tbody class="text-gray-700">
-                <tr class="border-b">
-                  <td class="py-2 font-medium">1</td>
-                  <td>Automatic charge and recovery</td>
-                </tr>
-                <tr class="border-b">
-                  <td class="py-2 font-medium">2</td>
-                  <td>Automatic charge and no recovery</td>
-                </tr>
-                <tr class="border-b">
-                  <td class="py-2 font-medium">3</td>
-                  <td>Mutual backup operation</td>
-                </tr>
-                <tr>
-                  <td class="py-2 font-medium">4</td>
-                  <td>Test mode</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Indicateurs de statut -->
-          <div class="flex justify-center gap-12">
-            <div class="text-center">
-              <div class="led bg-green-500 mx-auto mb-2"></div>
-              <div class="text-xs font-medium text-green-700">ONDULEUR OK</div>
-            </div>
-            <div class="text-center">
-              <div class="led bg-green-500 mx-auto mb-2"></div>
-              <div class="text-xs font-medium text-green-700">GRID OK</div>
+            <!-- Légende modes -->
+            <div class="mt-14 bg-zinc-50 border border-gray-300 rounded-2xl p-6 text-sm">
+              <div class="grid grid-cols-2 gap-x-8 gap-y-3">
+                <div><span class="font-semibold">1</span> — Automatic charge and recovery</div>
+                <div><span class="font-semibold">2</span> — Automatic charge and no recovery</div>
+                <div><span class="font-semibold">3</span> — Mutual backup operation</div>
+                <div><span class="font-semibold">4</span> — Test mode</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Pied de page du panneau -->
-    <div class="bg-gray-800 text-white py-4 px-8 text-center text-sm">
-      Automatic Transfer Switch - Mimic Diagram • Positions interactives
+      <!-- Footer -->
+      <div class="bg-gray-900 text-white py-4 text-center text-sm">
+        Mimic Diagram • Automatic Transfer Switch • Onduleur & Grid
+      </div>
     </div>
   </div>
 
   <script>
-    function setMode(mode) {
-      const btnAuto = document.getElementById('btn-auto');
-      const btnManual = document.getElementById('btn-manual');
+    let currentPosition = 0; // 0 = Onduleur, 1 = Neutre, 2 = Grid
+    let isAuto = true;
 
-      if (mode === 'auto') {
-        btnAuto.classList.add('bg-blue-500', 'text-white');
-        btnManual.classList.remove('bg-blue-500', 'text-white');
+    function updateSelection() {
+      const ondTension = document.getElementById('rect-ond-tension');
+      const gridTension = document.getElementById('rect-grid-tension');
+      const ondSelect = document.getElementById('rect-ond-select');
+      const gridSelect = document.getElementById('rect-grid-select');
+
+      // Tension : Rouge = présent, Jaune = absent (ici on simule présent)
+      ondTension.classList.toggle('bg-red-600', true);
+      ondTension.classList.toggle('border-red-600', true);
+      gridTension.classList.toggle('bg-red-600', true);
+      gridTension.classList.toggle('border-red-600', true);
+
+      // Sélection
+      ondSelect.classList.toggle('bg-emerald-500', currentPosition === 0);
+      ondSelect.classList.toggle('border-emerald-600', currentPosition === 0);
+      ondSelect.classList.toggle('text-white', currentPosition === 0);
+
+      gridSelect.classList.toggle('bg-emerald-500', currentPosition === 2);
+      gridSelect.classList.toggle('border-emerald-600', currentPosition === 2);
+      gridSelect.classList.toggle('text-white', currentPosition === 2);
+    }
+
+    function moveSlider(e) {
+      const thumb = document.getElementById('slider-thumb');
+      const container = thumb.parentElement;
+      const rect = container.getBoundingClientRect();
+      let percent = (e.clientX - rect.left) / rect.width;
+      percent = Math.max(0, Math.min(1, percent));
+
+      if (percent < 0.33) currentPosition = 0;
+      else if (percent > 0.66) currentPosition = 2;
+      else currentPosition = 1;
+
+      const posPx = currentPosition === 0 ? 60 : currentPosition === 2 ? rect.width - 74 : rect.width / 2 - 28;
+      thumb.style.transform = `translateX(${posPx}px)`;
+
+      document.getElementById('slider-label').textContent = 
+        currentPosition === 0 ? 'ONDULEUR' : currentPosition === 2 ? 'GRID' : 'NEUTRE';
+
+      updateSelection();
+    }
+
+    function toggleAutoManual() {
+      isAuto = !isAuto;
+      const knob = document.getElementById('auto-knob');
+      if (isAuto) {
+        knob.style.transform = 'translateX(0)';
+        knob.textContent = 'AUTO';
+        knob.classList.add('bg-blue-600');
       } else {
-        btnManual.classList.add('bg-blue-500', 'text-white');
-        btnAuto.classList.remove('bg-blue-500', 'text-white');
+        knob.style.transform = 'translateX(100px)';
+        knob.textContent = 'MANUAL';
+        knob.classList.remove('bg-blue-600');
       }
     }
 
     // Initialisation
     window.onload = () => {
-      setMode('auto');
+      // Position initiale : Onduleur
+      const thumb = document.getElementById('slider-thumb');
+      thumb.style.transform = 'translateX(60px)';
+      document.getElementById('slider-label').textContent = 'ONDULEUR';
+      updateSelection();
     };
   </script>
 </body>
