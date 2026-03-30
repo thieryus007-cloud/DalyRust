@@ -125,16 +125,21 @@ pub struct MpptYieldBody {
 
 /// POST /api/v1/solar/mppt-yield
 ///
-/// Permet à Node-RED de pousser la production solaire totale journalière
-/// et la puissance MPPT instantanée.
+/// Mise à jour partielle : seuls les champs présents dans le body sont écrits.
+/// Solar_power.json envoie uniquement mppt_power_w (puissance instantanée).
+/// meteo.json envoie total_yield_kwh + mppt_power_w (keepalive kWh).
 pub async fn set_mppt_yield(
     State(state): State<AppState>,
     Json(body): Json<MpptYieldBody>,
 ) -> impl IntoResponse {
-    let kwh = body.total_yield_kwh.or(body.mppt_yield_kwh).unwrap_or(0.0);
-    let pw  = body.mppt_power_w.unwrap_or(0.0);
-    *state.mppt_yield_kwh.write().await = kwh;
-    *state.mppt_power_w.write().await   = pw;
+    if let Some(kwh) = body.total_yield_kwh.or(body.mppt_yield_kwh) {
+        *state.mppt_yield_kwh.write().await = kwh;
+    }
+    if let Some(pw) = body.mppt_power_w {
+        *state.mppt_power_w.write().await = pw;
+    }
+    let kwh = *state.mppt_yield_kwh.read().await;
+    let pw  = *state.mppt_power_w.read().await;
     (StatusCode::OK, Json(json!({ "ok": true, "total_yield_kwh": kwh, "mppt_power_w": pw })))
 }
 

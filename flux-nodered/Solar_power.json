@@ -1,0 +1,241 @@
+[
+    {
+        "id": "414598e48f123ab2",
+        "type": "tab",
+        "label": "Solar_power",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "183ba1473a496661",
+        "type": "mqtt in",
+        "z": "414598e48f123ab2",
+        "name": "SmartSolar Charger MPPT 150/35 VRM 289 (W)",
+        "topic": "N/c0619ab9929a/solarcharger/289/Yield/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 220,
+        "wires": [
+            [
+                "505f07406818598d"
+            ]
+        ]
+    },
+    {
+        "id": "5ca9f28db0a9a3a0",
+        "type": "mqtt in",
+        "z": "414598e48f123ab2",
+        "name": "PV Inverter ET112 VRM 32 (W)",
+        "topic": "N/c0619ab9929a/pvinverter/32/Ac/L1/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 160,
+        "y": 280,
+        "wires": [
+            [
+                "ee9cc3805807ab69"
+            ]
+        ]
+    },
+    {
+        "id": "0878904b656a48e3",
+        "type": "mqtt in",
+        "z": "414598e48f123ab2",
+        "name": "SmartSolar MPPT VE.Can 250/100 VRM 273 (W)",
+        "topic": "N/c0619ab9929a/solarcharger/273/Yield/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 160,
+        "wires": [
+            [
+                "d0bf53bab44b8e32"
+            ]
+        ]
+    },
+    {
+        "id": "505f07406818598d",
+        "type": "function",
+        "z": "414598e48f123ab2",
+        "name": "Stocker vrm 289 power",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('w_vrm_289', v);\nnode.status({fill:'blue',shape:'dot',text:`vrm_289: ${v}W`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 220,
+        "wires": [
+            [
+                "10911d81284c4bc3"
+            ]
+        ]
+    },
+    {
+        "id": "d0bf53bab44b8e32",
+        "type": "function",
+        "z": "414598e48f123ab2",
+        "name": "Stocker vrm 273 power",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('w_vrm_273', v);\nnode.status({fill:'blue',shape:'dot',text:`vrm_273: ${v}W`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 160,
+        "wires": [
+            [
+                "10911d81284c4bc3"
+            ]
+        ]
+    },
+    {
+        "id": "ee9cc3805807ab69",
+        "type": "function",
+        "z": "414598e48f123ab2",
+        "name": "Stocker vrm 32 power",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('w_vrm_32', v);\nnode.status({fill:'blue',shape:'dot',text:`vrm_32: ${v}W`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 280,
+        "wires": [
+            [
+                "10911d81284c4bc3"
+            ]
+        ]
+    },
+    {
+        "id": "10911d81284c4bc3",
+        "type": "function",
+        "z": "414598e48f123ab2",
+        "name": "Formater + POST serveur BMS",
+        "func": "const token  = env.get('INFLUX_TOKEN');\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\n// CORRECTION : utiliser flow.get (même scope que flow.set dans les storers)\nconst mppt_273   = flow.get('w_vrm_273') || 0;\nconst mppt_289   = flow.get('w_vrm_289') || 0;\nconst pvinverter = flow.get('w_vrm_32')  || 0;\n\n// MPPT seul (273 + 289) — NE PAS inclure pvinverter/32 (ET112 déjà polled par daly-bms-server)\n// Le dashboard calcule : totalSolarW = solarW (ET112 polled) + mppt_power_w (MPPT only)\nconst mppt_only   = mppt_273 + mppt_289;\nconst solar_total = mppt_only + pvinverter;\n\n// Partage cross-tab : meteo.json keepalive lit global.mppt_power_w pour le push Venus OS\nglobal.set('mppt_power_w', mppt_only);\n\nflow.set('solar_pw', solar_total);\nnode.status({ fill: 'green', shape: 'dot', text: `MPPT: ${mppt_only}W  ET112: ${pvinverter}W  Total: ${solar_total}W` });\n\n// — Output 1 : InfluxDB line protocol —\nlet influxMsg = null;\nif (token) {\n    const now = new Date();\n    const parisISO = now.toLocaleString('sv-SE', { timeZone: 'Europe/Paris' });\n    const day = parisISO.substring(0, 10);\n    const ts  = Math.floor(Date.now() / 1000);\n    const hostname = (env.get('HOSTNAME') || 'pi5').replace(/[^a-zA-Z0-9_-]/g, '_');\n    const line = `solar_power,day=${day},host=${hostname} w_vrm_273=${mppt_273},w_vrm_289=${mppt_289},w_vrm_32=${pvinverter},solar_total=${solar_total} ${ts}`;\n    influxMsg = {\n        url:     `http://dalybms-influxdb:8086/api/v2/write?org=${org}&bucket=${bucket}&precision=s`,\n        method:  'POST',\n        payload: line,\n        headers: {\n            'Authorization': 'Token ' + token,\n            'Content-Type':  'text/plain; charset=utf-8'\n        }\n    };\n}\n\n// — Output 2 : POST mppt_power_w vers daly-bms-server —\n// Seul MPPT (pas ET112) pour éviter le double-comptage côté dashboard\nconst serverMsg = {\n    url:     'http://192.168.1.141:8080/api/v1/solar/mppt-yield',\n    method:  'POST',\n    payload: JSON.stringify({ mppt_power_w: mppt_only }),\n    headers: { 'Content-Type': 'application/json' }\n};\n\nreturn [influxMsg, serverMsg];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 530,
+        "y": 380,
+        "wires": [
+            [
+                "1bb0b7c97b9aab63"
+            ],
+            [
+                "c7e8f9a0b1d2e3f4"
+            ]
+        ]
+    },
+    {
+        "id": "1bb0b7c97b9aab63",
+        "type": "http request",
+        "z": "414598e48f123ab2",
+        "name": "InfluxDB Write (solar_power)",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 400,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c7e8f9a0b1d2e3f4",
+        "type": "http request",
+        "z": "414598e48f123ab2",
+        "name": "POST mppt_power_w → daly-bms-server",
+        "method": "use",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 690,
+        "y": 480,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6311801a23e09439",
+        "type": "comment",
+        "z": "414598e48f123ab2",
+        "name": "Solar power → InfluxDB + daly-bms-server",
+        "info": "Sujets MQTT utilisés :\n\nSmartSolar MPPT VE.Can 250/100 (instance 273)\nN/c0619ab9929a/solarcharger/273/Yield/Power\n\nSmartSolar Charger MPPT 150/35 (instance 289)\nN/c0619ab9929a/solarcharger/289/Yield/Power\n\nPV Inverter ET112 addr 0x07 (instance 32)\nN/c0619ab9929a/pvinverter/32/Ac/L1/Power\n\n---\nPOST /api/v1/solar/mppt-yield : mppt_only = 273+289 UNIQUEMENT\n→ Le dashboard calcule totalSolarW = ET112 (polled Modbus) + mppt_power_w\n→ Évite le double-comptage ET112\n\nglobal.mppt_power_w est aussi lu par meteo.json keepalive (push Venus OS).",
+        "x": 190,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "pi5_mqtt_broker",
+        "type": "mqtt-broker",
+        "name": "Pi5 MQTT",
+        "broker": "dalybms-mosquitto",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]
