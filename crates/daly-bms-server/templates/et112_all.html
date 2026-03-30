@@ -21,12 +21,12 @@
 <div class="bms-card {% if !d.connected %}" style="opacity:0.7{% endif %}" id="et112-card-{{ d.address }}">
 
   {# Header #}
-  <div class="bms-hdr" style="{% if d.connected %}{% if d.service_type == "pvinverter" %}background:linear-gradient(135deg,#0e3320 0%,#081a10 100%){% else if d.service_type == "heatpump" %}background:linear-gradient(135deg,#2a1b40 0%,#180e2a 100%){% else %}background:linear-gradient(135deg,#1a2a40 0%,#0d1a28 100%){% endif %}{% else %}background:linear-gradient(135deg,#2d333b 0%,#1c2128 100%){% endif %}">
+  <div class="bms-hdr" style="{% if d.connected %}{% if d.service_type == "pvinverter" %}background:linear-gradient(135deg,#fef9c3 0%,#fef08a 100%){% else if d.service_type == "heatpump" %}background:linear-gradient(135deg,#f3e8ff 0%,#e9d5ff 100%){% else %}background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%){% endif %}{% else %}background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%){% endif %}">
     <div class="bms-hdr-left">
       {% if d.connected %}
         <div class="bms-live"><div class="live-dot"></div>LIVE</div>
       {% else %}
-        <span style="font-size:0.62rem;color:rgba(255,255,255,0.35)">Hors ligne</span>
+        <span style="font-size:0.62rem;color:var(--muted2)">Hors ligne</span>
       {% endif %}
       <span class="bms-hdr-name">
         {% if d.service_type == "pvinverter" %}☀{% else if d.service_type == "heatpump" %}🌡{% else %}⚡{% endif %}

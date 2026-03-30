@@ -21,12 +21,12 @@
 <div class="bms-card {% if !d.connected %}" style="opacity:0.7{% endif %}" id="tasmota-card-{{ d.id }}">
 
   {# Header #}
-  <div class="bms-hdr" style="{% if d.connected %}{% if d.power_on %}background:linear-gradient(135deg,#0e3320 0%,#081a10 100%){% else %}background:linear-gradient(135deg,#3b1010 0%,#200808 100%){% endif %}{% else %}background:linear-gradient(135deg,#2d333b 0%,#1c2128 100%){% endif %}">
+  <div class="bms-hdr" style="{% if d.connected %}{% if d.power_on %}background:linear-gradient(135deg,#dcfce7 0%,#bbf7d0 100%){% else %}background:linear-gradient(135deg,#fee2e2 0%,#fecaca 100%){% endif %}{% else %}background:linear-gradient(135deg,#f1f5f9 0%,#e2e8f0 100%){% endif %}">
     <div class="bms-hdr-left">
       {% if d.connected %}
         <div class="bms-live"><div class="live-dot" style="{% if !d.power_on %}background:var(--red);box-shadow:0 0 6px var(--red){% endif %}"></div>{% if d.power_on %}ON{% else %}OFF{% endif %}</div>
       {% else %}
-        <span style="font-size:0.62rem;color:rgba(255,255,255,0.35)">Hors ligne</span>
+        <span style="font-size:0.62rem;color:var(--muted2)">Hors ligne</span>
       {% endif %}
       <span class="bms-hdr-name">🔌 {{ d.name }}</span>
     </div>

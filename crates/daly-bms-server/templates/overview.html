@@ -343,6 +343,7 @@ let irrWm2   = null;
 let totalYieldKwh = 0;
 let solarTotalW   = 0;  // source de vérité VRM : 273+289+ET112 (depuis solar_total_w)
 let mpptPowerW    = 0;  // MPPT seul (pour la boîte MPPT du diagramme)
+let housePowerW   = 0;  // consommation maison — N/.../system/0/Ac/ConsumptionOnOutput/L1/Power (VRM)
 let chartRange    = 'live';
 
 // ── Rolling history (720 pts × 5s = 60 min) ─────────────────────
@@ -475,8 +476,8 @@ window.onBmsUpdate = function(snaps) {
 };
 
 // ── ET112 polling ─────────────────────────────────────────────────
-// Poll individuel pour les boîtes SVG (PAC Clim, PAC CE, Micro-Onduleurs).
-// Le total solaire vient de solarTotalW (VRM via pollIrr), pas d'ici.
+// Poll individuel pour les boîtes SVG PAC (Clim, CE) et Micro-Onduleurs.
+// f-mai-w et kpi-load viennent de housePowerW (VRM, mis à jour par pollIrr).
 async function pollEt112() {
   let pv1W = 0, climW = 0, ceW = 0, autW = 0;
 
@@ -497,26 +498,17 @@ async function pollEt112() {
     } catch(_) {}
   }
 
-  const totalLoadW = climW + ceW + autW;
-
-  // Boîtes SVG individuelles
-  set('f-pv1-w',  f0(pv1W)        + ' W');  // Micro-Onduleurs (ET112 Modbus)
-  set('f-pv2-w',  f0(mpptPowerW)  + ' W');  // MPPT 273+289 (depuis VRM pollIrr)
-  set('f-clim-w', f0(climW)       + ' W');
-  set('f-ce-w',   f0(ceW)         + ' W');
-  set('f-aut-w',  f0(autW)        + ' W');
-  set('f-mai-w',  f0(totalLoadW)  + ' W');
-
-  // KPI solaire = solarTotalW (VRM truth, mis à jour par pollIrr en parallèle)
-  set('kpi-solar', f0(solarTotalW));
-  set('kpi-load',  f0(totalLoadW));
+  // Boîtes SVG individuelles (PAC + Micro-Onduleurs)
+  set('f-pv1-w',  f0(pv1W)   + ' W');  // Micro-Onduleurs (ET112 Modbus)
+  set('f-clim-w', f0(climW)  + ' W');
+  set('f-ce-w',   f0(ceW)    + ' W');
+  set('f-aut-w',  f0(autW)   + ' W');
   set('flow-ts', new Date().toLocaleTimeString('fr-FR'));
-
-  return { solarW: solarTotalW, loadW: totalLoadW };
 }
 
-// ── Irradiance + production polling ─────────────────────────────
+// ── Irradiance + production + house power polling ────────────────
 // solar_total_w = source de vérité VRM : 273+289+ET112 (Solar_power.json)
+// house_power_w = N/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power (VRM)
 async function pollIrr() {
   try {
     const r = await fetch('/api/v1/irradiance/status');
@@ -525,12 +517,15 @@ async function pollIrr() {
     totalYieldKwh = d.total_yield_kwh || 0;
     mpptPowerW    = d.mppt_power_w    || 0;
     solarTotalW   = d.solar_total_w   || 0;
+    housePowerW   = d.house_power_w   || 0;
     irrWm2        = d.irradiance_wm2  || 0;
 
     set('kpi-irr',   f0(irrWm2));
     set('kpi-kwh',   totalYieldKwh.toFixed(2));
-    set('kpi-solar', f0(solarTotalW));  // mise à jour immédiate KPI
+    set('kpi-solar', f0(solarTotalW));
+    set('kpi-load',  f0(housePowerW));   // ← VRM direct, pas calculé
     set('f-pv2-w',   f0(mpptPowerW) + ' W');
+    set('f-mai-w',   f0(housePowerW) + ' W');  // ← VRM direct
 
     return irrWm2;
   } catch(_) { return null; }
@@ -567,14 +562,14 @@ async function fetchHistoryChart(minutes) {
 
 // ── Full refresh cycle ───────────────────────────────────────────
 async function refresh() {
-  const [et112, irrVal] = await Promise.all([pollEt112(), pollIrr()]);
+  await Promise.all([pollEt112(), pollIrr()]);
 
   if (chartRange === 'live') {
     // Feed rolling history
     const t   = new Date().toLocaleTimeString('fr-FR');
     const soc = combinedSoc();
-    const solW = (et112 ? et112.solarW : 0);
-    const ldW  = et112 ? et112.loadW : 0;
+    const solW = solarTotalW;
+    const ldW  = housePowerW;  // ← VRM ConsumptionOnOutput
 
     hTime .push(t);  if (hTime .length > MAX_PTS) hTime .shift();
     hSolar.push(Math.round(solW)); if (hSolar.length > MAX_PTS) hSolar.shift();

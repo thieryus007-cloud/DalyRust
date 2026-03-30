@@ -135,7 +135,7 @@
         "type": "function",
         "z": "414598e48f123ab2",
         "name": "Formater + POST serveur BMS",
-        "func": "const token  = env.get('INFLUX_TOKEN');\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\n// CORRECTION : utiliser flow.get (même scope que flow.set dans les storers)\nconst mppt_273   = flow.get('w_vrm_273') || 0;\nconst mppt_289   = flow.get('w_vrm_289') || 0;\nconst pvinverter = flow.get('w_vrm_32')  || 0;\n\n// MPPT seul (273 + 289) — NE PAS inclure pvinverter/32 (ET112 déjà polled par daly-bms-server)\n// Le dashboard calcule : totalSolarW = solarW (ET112 polled) + mppt_power_w (MPPT only)\nconst mppt_only   = mppt_273 + mppt_289;\nconst solar_total = mppt_only + pvinverter;\n\n// Partage cross-tab : meteo.json keepalive lit global.mppt_power_w pour le push Venus OS\nglobal.set('mppt_power_w', mppt_only);\n\nflow.set('solar_pw', solar_total);\nnode.status({ fill: 'green', shape: 'dot', text: `MPPT: ${mppt_only}W  ET112: ${pvinverter}W  Total: ${solar_total}W` });\n\n// — Output 1 : InfluxDB line protocol —\nlet influxMsg = null;\nif (token) {\n    const now = new Date();\n    const parisISO = now.toLocaleString('sv-SE', { timeZone: 'Europe/Paris' });\n    const day = parisISO.substring(0, 10);\n    const ts  = Math.floor(Date.now() / 1000);\n    const hostname = (env.get('HOSTNAME') || 'pi5').replace(/[^a-zA-Z0-9_-]/g, '_');\n    const line = `solar_power,day=${day},host=${hostname} w_vrm_273=${mppt_273},w_vrm_289=${mppt_289},w_vrm_32=${pvinverter},solar_total=${solar_total} ${ts}`;\n    influxMsg = {\n        url:     `http://dalybms-influxdb:8086/api/v2/write?org=${org}&bucket=${bucket}&precision=s`,\n        method:  'POST',\n        payload: line,\n        headers: {\n            'Authorization': 'Token ' + token,\n            'Content-Type':  'text/plain; charset=utf-8'\n        }\n    };\n}\n\n// — Output 2 : POST vers daly-bms-server —\n// solar_total_w = source de vérité VRM (273+289+ET112)\n// mppt_power_w  = MPPT seul, utilisé par meteo.json keepalive Venus OS\nconst serverMsg = {\n    url:     'http://192.168.1.141:8080/api/v1/solar/mppt-yield',\n    method:  'POST',\n    payload: JSON.stringify({ solar_total_w: solar_total, mppt_power_w: mppt_only }),\n    headers: { 'Content-Type': 'application/json' }\n};\n\nreturn [influxMsg, serverMsg];",
+        "func": "const token  = env.get('INFLUX_TOKEN');\nconst org    = env.get('INFLUX_ORG')    || 'santuario';\nconst bucket = env.get('INFLUX_BUCKET') || 'daly_bms';\n\nconst mppt_273   = flow.get('w_vrm_273')     || 0;\nconst mppt_289   = flow.get('w_vrm_289')     || 0;\nconst pvinverter = flow.get('w_vrm_32')      || 0;\nconst house_pw   = flow.get('house_power_w') || 0;\n\nconst mppt_only   = mppt_273 + mppt_289;\nconst solar_total = mppt_only + pvinverter;\n\nglobal.set('mppt_power_w', mppt_only);\nflow.set('solar_pw', solar_total);\nnode.status({ fill: 'green', shape: 'dot', text: `Sol: ${solar_total}W  Maison: ${house_pw}W` });\n\n// — Output 1 : InfluxDB line protocol —\nlet influxMsg = null;\nif (token) {\n    const now = new Date();\n    const parisISO = now.toLocaleString('sv-SE', { timeZone: 'Europe/Paris' });\n    const day = parisISO.substring(0, 10);\n    const ts  = Math.floor(Date.now() / 1000);\n    const hostname = (env.get('HOSTNAME') || 'pi5').replace(/[^a-zA-Z0-9_-]/g, '_');\n    const line = `solar_power,day=${day},host=${hostname} w_vrm_273=${mppt_273},w_vrm_289=${mppt_289},w_vrm_32=${pvinverter},solar_total=${solar_total},house_power=${house_pw} ${ts}`;\n    influxMsg = {\n        url:     `http://dalybms-influxdb:8086/api/v2/write?org=${org}&bucket=${bucket}&precision=s`,\n        method:  'POST',\n        payload: line,\n        headers: {\n            'Authorization': 'Token ' + token,\n            'Content-Type':  'text/plain; charset=utf-8'\n        }\n    };\n}\n\n// — Output 2 : POST vers daly-bms-server —\nconst serverMsg = {\n    url:     'http://192.168.1.141:8080/api/v1/solar/mppt-yield',\n    method:  'POST',\n    payload: JSON.stringify({ solar_total_w: solar_total, mppt_power_w: mppt_only, house_power_w: house_pw }),\n    headers: { 'Content-Type': 'application/json' }\n};\n\nreturn [influxMsg, serverMsg];",
         "outputs": 2,
         "timeout": "",
         "noerr": 0,
@@ -202,10 +202,51 @@
         "type": "comment",
         "z": "414598e48f123ab2",
         "name": "Solar power → InfluxDB + daly-bms-server",
-        "info": "Sujets MQTT utilisés :\n\nSmartSolar MPPT VE.Can 250/100 (instance 273)\nN/c0619ab9929a/solarcharger/273/Yield/Power\n\nSmartSolar Charger MPPT 150/35 (instance 289)\nN/c0619ab9929a/solarcharger/289/Yield/Power\n\nPV Inverter ET112 addr 0x07 (instance 32)\nN/c0619ab9929a/pvinverter/32/Ac/L1/Power\n\n---\nPOST /api/v1/solar/mppt-yield : mppt_only = 273+289 UNIQUEMENT\n→ Le dashboard calcule totalSolarW = ET112 (polled Modbus) + mppt_power_w\n→ Évite le double-comptage ET112\n\nglobal.mppt_power_w est aussi lu par meteo.json keepalive (push Venus OS).",
+        "info": "Sujets MQTT utilisés :\n\nSmartSolar MPPT VE.Can 250/100 (instance 273)\nN/c0619ab9929a/solarcharger/273/Yield/Power\n\nSmartSolar Charger MPPT 150/35 (instance 289)\nN/c0619ab9929a/solarcharger/289/Yield/Power\n\nPV Inverter ET112 addr 0x07 (instance 32)\nN/c0619ab9929a/pvinverter/32/Ac/L1/Power\n\nESS AC Output Consumption (Maison)\nN/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power\n\n---\nPOST /api/v1/solar/mppt-yield envoie :\n  solar_total_w = 273+289+ET112 (source de vérité VRM)\n  mppt_power_w  = 273+289 seulement (pour meteo.json Venus OS)\n  house_power_w = ConsumptionOnOutput (valeur directe VRM, pas calculée)\n\nglobal.mppt_power_w est aussi lu par meteo.json keepalive (push Venus OS).",
         "x": 190,
         "y": 100,
         "wires": []
+    },
+    {
+        "id": "f1a2b3c4d5e6f7a8",
+        "type": "mqtt in",
+        "z": "414598e48f123ab2",
+        "name": "ESS AC Output Consumption L1 (W)",
+        "topic": "N/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "pi5_mqtt_broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 340,
+        "wires": [
+            [
+                "a8b7c6d5e4f3a2b1"
+            ]
+        ]
+    },
+    {
+        "id": "a8b7c6d5e4f3a2b1",
+        "type": "function",
+        "z": "414598e48f123ab2",
+        "name": "Stocker house_power_w",
+        "func": "const v = msg.payload.value !== undefined ? msg.payload.value : msg.payload;\nflow.set('house_power_w', v);\nnode.status({fill:'purple',shape:'dot',text:`maison: ${v}W`});\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 520,
+        "y": 340,
+        "wires": [
+            [
+                "10911d81284c4bc3"
+            ]
+        ]
     },
     {
         "id": "pi5_mqtt_broker",

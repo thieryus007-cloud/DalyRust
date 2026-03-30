@@ -167,6 +167,10 @@ pub struct AppState {
     /// Puissance solaire totale en W = MPPT 273+289 + PV Inverter ET112 (VRM).
     /// Source unique : Solar_power.json Node-RED (via POST solar_total_w).
     pub solar_total_w: Arc<RwLock<f32>>,
+
+    /// Puissance consommée par la maison en W (ESS AC output consumption).
+    /// Source : N/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power via VRM → Node-RED.
+    pub house_power_w: Arc<RwLock<f32>>,
 }
 
 impl AppState {
@@ -207,6 +211,7 @@ impl AppState {
             mppt_yield_kwh: Arc::new(RwLock::new(0.0)),
             mppt_power_w:   Arc::new(RwLock::new(0.0)),
             solar_total_w:  Arc::new(RwLock::new(0.0)),
+            house_power_w:  Arc::new(RwLock::new(0.0)),
         }
     }
 

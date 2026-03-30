@@ -87,6 +87,10 @@ pub async fn get_logs(
 ///
 /// Retourne la dernière mesure du capteur d'irradiance PRALRAN.
 pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoResponse {
+    let kwh  = *state.mppt_yield_kwh.read().await;
+    let mpw  = *state.mppt_power_w.read().await;
+    let solw = *state.solar_total_w.read().await;
+    let housew = *state.house_power_w.read().await;
     match state.latest_irradiance().await {
         Some(snap) => (
             StatusCode::OK,
@@ -96,9 +100,10 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
                 "name": snap.name,
                 "irradiance_wm2": snap.irradiance_wm2,
                 "timestamp": snap.timestamp.to_rfc3339(),
-                "total_yield_kwh": *state.mppt_yield_kwh.read().await,
-                "mppt_power_w":    *state.mppt_power_w.read().await,
-                "solar_total_w":   *state.solar_total_w.read().await,
+                "total_yield_kwh": kwh,
+                "mppt_power_w":    mpw,
+                "solar_total_w":   solw,
+                "house_power_w":   housew,
             })),
         ),
         None => (
@@ -106,9 +111,10 @@ pub async fn get_irradiance_status(State(state): State<AppState>) -> impl IntoRe
             Json(json!({
                 "connected": false,
                 "irradiance_wm2": 0.0,
-                "total_yield_kwh": *state.mppt_yield_kwh.read().await,
-                "mppt_power_w":    *state.mppt_power_w.read().await,
-                "solar_total_w":   *state.solar_total_w.read().await,
+                "total_yield_kwh": kwh,
+                "mppt_power_w":    mpw,
+                "solar_total_w":   solw,
+                "house_power_w":   housew,
             })),
         ),
     }
@@ -126,6 +132,8 @@ pub struct MpptYieldBody {
     /// Puissance solaire totale en W = MPPT + ET112 PVInverter (source VRM Node-RED).
     /// Champ canonique depuis Solar_power.json — source de vérité pour le dashboard.
     pub solar_total_w:   Option<f32>,
+    /// Puissance maison en W = N/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power.
+    pub house_power_w:   Option<f32>,
 }
 
 /// POST /api/v1/solar/mppt-yield
@@ -146,14 +154,19 @@ pub async fn set_mppt_yield(
     if let Some(tw) = body.solar_total_w {
         *state.solar_total_w.write().await = tw;
     }
-    let kwh = *state.mppt_yield_kwh.read().await;
-    let pw  = *state.mppt_power_w.read().await;
-    let tw  = *state.solar_total_w.read().await;
+    if let Some(hw) = body.house_power_w {
+        *state.house_power_w.write().await = hw;
+    }
+    let kwh  = *state.mppt_yield_kwh.read().await;
+    let pw   = *state.mppt_power_w.read().await;
+    let tw   = *state.solar_total_w.read().await;
+    let housew = *state.house_power_w.read().await;
     (StatusCode::OK, Json(json!({
         "ok": true,
         "total_yield_kwh": kwh,
         "mppt_power_w":    pw,
         "solar_total_w":   tw,
+        "house_power_w":   housew,
     })))
 }
 
