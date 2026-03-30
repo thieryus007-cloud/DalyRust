@@ -30,121 +30,8 @@ body { font-family: 'Segoe UI', system-ui; background: linear-gradient(135deg, #
 .log-line.success { color: #16a34a; }
 .log-line.error { color: #ef4444; }
 .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 20px; }
-.card { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: all 0.3s ease; }
-
-/* Contours clignotants */
-.card-active-source1 {
-    border: 3px solid #3b82f6;
-    box-shadow: 0 0 15px rgba(59,130,246,0.5);
-    animation: pulseBlue 1.5s ease-in-out infinite;
-}
-
-.card-active-source2 {
-    border: 3px solid #f59e0b;
-    box-shadow: 0 0 15px rgba(245,158,11,0.5);
-    animation: pulseOrange 1.5s ease-in-out infinite;
-}
-
-.card-active-middle {
-    border: 3px solid #ef4444;
-    box-shadow: 0 0 15px rgba(239,68,68,0.5);
-    animation: pulseRed 1s ease-in-out infinite;
-}
-
-@keyframes pulseBlue {
-    0% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.3); }
-    50% { border-color: #60a5fa; box-shadow: 0 0 20px rgba(59,130,246,0.8); }
-    100% { border-color: #3b82f6; box-shadow: 0 0 5px rgba(59,130,246,0.3); }
-}
-
-@keyframes pulseOrange {
-    0% { border-color: #f59e0b; box-shadow: 0 0 5px rgba(245,158,11,0.3); }
-    50% { border-color: #fbbf24; box-shadow: 0 0 20px rgba(245,158,11,0.8); }
-    100% { border-color: #f59e0b; box-shadow: 0 0 5px rgba(245,158,11,0.3); }
-}
-
-@keyframes pulseRed {
-    0% { border-color: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,0.3); }
-    50% { border-color: #f87171; box-shadow: 0 0 25px rgba(239,68,68,0.9); }
-    100% { border-color: #ef4444; box-shadow: 0 0 5px rgba(239,68,68,0.3); }
-}
-
-/* Slider à 3 positions (style interrupteur industriel) */
-.selector-container {
-    background: linear-gradient(135deg, #1e293b, #0f172a);
-    border-radius: 60px;
-    padding: 8px;
-    margin: 20px 0;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-}
-
-.three-way-switch {
-    display: flex;
-    background: #334155;
-    border-radius: 50px;
-    padding: 4px;
-    gap: 4px;
-}
-
-.switch-option {
-    flex: 1;
-    text-align: center;
-    padding: 12px 8px;
-    border-radius: 40px;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    color: #94a3b8;
-    border: none;
-    background: transparent;
-}
-
-.switch-option:hover {
-    background: rgba(255,255,255,0.1);
-    color: #f1f5f9;
-}
-
-.switch-option.active {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-    box-shadow: 0 2px 8px rgba(59,130,246,0.4);
-}
-
-.switch-option.source1-active {
-    background: linear-gradient(135deg, #3b82f6, #2563eb);
-    color: white;
-}
-
-.switch-option.source2-active {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-}
-
-.switch-option.middle-active {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-}
-
-.switch-option:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.position-indicator {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-    padding: 0 15px;
-    color: #64748b;
-    font-size: 10px;
-}
-
-.position-indicator span {
-    text-align: center;
-    flex: 1;
-}
-
+.card { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: transform 0.2s; }
+.card:hover { transform: translateY(-2px); }
 .card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .source-status { display: flex; align-items: center; gap: 12px; }
 .source-dot { width: 16px; height: 16px; border-radius: 50%; transition: all 0.3s; }
@@ -194,6 +81,140 @@ footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; 
 .phase-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 6px 0; }
 .info-badge { background: #f1f5f9; border-radius: 12px; padding: 4px 10px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
 .separator { border-top: 1px solid #e2e8f0; margin: 12px 0; }
+
+/* GRAND SWITCH 3 POSITIONS */
+.big-switch-container {
+    background: #1e293b;
+    border-radius: 80px;
+    padding: 12px;
+    margin: 30px 0 20px 0;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.big-switch {
+    display: flex;
+    border-radius: 70px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.switch-position {
+    flex: 1;
+    text-align: center;
+    padding: 24px 16px;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.switch-position:first-child {
+    border-radius: 60px 0 0 60px;
+}
+
+.switch-position:last-child {
+    border-radius: 0 60px 60px 0;
+}
+
+/* Positions par défaut (inactives) */
+.switch-position.source1-pos {
+    background: #334155;
+    color: #94a3b8;
+}
+
+.switch-position.middle-pos {
+    background: #334155;
+    color: #94a3b8;
+}
+
+.switch-position.source2-pos {
+    background: #334155;
+    color: #94a3b8;
+}
+
+/* Position active - ONDULEUR (bleu) */
+.big-switch.source1-active .switch-position.source1-pos {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: white;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1);
+}
+.big-switch.source1-active .switch-position.middle-pos,
+.big-switch.source1-active .switch-position.source2-pos {
+    background: #1e293b;
+    color: #64748b;
+}
+
+/* Position active - MIDDLE (rouge) */
+.big-switch.middle-active .switch-position.middle-pos {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1);
+}
+.big-switch.middle-active .switch-position.source1-pos,
+.big-switch.middle-active .switch-position.source2-pos {
+    background: #1e293b;
+    color: #64748b;
+}
+
+/* Position active - RESEAU (orange) */
+.big-switch.source2-active .switch-position.source2-pos {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1);
+}
+.big-switch.source2-active .switch-position.source1-pos,
+.big-switch.source2-active .switch-position.middle-pos {
+    background: #1e293b;
+    color: #64748b;
+}
+
+.switch-label {
+    font-size: 13px;
+    font-weight: normal;
+    opacity: 0.8;
+    margin-left: 6px;
+}
+
+.big-switch.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.switch-status-text {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px;
+    border-radius: 30px;
+    background: #f1f5f9;
+}
+
+/* Bordure statique pour la source active (pas clignotante) */
+.card.source-active {
+    border: 2px solid;
+    transition: border 0.3s ease;
+}
+
+.card.source1-active {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, rgba(59,130,246,0.05), rgba(255,255,255,0.95));
+}
+
+.card.source2-active {
+    border-color: #f59e0b;
+    background: linear-gradient(135deg, rgba(245,158,11,0.05), rgba(255,255,255,0.95));
+}
+
+.card.middle-active {
+    border-color: #ef4444;
+    background: linear-gradient(135deg, rgba(239,68,68,0.05), rgba(255,255,255,0.95));
+}
 </style>
 </head>
 <body>
@@ -226,23 +247,24 @@ footer { text-align: center; margin-top: 24px; font-size: 12px; color: #64748b; 
 </div>
 </div>
 
-<!-- SELECTEUR 3 POSITIONS PROFESSIONNEL -->
-<div class="selector-container">
-<div class="three-way-switch">
-<button class="switch-option" id="selectSource1" onclick="selectPosition('source1')">
-🔋 ON - Onduleur
+<!-- GRAND SWITCH 3 POSITIONS -->
+<div class="big-switch-container">
+<div class="big-switch" id="bigSwitch">
+<button class="switch-position source1-pos" onclick="selectPosition('source1')">
+🔋 ONDULEUR
+<span class="switch-label">Source 1</span>
 </button>
-<button class="switch-option" id="selectMiddle" onclick="selectPosition('middle')">
-⏹️ OFF - Central
+<button class="switch-position middle-pos" onclick="selectPosition('middle')">
+⏹️ ARRÊT
+<span class="switch-label">Central</span>
 </button>
-<button class="switch-option" id="selectSource2" onclick="selectPosition('source2')">
-⚡ ON - Réseau
+<button class="switch-position source2-pos" onclick="selectPosition('source2')">
+⚡ RÉSEAU
+<span class="switch-label">Source 2</span>
 </button>
 </div>
-<div class="position-indicator">
-<span>🔵 Onduleur</span>
-<span>🔴 Arrêt central</span>
-<span>🟠 Réseau</span>
+<div class="switch-status-text" id="switchStatusText">
+🔵 Position actuelle : ---
 </div>
 </div>
 
@@ -365,20 +387,23 @@ let debugEnabled = false;
 let logLines = ["✨ Prêt", "---", "---", "---"];
 let isExecutingCommand = false;
 
-// ==================== SELECTEUR 3 POSITIONS ====================
+// ==================== GRAND SWITCH 3 POSITIONS ====================
 async function selectPosition(position) {
     if (isExecutingCommand) {
         updateCompactLog('⏳ Commande en cours, veuillez patienter...', 'warning');
         return;
     }
     
-    // Désactiver tous les boutons du sélecteur pendant l'opération
-    const btns = ['selectSource1', 'selectMiddle', 'selectSource2'];
-    btns.forEach(id => {
-        document.getElementById(id).disabled = true;
-    });
+    // Désactiver le switch pendant l'opération
+    const bigSwitch = document.getElementById('bigSwitch');
+    bigSwitch.classList.add('disabled');
     
     isExecutingCommand = true;
+    
+    // Afficher le chargement visuel sur le switch
+    const statusText = document.getElementById('switchStatusText');
+    const originalText = statusText.innerHTML;
+    statusText.innerHTML = '⏳ Exécution en cours...';
     
     try {
         // Activer la télécommande
@@ -392,17 +417,21 @@ async function selectPosition(position) {
         // Exécuter la commande selon la position
         let cmd = '';
         let cmdName = '';
+        let positionText = '';
         if (position === 'source1') {
             cmd = 'force_source1';
             cmdName = 'Forçage Onduleur';
+            positionText = '🔵 ONDULEUR';
             updateCompactLog('🔋 Forçage source Onduleur...', 'send');
         } else if (position === 'source2') {
             cmd = 'force_source2';
             cmdName = 'Forçage Réseau';
+            positionText = '🟠 RÉSEAU';
             updateCompactLog('⚡ Forçage source Réseau...', 'send');
         } else if (position === 'middle') {
             cmd = 'force_double';
             cmdName = 'Forçage OFF (position centrale)';
+            positionText = '🔴 ARRÊT CENTRAL';
             updateCompactLog('⏹️ Forçage position centrale...', 'send');
         }
         
@@ -416,38 +445,94 @@ async function selectPosition(position) {
         updateCompactLog('🔒 Désactivation télécommande...', 'send');
         await fetch('/api/remote_off', { method: 'POST' });
         
+        // Mettre à jour l'affichage du switch selon la position sélectionnée
+        updateSwitchVisual(position);
+        statusText.innerHTML = `✅ ${positionText} - Commande exécutée avec succès`;
+        
         updateCompactLog(`✅ ${cmdName} réussi !`, 'success');
+        setTimeout(() => {
+            if (statusText.innerHTML !== originalText) {
+                // On laisse le refresh mettre à jour l'état réel
+            }
+        }, 3000);
         setTimeout(refreshNow, 500);
         
     } catch(e) {
         updateCompactLog(`❌ Erreur: ${e.message}`, 'error');
+        statusText.innerHTML = `❌ Erreur: ${e.message}`;
         try { await fetch('/api/remote_off', { method: 'POST' }); } catch(_) {}
     } finally {
         isExecutingCommand = false;
-        btns.forEach(id => {
-            document.getElementById(id).disabled = false;
-        });
+        bigSwitch.classList.remove('disabled');
         setTimeout(refreshNow, 300);
     }
 }
 
-// Mettre à jour l'état visuel du sélecteur
-function updateSelectorState(activeSource, isMiddleOFF) {
-    const btnSource1 = document.getElementById('selectSource1');
-    const btnSource2 = document.getElementById('selectSource2');
-    const btnMiddle = document.getElementById('selectMiddle');
+// Mettre à jour l'apparence visuelle du switch
+function updateSwitchVisual(position) {
+    const bigSwitch = document.getElementById('bigSwitch');
+    bigSwitch.classList.remove('source1-active', 'middle-active', 'source2-active');
     
-    // Reset classes
-    btnSource1.classList.remove('source1-active', 'active');
-    btnSource2.classList.remove('source2-active', 'active');
-    btnMiddle.classList.remove('middle-active', 'active');
+    if (position === 'source1') {
+        bigSwitch.classList.add('source1-active');
+    } else if (position === 'middle') {
+        bigSwitch.classList.add('middle-active');
+    } else if (position === 'source2') {
+        bigSwitch.classList.add('source2-active');
+    }
+}
+
+// Mettre à jour l'état du switch selon les données réelles
+function updateSwitchFromData(v1a, v2a, middleOFF) {
+    const tensionOnduleur = parseFloat(v1a) || 0;
+    const tensionReseau = parseFloat(v2a) || 0;
+    const isMiddleOFF = middleOFF === "✅ Actif" || middleOFF === "Actif" || middleOFF === true;
+    
+    let activePosition = null;
+    let positionText = '';
     
     if (isMiddleOFF) {
-        btnMiddle.classList.add('middle-active', 'active');
-    } else if (activeSource === 'source1') {
-        btnSource1.classList.add('source1-active', 'active');
-    } else if (activeSource === 'source2') {
-        btnSource2.classList.add('source2-active', 'active');
+        activePosition = 'middle';
+        positionText = '🔴 ARRÊT CENTRAL (position milieu)';
+    } else if (tensionOnduleur > 50 && tensionOnduleur > tensionReseau) {
+        activePosition = 'source1';
+        positionText = '🔵 ONDULEUR - Source active';
+    } else if (tensionReseau > 50 && tensionReseau > tensionOnduleur) {
+        activePosition = 'source2';
+        positionText = '🟠 RÉSEAU - Source active';
+    } else {
+        positionText = '⚪ Aucune source détectée';
+    }
+    
+    if (activePosition) {
+        updateSwitchVisual(activePosition);
+    }
+    
+    const statusText = document.getElementById('switchStatusText');
+    if (statusText && !statusText.innerHTML.includes('succès') && !statusText.innerHTML.includes('Erreur')) {
+        statusText.innerHTML = `📍 ${positionText}`;
+    }
+    
+    // Appliquer les bordures statiques sur les cartes (non clignotantes)
+    updateCardBorders(tensionOnduleur, tensionReseau, isMiddleOFF);
+}
+
+// Bordures statiques (non clignotantes)
+function updateCardBorders(tensionOnduleur, tensionReseau, isMiddleOFF) {
+    const cardOnduleur = document.getElementById('cardOnduleur');
+    const cardReseau = document.getElementById('cardReseau');
+    const cardReg50 = document.getElementById('cardReg50');
+    
+    cardOnduleur.classList.remove('source1-active', 'source2-active', 'middle-active');
+    cardReseau.classList.remove('source1-active', 'source2-active', 'middle-active');
+    cardReg50.classList.remove('source1-active', 'source2-active', 'middle-active');
+    
+    if (isMiddleOFF) {
+        cardReg50.classList.add('middle-active');
+    } else if (tensionOnduleur > 50 && tensionOnduleur > tensionReseau) {
+        cardOnduleur.classList.add('source1-active');
+    } else if (tensionReseau > 50 && tensionReseau > tensionOnduleur) {
+        cardReseau.classList.add('source2-active');
     }
 }
 
@@ -563,42 +648,6 @@ async function forceSource2WithRemote() {
         btn.classList.remove('action-btn-loading');
         btn.disabled = false;
         setTimeout(refreshNow, 300);
-    }
-}
-
-// ==================== GESTION DES CONTOURS CLIGNOTANTS ====================
-function updateBlinkingBorders(v1a, v2a, middleOFF) {
-    const cardOnduleur = document.getElementById('cardOnduleur');
-    const cardReseau = document.getElementById('cardReseau');
-    const cardReg50 = document.getElementById('cardReg50');
-    
-    // Retirer toutes les classes de clignotement
-    cardOnduleur.classList.remove('card-active-source1', 'card-active-source2', 'card-active-middle');
-    cardReseau.classList.remove('card-active-source1', 'card-active-source2', 'card-active-middle');
-    cardReg50.classList.remove('card-active-source1', 'card-active-source2', 'card-active-middle');
-    
-    const tensionOnduleur = parseFloat(v1a) || 0;
-    const tensionReseau = parseFloat(v2a) || 0;
-    
-    // Vérifier si middleOFF est actif (position centrale)
-    const isMiddleOFF = middleOFF === "✅ Actif" || middleOFF === "Actif" || middleOFF === true;
-    
-    if (isMiddleOFF) {
-        // Position centrale - contour ROUGE sur cardReg50
-        cardReg50.classList.add('card-active-middle');
-        updateSelectorState(null, true);
-    } 
-    else if (tensionOnduleur > 50 && tensionOnduleur > tensionReseau) {
-        // Source Onduleur active - contour BLEU
-        cardOnduleur.classList.add('card-active-source1');
-        updateSelectorState('source1', false);
-    }
-    else if (tensionReseau > 50 && tensionReseau > tensionOnduleur) {
-        // Source Réseau active - contour ORANGE
-        cardReseau.classList.add('card-active-source2');
-        updateSelectorState('source2', false);
-    } else {
-        updateSelectorState(null, false);
     }
 }
 
@@ -729,8 +778,8 @@ async function refreshNow() {
             document.getElementById('onduleurStatus').innerHTML = onduleurConnected ? "✅ Connecté" : "❌ Déconnecté";
             document.getElementById('reseauStatus').innerHTML = reseauConnected ? "✅ Connecté" : "❌ Déconnecté";
 
-            // Appliquer les contours clignotants
-            updateBlinkingBorders(v1a, v2a, middleOFF);
+            // Mettre à jour le switch et les bordures
+            updateSwitchFromData(v1a, v2a, middleOFF);
 
             if (data.values.s1a) updateStatusBadge('s1a_badge', data.values.s1a);
             if (data.values.s2a) updateStatusBadge('s2a_badge', data.values.s2a);
