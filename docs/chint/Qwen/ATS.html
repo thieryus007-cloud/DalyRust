@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mimic Diagram - Automatic Transfer Switch (ATS)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .led {
+      width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 0 12px currentColor;
+      transition: all 0.4s ease;
+    }
+    .line {
+      stroke: #4b5563; stroke-width: 12; stroke-linecap: round; transition: all 0.6s ease;
+    }
+    .active-utility { stroke: #22c55e; filter: drop-shadow(0 0 8px #22c55e); }
+    .active-generator { stroke: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); }
+    .switch-arm {
+      transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-origin: 300px 180px;
+    }
+  </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen py-8">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-4xl font-bold text-center mb-2 text-sky-400">Automatic Transfer Switch (ATS)</h1>
+    <p class="text-center text-zinc-400 mb-8">Mimic Diagram Visuel - Trois Positions</p>
+
+    <!-- Boutons de sélection -->
+    <div class="flex justify-center gap-4 mb-10">
+      <button onclick="setPosition(1)" id="btn1"
+        class="px-6 py-3 rounded-xl font-medium bg-emerald-600 hover:bg-emerald-500 transition active-position">
+        Position 1 : Utility (Normal)
+      </button>
+      <button onclick="setPosition(2)" id="btn2"
+        class="px-6 py-3 rounded-xl font-medium bg-orange-600 hover:bg-orange-500 transition">
+        Position 2 : Generator (Emergency)
+      </button>
+      <button onclick="setPosition(3)" id="btn3"
+        class="px-6 py-3 rounded-xl font-medium bg-zinc-700 hover:bg-zinc-600 transition">
+        Position 3 : Test / Neutral
+      </button>
+    </div>
+
+    <!-- Mimic Diagram -->
+    <div class="bg-zinc-900 border border-zinc-700 rounded-3xl p-10 shadow-2xl">
+      <svg width="100%" height="420" viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" class="mx-auto">
+
+        <!-- Source Utility -->
+        <rect x="80" y="100" width="140" height="80" rx="15" fill="#1f2937" stroke="#64748b" stroke-width="8"/>
+        <text x="150" y="145" text-anchor="middle" fill="#e2e8f0" font-size="22" font-weight="600">UTILITY</text>
+        <text x="150" y="175" text-anchor="middle" fill="#64748b" font-size="16">Réseau Principal</text>
+
+        <!-- Source Generator -->
+        <rect x="80" y="260" width="140" height="80" rx="15" fill="#1f2937" stroke="#64748b" stroke-width="8"/>
+        <text x="150" y="305" text-anchor="middle" fill="#e2e8f0" font-size="22" font-weight="600">GENERATOR</text>
+        <text x="150" y="335" text-anchor="middle" fill="#64748b" font-size="16">Groupe Électrogène</text>
+
+        <!-- ATS Central -->
+        <rect x="320" y="140" width="200" height="140" rx="20" fill="#1e2937" stroke="#475569" stroke-width="12"/>
+        <text x="420" y="190" text-anchor="middle" fill="#e2e8f0" font-size="28" font-weight="700">ATS</text>
+
+        <!-- Commutateur -->
+        <line id="switch-arm" class="switch-arm" x1="420" y1="210" x2="520" y2="210" stroke="#eab308" stroke-width="28" stroke-linecap="round"/>
+        <!-- Point de pivot -->
+        <circle cx="420" cy="210" r="18" fill="#1e2937" stroke="#eab308" stroke-width="10"/>
+
+        <!-- Lignes de connexion -->
+        <!-- Utility to ATS -->
+        <line id="line-utility" class="line" x1="220" y1="140" x2="340" y2="180"/>
+        <!-- Generator to ATS -->
+        <line id="line-generator" class="line" x1="220" y1="300" x2="340" y2="250"/>
+        <!-- ATS to Load -->
+        <line id="line-load" class="line" x1="520" y1="210" x2="680" y2="210"/>
+
+        <!-- Load -->
+        <rect x="700" y="150" width="140" height="110" rx="15" fill="#1f2937" stroke="#64748b" stroke-width="8"/>
+        <text x="770" y="200" text-anchor="middle" fill="#e2e8f0" font-size="24" font-weight="600">LOAD</text>
+        <text x="770" y="230" text-anchor="middle" fill="#64748b" font-size="16">Charge Critique</text>
+
+        <!-- LEDs Status -->
+        <!-- Utility Available -->
+        <circle id="led-utility-av" cx="280" cy="100" r="14" fill="#22c55e"/>
+        <text x="280" y="75" text-anchor="middle" fill="#e2e8f0" font-size="14">Utility OK</text>
+
+        <!-- Generator Available -->
+        <circle id="led-gen-av" cx="280" cy="320" r="14" fill="#eab308"/>
+        <text x="280" y="355" text-anchor="middle" fill="#e2e8f0" font-size="14">Generator OK</text>
+
+        <!-- Load on Utility -->
+        <circle id="led-load-utility" cx="650" cy="140" r="14" fill="#22c55e"/>
+        <!-- Load on Generator -->
+        <circle id="led-load-gen" cx="650" cy="280" r="14" fill="#f59e0b"/>
+      </svg>
+    </div>
+
+    <!-- Légende et infos -->
+    <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+      <div class="bg-zinc-900 p-6 rounded-2xl border border-emerald-900">
+        <h3 class="font-semibold text-emerald-400 mb-2">Position 1 – Utility</h3>
+        <p class="text-zinc-400">La charge est alimentée par le réseau principal. Le groupe électrogène est en veille.</p>
+      </div>
+      <div class="bg-zinc-900 p-6 rounded-2xl border border-orange-900">
+        <h3 class="font-semibold text-orange-400 mb-2">Position 2 – Generator</h3>
+        <p class="text-zinc-400">Panne du réseau détectée → Transfert automatique vers le groupe électrogène.</p>
+      </div>
+      <div class="bg-zinc-900 p-6 rounded-2xl border border-zinc-700">
+        <h3 class="font-semibold text-zinc-400 mb-2">Position 3 – Test / Neutral</h3>
+        <p class="text-zinc-400">Mode test ou maintenance : aucune source n’alimente la charge (position ouverte).</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setPosition(pos) {
+      // Réinitialiser les boutons
+      document.querySelectorAll('button').forEach(b => b.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-zinc-950', 'ring-sky-400'));
+
+      const btn = document.getElementById('btn' + pos);
+      btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-zinc-950', 'ring-sky-400');
+
+      const switchArm = document.getElementById('switch-arm');
+      const lineUtility = document.getElementById('line-utility');
+      const lineGenerator = document.getElementById('line-generator');
+      const lineLoad = document.getElementById('line-load');
+
+      const ledLoadUtility = document.getElementById('led-load-utility');
+      const ledLoadGen = document.getElementById('led-load-gen');
+
+      if (pos === 1) { // Utility
+        switchArm.setAttribute('transform', 'rotate(-35 420 210)');
+        lineUtility.classList.add('active-utility');
+        lineGenerator.classList.remove('active-generator');
+        lineLoad.classList.add('active-utility');
+
+        ledLoadUtility.setAttribute('fill', '#22c55e');
+        ledLoadGen.setAttribute('fill', '#4b5563');
+      } 
+      else if (pos === 2) { // Generator
+        switchArm.setAttribute('transform', 'rotate(35 420 210)');
+        lineUtility.classList.remove('active-utility');
+        lineGenerator.classList.add('active-generator');
+        lineLoad.classList.add('active-generator');
+
+        ledLoadUtility.setAttribute('fill', '#4b5563');
+        ledLoadGen.setAttribute('fill', '#f59e0b');
+      } 
+      else { // Test / Neutral
+        switchArm.setAttribute('transform', 'rotate(0 420 210)');
+        lineUtility.classList.remove('active-utility');
+        lineGenerator.classList.remove('active-generator');
+        lineLoad.classList.remove('active-utility', 'active-generator');
+
+        ledLoadUtility.setAttribute('fill', '#4b5563');
+        ledLoadGen.setAttribute('fill', '#4b5563');
+      }
+    }
+
+    // Initialisation sur Utility
+    window.onload = () => setPosition(1);
+  </script>
+</body>
+</html>
