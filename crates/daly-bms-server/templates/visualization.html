@@ -7,8 +7,6 @@
 <link rel="stylesheet" href="https://unpkg.com/reactflow@11/dist/style.css">
 <style>
   main { padding: 0 !important; max-width: 100% !important; height: calc(100vh - var(--topbar-h)); overflow: hidden; }
-
-  /* ── ReactFlow canvas ── */
   .react-flow { background: #f0f4f8; }
   .react-flow__node { border: none !important; background: transparent !important; padding: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
   .react-flow__handle { width: 8px; height: 8px; border-radius: 50%; border: 2px solid #fff; background: #94a3b8; opacity: 0; transition: opacity 0.2s; }
@@ -18,7 +16,6 @@
   .react-flow__controls-button:hover { background: #f5f7fa; }
   .react-flow__controls-button:last-child { border-bottom: none; }
 
-  /* ── Node: Summary (top row) ── */
   .sn { width: 195px; background: #fff; border: 1px solid #d6dce5; border-radius: 10px; padding: 10px 13px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.04); cursor: default; }
   .sn-icon { font-size: 1.55rem; flex-shrink: 0; line-height: 1; }
   .sn-body { flex: 1; min-width: 0; }
@@ -30,8 +27,7 @@
   .sn-dot.warn { background: #ca8a04; }
   .sn-dot.alarm { background: #dc2626; box-shadow: 0 0 6px rgba(220,38,38,.5); animation: nd-blink 1s infinite; }
 
-  /* ── Node: BMS ── */
-  .bms-nd { width: 215px; background: #fff; border: 1px solid #d6dce5; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.04); cursor: default; }
+  .bms-nd { width: 235px; background: #fff; border: 1px solid #d6dce5; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.04); cursor: default; }
   .bms-nd.alarm { border-color: #fca5a5; background: #fff9f9; }
   .bms-hdr { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
   .bms-name { font-size: 0.78rem; font-weight: 700; color: #0f172a; flex: 1; }
@@ -43,10 +39,10 @@
   .bms-kpi { flex: 1; background: #f8fafc; border-radius: 6px; padding: 4px 5px; text-align: center; border: 1px solid #e2e8f0; }
   .bms-kpi-v { font-size: 0.82rem; font-weight: 700; color: #0f172a; line-height: 1.2; }
   .bms-kpi-l { font-size: 0.53rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+  .bms-temp { font-size: 0.65rem; color: #4b5563; text-align: center; margin: 6px 0; padding: 2px 0; border-top: 1px solid #e2e8f0; }
   .bms-pwr { font-size: 0.68rem; color: #4b5563; text-align: center; margin-top: 7px; padding-top: 6px; border-top: 1px solid #f0f4f8; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
   .bms-wait { font-size: 0.7rem; color: #94a3b8; font-style: italic; text-align: center; padding: 4px 0; }
 
-  /* ── Node: Device (ET112 measured) ── */
   .dev-nd { width: 185px; background: #fff; border: 1px solid #d6dce5; border-radius: 10px; padding: 10px 12px; box-shadow: 0 1px 3px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.04); cursor: default; }
   .dev-hdr { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
   .dev-lbl { font-size: 0.78rem; font-weight: 700; color: #0f172a; flex: 1; }
@@ -56,26 +52,49 @@
   .dev-nrj { font-size: 0.63rem; color: #94a3b8; margin-top: 2px; }
   .dev-wait { font-size: 0.68rem; color: #94a3b8; font-style: italic; }
 
-  /* ── Node: Hub (ATS, Onduleur, Lynx, Shunt) ── */
   .hub-nd { width: 165px; background: #fff; border: 1.5px solid #b8c2cf; border-radius: 10px; padding: 11px 13px; text-align: center; box-shadow: 0 1px 3px rgba(15,23,42,.06),0 2px 8px rgba(15,23,42,.04); cursor: default; }
   .hub-icon { font-size: 1.35rem; line-height: 1; margin-bottom: 4px; }
   .hub-lbl { font-size: 0.82rem; font-weight: 700; color: #0f172a; }
   .hub-sub { font-size: 0.62rem; color: #94a3b8; margin-top: 2px; }
 
-  /* ── Node: Placeholder ── */
   .ph-nd { width: 155px; background: #f8fafc; border: 1.5px dashed #b8c2cf; border-radius: 10px; padding: 10px 12px; text-align: center; cursor: default; }
   .ph-icon { font-size: 1.1rem; display: block; margin-bottom: 3px; line-height: 1; }
   .ph-lbl { font-size: 0.78rem; font-weight: 600; color: #4b5563; }
   .ph-badge { display: inline-block; font-size: 0.57rem; color: #94a3b8; font-style: italic; background: #e2e8f0; border-radius: 4px; padding: 1px 6px; margin-top: 4px; }
 
-  /* ── Animations ── */
   @keyframes nd-blink { 0%,100%{opacity:1}50%{opacity:0.35} }
 
-  /* ── Panel overlays ── */
   .viz-panel { background: rgba(255,255,255,0.92); border: 1px solid #d6dce5; border-radius: 8px; padding: 6px 11px; font-size: 0.7rem; color: #4b5563; backdrop-filter: blur(6px); box-shadow: 0 1px 4px rgba(15,23,42,.08); }
   .viz-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .viz-leg-item { display: flex; align-items: center; gap: 5px; font-size: 0.65rem; color: #6b7280; }
   .viz-leg-line { width: 22px; height: 3px; border-radius: 2px; }
+
+  .et112-card-wrapper { position: relative; }
+  .bms-card-in-viz { width: 275px; cursor: default; overflow: visible; }
+  .bms-card-in-viz .bms-hdr { background: linear-gradient(135deg, #fef9c3 0%, #fef08a 100%); }
+  .bms-card-in-viz .bms-hdr.offline { background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%); }
+  .bms-card-in-viz .kpi4 { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); }
+  .bms-card-in-viz .kpi4-cell { padding: 0.65rem 0.75rem; border-right: 1px solid var(--border); border-top: 2px solid transparent; }
+  .bms-card-in-viz .kpi4-cell.t-yellow { border-top-color: var(--yellow); }
+  .bms-card-in-viz .kpi4-cell.t-blue { border-top-color: var(--accent); }
+  .bms-card-in-viz .kpi4-cell.t-orange { border-top-color: var(--orange); }
+  .bms-card-in-viz .kpi4-lbl { font-size: 0.56rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.18rem; }
+  .bms-card-in-viz .kpi4-val { font-size: 1rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+  .bms-card-in-viz .kpi4-val.chg { color: var(--green); }
+  .bms-card-in-viz .kpi4-val.dch { color: var(--accent); }
+  .bms-card-in-viz .istrip { display: grid; grid-template-columns: repeat(2, 1fr); border-bottom: 1px solid var(--border); }
+  .bms-card-in-viz .icell { padding: 0.38rem 0.7rem; border-right: 1px solid var(--border); }
+  .bms-card-in-viz .icell:last-child { border-right: none; }
+  .bms-card-in-viz .i-lbl { font-size: 0.54rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.08rem; font-weight: 600; }
+  .bms-card-in-viz .i-val { font-size: 0.7rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text2); }
+  .bms-card-in-viz .i-val.ok { color: var(--green); }
+  .bms-card-in-viz .i-val.blue { color: var(--accent); }
+  .bms-card-in-viz .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem 0.75rem; color: var(--muted); text-align: center; }
+  .bms-card-in-viz .empty-icon { font-size: 1.2rem; margin-bottom: 0.25rem; }
+  .bms-card-in-viz .empty-title { font-size: 0.72rem; color: var(--text2); margin-bottom: 0.25rem; }
+  .bms-card-in-viz .card-footer { padding: 0.4rem 0.75rem; display: flex; justify-content: flex-end; border-top: 1px solid var(--border); }
+  .bms-card-in-viz .btn-link { font-size: 0.72rem; padding: 0.25rem 0.65rem; background: transparent; border: 1px solid var(--border2); color: var(--text2); border-radius: 6px; text-decoration: none; cursor: pointer; transition: all 0.15s; }
+  .bms-card-in-viz .btn-link:hover { background: var(--surface2); text-decoration: none; color: var(--text); }
 </style>
 {% endblock %}
 
@@ -88,26 +107,17 @@
 <script>
 'use strict';
 
-/* ── Shorthand ──────────────────────────────────────────────────────────── */
 const h = React.createElement;
 const { useState, useEffect, useCallback } = React;
-const {
-  ReactFlow, Background, Controls, Panel,
-  Handle, Position,
-  useNodesState, useEdgesState,
-  MarkerType,
-} = window.ReactFlow;
+const { ReactFlow, Background, Controls, Panel, Handle, Position, useNodesState, useEdgesState } = window.ReactFlow;
 
-/* ── Helpers ────────────────────────────────────────────────────────────── */
-const fmtKw  = w  => w  != null ? `${(w  / 1000).toFixed(2)} kW`  : '—';
-const fmtKwh = wh => wh != null ? `${wh.toFixed(1)} kWh`           : '—';
+const fmtKw  = w  => w  != null ? `${(w / 1000).toFixed(2)} kW` : '—';
 const socColor = s => s > 60 ? '#16a34a' : s > 30 ? '#ca8a04' : '#dc2626';
 
 function mkHandle(type, pos, id, style) {
   return h(Handle, { type, position: pos, id, style: { background: '#94a3b8', width: 8, height: 8, ...style } });
 }
 
-/* ── Node: SummaryNode ──────────────────────────────────────────────────── */
 function SummaryNode({ data }) {
   return h('div', { className: 'sn' },
     mkHandle('source', Position.Bottom, 'sb'),
@@ -122,13 +132,14 @@ function SummaryNode({ data }) {
   );
 }
 
-/* ── Node: BmsNode ──────────────────────────────────────────────────────── */
 function BmsNode({ data }) {
   const live  = data.live;
-  const soc   = live?.soc   ?? null;
-  const cur   = live?.dc?.current ?? null;
-  const pwr   = live?.dc?.power   ?? null;
-  const alarm = live?.alarms ? Object.values(live.alarms).some(v => v > 0) : false;
+  const soc   = live?.Soc   ?? null;
+  const cur   = live?.Dc?.Current ?? null;
+  const pwr   = live?.Dc?.Power   ?? null;
+  const volt  = live?.Dc?.Voltage ?? null;
+  const tmax  = live?.System?.MaxCellTemperature ?? null;
+  const alarm = live?.Alarms ? Object.values(live.Alarms).some(v => v > 0) : false;
 
   return h('div', { className: `bms-nd${alarm ? ' alarm' : ''}` },
     mkHandle('target', Position.Top, 'tt'),
@@ -149,7 +160,7 @@ function BmsNode({ data }) {
         h('div', { className: 'bms-kpi-l' }, 'SOC')
       ),
       h('div', { className: 'bms-kpi' },
-        h('div', { className: 'bms-kpi-v' }, live?.dc?.voltage != null ? `${live.dc.voltage.toFixed(1)}V` : '—'),
+        h('div', { className: 'bms-kpi-v' }, volt != null ? `${volt.toFixed(1)}V` : '—'),
         h('div', { className: 'bms-kpi-l' }, 'Tension')
       ),
       h('div', { className: 'bms-kpi' },
@@ -160,20 +171,76 @@ function BmsNode({ data }) {
         h('div', { className: 'bms-kpi-l' }, 'Courant')
       )
     ),
+    tmax != null ? h('div', { className: 'bms-temp' }, `🌡 ${tmax.toFixed(1)}°C`) : null,
     h('div', { className: 'bms-pwr' },
-      pwr != null
-        ? `${pwr > 0 ? '+' : ''}${(pwr / 1000).toFixed(2)} kW`
-        : live ? 'Données reçues…' : h('span', { className: 'bms-wait' }, 'En attente…')
+      pwr != null ? `${pwr > 0 ? '+' : ''}${(pwr / 1000).toFixed(2)} kW` : live ? 'Données reçues…' : h('span', { className: 'bms-wait' }, 'En attente…')
     )
   );
 }
 
-/* ── Node: DeviceNode (ET112) ───────────────────────────────────────────── */
+function Et112CardNode({ data }) {
+  const live = data.live;
+  const connected = live?.connected ?? false;
+  const pwr  = live?.power_w ?? null;
+  const volt = live?.voltage_v ?? null;
+  const cur  = live?.current_a ?? null;
+  const imp  = live?.energy_import_wh != null ? live.energy_import_wh / 1000 : null;
+  const expW = live?.energy_export_wh != null ? live.energy_export_wh / 1000 : null;
+  const addr = data.address ?? 7;
+
+  return h('div', { className: 'et112-card-wrapper' },
+    mkHandle('target', Position.Left,   'tl'),
+    mkHandle('source', Position.Left,   'sl', { top: '50%' }),
+    mkHandle('target', Position.Top,    'tt'),
+    mkHandle('source', Position.Bottom, 'sb'),
+    mkHandle('source', Position.Right,  'sr'),
+    mkHandle('target', Position.Right,  'tr', { top: '50%' }),
+    h('div', { className: `bms-card-in-viz ${connected ? '' : 'offline-card'}`, style: { opacity: connected ? 1 : 0.7 } },
+      h('div', { className: `bms-hdr ${connected ? '' : 'offline'}` },
+        h('div', { className: 'bms-hdr-left' },
+          connected ? h('div', { className: 'bms-live' }, h('div', { className: 'live-dot' }), 'LIVE') : h('span', { style: { fontSize: '0.62rem', color: 'var(--muted2)' } }, 'Hors ligne'),
+          h('span', { className: 'bms-hdr-name' }, '☀ ', data.label)
+        ),
+        h('div', { className: 'bms-hdr-right' }, h('span', { className: 'bms-badge' }, `0x0${addr.toString(16).toUpperCase()}`))
+      ),
+      connected && live ? h('div', { className: 'kpi4' },
+        h('div', { className: 'kpi4-cell t-yellow' },
+          h('div', { className: 'kpi4-lbl' }, 'Puissance'),
+          h('div', { className: `kpi4-val ${(pwr ?? 0) >= 0 ? 'chg' : 'dch'}` }, pwr != null ? `${pwr.toFixed(0)} W` : '—')
+        ),
+        h('div', { className: 'kpi4-cell t-blue' },
+          h('div', { className: 'kpi4-lbl' }, 'Tension'),
+          h('div', { className: 'kpi4-val' }, volt != null ? `${volt.toFixed(1)} V` : '—')
+        ),
+        h('div', { className: 'kpi4-cell t-orange' },
+          h('div', { className: 'kpi4-lbl' }, 'Courant'),
+          h('div', { className: 'kpi4-val' }, cur != null ? `${cur.toFixed(2)} A` : '—')
+        )
+      ) : h('div', { className: 'empty-state' },
+        h('div', { className: 'empty-icon' }, '⏳'),
+        h('div', { className: 'empty-title' }, 'En attente de données')
+      ),
+      connected && live ? h('div', { className: 'istrip' },
+        h('div', { className: 'icell' },
+          h('span', { className: 'i-lbl' }, '⬇ Importée'),
+          h('span', { className: 'i-val ok' }, imp != null ? `${imp.toFixed(2)} kWh` : '—')
+        ),
+        h('div', { className: 'icell' },
+          h('span', { className: 'i-lbl' }, '⬆ Exportée'),
+          h('span', { className: 'i-val blue' }, expW != null ? `${expW.toFixed(2)} kWh` : '—')
+        )
+      ) : null,
+      h('div', { className: 'card-footer' },
+        h('a', { href: `/dashboard/et112/${addr}`, className: 'btn-link' }, 'Détails →')
+      )
+    )
+  );
+}
+
 function DeviceNode({ data }) {
   const live = data.live;
   const pwr  = live?.power_w;
   const nrj  = live?.energy_import_kwh;
-
   return h('div', { className: 'dev-nd' },
     mkHandle('target', Position.Top,    'tt'),
     mkHandle('source', Position.Bottom, 'sb'),
@@ -186,16 +253,13 @@ function DeviceNode({ data }) {
       h('span', { className: 'dev-lbl' }, data.label),
       h('div',  { className: `dev-dot${live?.connected ? ' on' : ''}` })
     ),
-    live
-      ? h('div', null,
-          h('div', { className: 'dev-pwr' }, fmtKw(pwr ?? 0)),
-          h('div', { className: 'dev-nrj' }, nrj != null ? `${fmtKwh(nrj)} total` : '\u00a0')
-        )
-      : h('div', { className: 'dev-wait' }, 'En attente…')
+    live ? h('div', null,
+      h('div', { className: 'dev-pwr' }, pwr != null ? `${(pwr / 1000).toFixed(2)} kW` : '—'),
+      h('div', { className: 'dev-nrj' }, nrj != null ? `${nrj.toFixed(1)} kWh total` : '\u00a0')
+    ) : h('div', { className: 'dev-wait' }, 'En attente…')
   );
 }
 
-/* ── Node: HubNode ──────────────────────────────────────────────────────── */
 function HubNode({ data }) {
   return h('div', { className: 'hub-nd' },
     mkHandle('target', Position.Top,    'tt'),
@@ -210,7 +274,6 @@ function HubNode({ data }) {
   );
 }
 
-/* ── Node: PlaceholderNode ──────────────────────────────────────────────── */
 function PlaceholderNode({ data }) {
   return h('div', { className: 'ph-nd' },
     mkHandle('target', Position.Top,    'tt'),
@@ -225,26 +288,16 @@ function PlaceholderNode({ data }) {
   );
 }
 
-const nodeTypes = {
-  summary:     SummaryNode,
-  bms:         BmsNode,
-  device:      DeviceNode,
-  hub:         HubNode,
-  placeholder: PlaceholderNode,
-};
+const nodeTypes = { summary: SummaryNode, bms: BmsNode, et112card: Et112CardNode, device: DeviceNode, hub: HubNode, placeholder: PlaceholderNode };
 
-/* ── Initial nodes ──────────────────────────────────────────────────────── */
 const NODES0 = [
-  /* ── Summary row ── */
   { id: 'reseau',      type: 'summary',     position: { x: 30,   y: 20  }, data: { label: 'Réseau',          icon: '🔌', value: '—',   sub: 'Réseau EDF',            dotClass: '' } },
   { id: 'production',  type: 'summary',     position: { x: 265,  y: 20  }, data: { label: 'Production',      icon: '☀️',  value: '—',   sub: 'Micro-onduleurs',        dotClass: '' } },
   { id: 'batteries',   type: 'summary',     position: { x: 500,  y: 20  }, data: { label: 'Batteries',       icon: '🔋', value: '—',   sub: '360 Ah + 320 Ah',       dotClass: '' } },
   { id: 'meteo',       type: 'summary',     position: { x: 1020, y: 20  }, data: { label: 'Météo',           icon: '🌤️',  value: '—',   sub: 'Irradiance solaire',     dotClass: '' } },
-
-  /* ── Main flow ── */
   { id: 'ats',         type: 'hub',         position: { x: 65,   y: 170 }, data: { label: 'ATS',             icon: '🔀', sub: 'CHINT' } },
   { id: 'maison',      type: 'placeholder', position: { x: 330,  y: 170 }, data: { label: 'Maison',          icon: '🏠' } },
-  { id: 'micro-ond',   type: 'device',      position: { x: 320,  y: 300 }, data: { label: 'Micro-onduleurs', icon: '🌞', live: null } },
+  { id: 'micro-ond',   type: 'et112card',   position: { x: 320,  y: 300 }, data: { label: 'Micro-onduleurs', address: 7, live: null } },
   { id: 'onduleur',    type: 'placeholder', position: { x: 65,   y: 375 }, data: { label: 'Onduleur',        icon: '⚙️' } },
   { id: 'mppt-289',    type: 'placeholder', position: { x: 560,  y: 350 }, data: { label: 'MPPT-289',        icon: '⚡' } },
   { id: 'mppt-273',    type: 'placeholder', position: { x: 560,  y: 435 }, data: { label: 'MPPT-273',        icon: '⚡' } },
@@ -256,8 +309,6 @@ const NODES0 = [
   { id: 'bms1',        type: 'bms',         position: { x: -100, y: 790 }, data: { label: 'BMS-360Ah',       live: null } },
   { id: 'bms2',        type: 'bms',         position: { x: 165,  y: 790 }, data: { label: 'BMS-320Ah',       live: null } },
   { id: 'bms3',        type: 'placeholder', position: { x: 430,  y: 790 }, data: { label: 'BMS3',            icon: '🔋' } },
-
-  /* ── Right column ── */
   { id: 'premier',        type: 'placeholder', position: { x: 1020, y: 170 }, data: { label: 'Premier',       icon: '🏠' } },
   { id: 'second',         type: 'placeholder', position: { x: 1020, y: 260 }, data: { label: 'Second',        icon: '🏠' } },
   { id: 'troisieme',      type: 'placeholder', position: { x: 1020, y: 350 }, data: { label: 'Troisième',     icon: '🏠' } },
@@ -266,50 +317,29 @@ const NODES0 = [
   { id: 'climatisation',  type: 'device',      position: { x: 1020, y: 630 }, data: { label: 'Climatisation', icon: '❄️',  live: null } },
 ];
 
-/* ── Edge factory ───────────────────────────────────────────────────────── */
 const COLOR = { ac: '#2563eb', dc: '#ea580c', bat: '#16a34a', gray: '#94a3b8' };
 
 function mkEdge(id, src, tgt, color, opts = {}) {
-  return {
-    id,
-    source: src,
-    target: tgt,
-    type: 'smoothstep',
-    animated: false,
-    style: { stroke: color, strokeWidth: 2.5 },
-    markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
-    ...opts,
-  };
+  return { id, source: src, target: tgt, type: 'smoothstep', animated: false, style: { stroke: color, strokeWidth: 2.5 }, ...opts };
 }
 
-/* ── Initial edges ──────────────────────────────────────────────────────── */
 const EDGES0 = [
-  /* AC réseau */
   mkEdge('e-res-ats',  'reseau',    'ats',       COLOR.ac,  { sourceHandle: 'sb', targetHandle: 'tt' }),
-  /* ATS → Maison */
   mkEdge('e-ats-mai',  'ats',       'maison',    COLOR.ac,  { sourceHandle: 'sr', targetHandle: 'tl' }),
-  /* Micro-onduleurs → ATS */
-  mkEdge('e-mic-ats',  'micro-ond', 'ats',       COLOR.ac,  { sourceHandle: 'sl', targetHandle: 'tr' }),
-  /* ATS → Onduleur */
+  mkEdge('e-mic-ond',  'micro-ond', 'onduleur',  COLOR.ac,  { sourceHandle: 'sl', targetHandle: 'tr' }),
   mkEdge('e-ats-ond',  'ats',       'onduleur',  COLOR.ac,  { sourceHandle: 'sb', targetHandle: 'tt' }),
-  /* MPPT → Onduleur */
   mkEdge('e-289-ond',  'mppt-289',  'onduleur',  COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
   mkEdge('e-273-ond',  'mppt-273',  'onduleur',  COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
-  /* MPPT → Lynx */
   mkEdge('e-xx1-lyn',  'mppt-xx1',  'lynx',      COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
   mkEdge('e-xx2-lyn',  'mppt-xx2',  'lynx',      COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
   mkEdge('e-xx3-lyn',  'mppt-xx3',  'lynx',      COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
-  /* Onduleur → Lynx */
   mkEdge('e-ond-lyn',  'onduleur',  'lynx',      COLOR.dc,  { sourceHandle: 'sb', targetHandle: 'tt' }),
-  /* Lynx → Shunt */
   mkEdge('e-lyn-shu',  'lynx',      'shunt',     COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
-  /* Shunt → BMS */
   mkEdge('e-shu-b1',   'shunt',     'bms1',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
   mkEdge('e-shu-b2',   'shunt',     'bms2',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
   mkEdge('e-shu-b3',   'shunt',     'bms3',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
 ];
 
-/* ── Main App ────────────────────────────────────────────────────────────── */
 function ESSFlow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(NODES0);
   const [edges, setEdges, onEdgesChange] = useEdgesState(EDGES0);
@@ -320,12 +350,11 @@ function ESSFlow() {
     const et7  = d.et7,  et8  = d.et8, et9 = d.et9;
     const irr  = d.irr;
 
-    /* Compute summary values */
     const validBms = [bms1, bms2].filter(Boolean);
     const avgSoc   = validBms.length
-      ? (validBms.reduce((s, b) => s + (b.soc ?? 0), 0) / validBms.length).toFixed(0)
+      ? (validBms.reduce((s, b) => s + (b.Soc ?? 0), 0) / validBms.length).toFixed(0)
       : null;
-    const totalPwr = validBms.reduce((s, b) => s + (b.dc?.power ?? 0), 0);
+    const totalPwr = validBms.reduce((s, b) => s + (b.Dc?.Power ?? 0), 0);
     const batVal   = avgSoc != null ? `SOC ${avgSoc}%` : '—';
     const batSub   = totalPwr ? `${totalPwr > 0 ? '+' : ''}${(totalPwr / 1000).toFixed(2)} kW` : '360 Ah + 320 Ah';
     const batDot   = avgSoc == null ? '' : avgSoc > 50 ? 'live' : avgSoc > 20 ? 'warn' : 'alarm';
@@ -334,30 +363,29 @@ function ESSFlow() {
     const prodVal  = fmtKw(microPwr);
     const prodDot  = et7?.connected ? (microPwr > 0 ? 'live' : '') : '';
 
-    const irrVal = irr?.irradiance_wm2 != null ? `${irr.irradiance_wm2.toFixed(0)} W/m²` : '—';
-    const irrDot = irr ? 'live' : '';
+    const irrVal  = irr?.irradiance_wm2 != null ? `${irr.irradiance_wm2.toFixed(0)} W/m²` : '—';
+    const irrSub  = irr?.total_yield_kwh != null ? `☀ ${irr.total_yield_kwh.toFixed(1)} kWh` : 'Irradiance solaire';
+    const irrDot  = irr ? 'live' : '';
 
-    /* Update edge animations */
     setEdges(prev => prev.map(e => {
       let animated = false;
-      if (e.id === 'e-mic-ats' && et7?.connected && (microPwr ?? 0) > 50)  animated = true;
-      if (e.id === 'e-shu-b1'  && bms1 && Math.abs(bms1.dc?.current ?? 0) > 0.5) animated = true;
-      if (e.id === 'e-shu-b2'  && bms2 && Math.abs(bms2.dc?.current ?? 0) > 0.5) animated = true;
+      if (e.id === 'e-mic-ond' && et7?.connected && (microPwr ?? 0) > 50) animated = true;
+      if (e.id === 'e-shu-b1'  && bms1 && Math.abs(bms1.Dc?.Current ?? 0) > 0.5) animated = true;
+      if (e.id === 'e-shu-b2'  && bms2 && Math.abs(bms2.Dc?.Current ?? 0) > 0.5) animated = true;
       if ((e.id === 'e-lyn-shu') && validBms.length) animated = true;
       return animated !== e.animated ? { ...e, animated } : e;
     }));
 
-    /* Update node data */
     setNodes(prev => prev.map(n => {
       switch (n.id) {
         case 'batteries':
           return { ...n, data: { ...n.data, value: batVal, sub: batSub, dotClass: batDot } };
         case 'production':
-          return { ...n, data: { ...n.data, value: prodVal, sub: et7 ? `${fmtKwh(et7.energy_import_kwh)} total` : 'Micro-onduleurs', dotClass: prodDot } };
+          return { ...n, data: { ...n.data, value: prodVal, sub: et7 ? `${(et7.energy_export_wh / 1000).toFixed(1)} kWh total` : 'Micro-onduleurs', dotClass: prodDot } };
         case 'meteo':
-          return { ...n, data: { ...n.data, value: irrVal, dotClass: irrDot } };
-        case 'bms1':        return { ...n, data: { ...n.data, live: bms1 ?? null } };
-        case 'bms2':        return { ...n, data: { ...n.data, live: bms2 ?? null } };
+          return { ...n, data: { ...n.data, value: irrVal, sub: irrSub, dotClass: irrDot } };
+        case 'bms1': return { ...n, data: { ...n.data, live: bms1 ?? null } };
+        case 'bms2': return { ...n, data: { ...n.data, live: bms2 ?? null } };
         case 'micro-ond':   return { ...n, data: { ...n.data, live: et7  ?? null } };
         case 'chauffe-eau': return { ...n, data: { ...n.data, live: et8  ?? null } };
         case 'climatisation': return { ...n, data: { ...n.data, live: et9 ?? null } };
@@ -368,7 +396,6 @@ function ESSFlow() {
     setLastUpdate(new Date().toLocaleTimeString('fr-FR'));
   }, []);
 
-  /* Polling every 2 s */
   useEffect(function() {
     const safe = p => p.catch(() => null);
     async function fetchAll() {
@@ -387,7 +414,6 @@ function ESSFlow() {
     return function() { clearInterval(timer); };
   }, [applyData]);
 
-  /* Legend items */
   const legend = [
     { color: COLOR.ac,  label: 'Courant AC' },
     { color: COLOR.dc,  label: 'Bus DC' },
@@ -395,41 +421,26 @@ function ESSFlow() {
   ];
 
   return h(ReactFlow, {
-    nodes, edges,
-    onNodesChange, onEdgesChange,
-    nodeTypes,
-    fitView: true,
-    fitViewOptions: { padding: 0.06 },
-    minZoom: 0.2,
-    maxZoom: 2.5,
-    nodesDraggable: false,
-    nodesConnectable: false,
-    elementsSelectable: false,
-    preventScrolling: false,
+    nodes, edges, onNodesChange, onEdgesChange, nodeTypes, fitView: true,
+    fitViewOptions: { padding: 0.06 }, minZoom: 0.2, maxZoom: 2.5,
+    nodesDraggable: false, nodesConnectable: false, elementsSelectable: false, preventScrolling: false,
   },
     h(Background, { variant: 'dots', gap: 20, size: 1, color: '#c8d3de' }),
     h(Controls, { showInteractive: false }),
-
-    /* Bottom-left: legend */
     h(Panel, { position: 'bottom-left' },
       h('div', { className: 'viz-panel viz-legend' },
-        ...legend.map(l =>
-          h('div', { key: l.color, className: 'viz-leg-item' },
-            h('div', { className: 'viz-leg-line', style: { background: l.color } }),
-            l.label
-          )
-        )
+        ...legend.map(l => h('div', { key: l.color, className: 'viz-leg-item' },
+          h('div', { className: 'viz-leg-line', style: { background: l.color } }),
+          l.label
+        ))
       )
     ),
-
-    /* Bottom-right: last update */
     h(Panel, { position: 'bottom-right' },
       h('div', { className: 'viz-panel' }, `Màj : ${lastUpdate}`)
     )
   );
 }
 
-/* ── Mount ──────────────────────────────────────────────────────────────── */
 ReactDOM.createRoot(document.getElementById('ess-flow-root')).render(h(ESSFlow));
 </script>
 {% endblock %}
