@@ -1,5 +1,3 @@
----
-
 DOCUMENTATION TECHNIQUE - NodeType Switch pour React Flow
 
 Version : 1.0
