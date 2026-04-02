@@ -1,5 +1,3 @@
----
-
 DOCUMENTATION TECHNIQUE - NodeType Meteo & Temperature pour React Flow
 
 Version : 1.0
