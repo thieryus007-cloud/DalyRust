@@ -301,10 +301,18 @@ const NODES0 = [
   { id: 'onduleur',    type: 'placeholder', position: { x: 65,   y: 375 }, data: { label: 'Onduleur',        icon: '⚙️' } },
   { id: 'mppt-289',    type: 'placeholder', position: { x: 560,  y: 350 }, data: { label: 'MPPT-289',        icon: '⚡' } },
   { id: 'mppt-273',    type: 'placeholder', position: { x: 560,  y: 435 }, data: { label: 'MPPT-273',        icon: '⚡' } },
+  { id: 'mppt-xx1',    type: 'placeholder', position: { x: 560,  y: 520 }, data: { label: 'MPPT-xx1',        icon: '⚡' } },
+  { id: 'mppt-xx2',    type: 'placeholder', position: { x: 560,  y: 600 }, data: { label: 'MPPT-xx2',        icon: '⚡' } },
+  { id: 'mppt-xx3',    type: 'placeholder', position: { x: 560,  y: 680 }, data: { label: 'MPPT-xx3',        icon: '⚡' } },
   { id: 'lynx',        type: 'placeholder', position: { x: 65,   y: 510 }, data: { label: 'Lynx',            icon: '🔗' } },
   { id: 'shunt',       type: 'placeholder', position: { x: 65,   y: 640 }, data: { label: 'Shunt',           icon: '📏' } },
   { id: 'bms1',        type: 'bms',         position: { x: -100, y: 790 }, data: { label: 'BMS-360Ah',       live: null } },
   { id: 'bms2',        type: 'bms',         position: { x: 165,  y: 790 }, data: { label: 'BMS-320Ah',       live: null } },
+  { id: 'bms3',        type: 'placeholder', position: { x: 430,  y: 790 }, data: { label: 'BMS3',            icon: '🔋' } },
+  { id: 'premier',        type: 'placeholder', position: { x: 1020, y: 170 }, data: { label: 'Premier',       icon: '🏠' } },
+  { id: 'second',         type: 'placeholder', position: { x: 1020, y: 260 }, data: { label: 'Second',        icon: '🏠' } },
+  { id: 'troisieme',      type: 'placeholder', position: { x: 1020, y: 350 }, data: { label: 'Troisième',     icon: '🏠' } },
+  { id: 'quatrieme',      type: 'placeholder', position: { x: 1020, y: 440 }, data: { label: 'Quatrième',     icon: '🏠' } },
   { id: 'chauffe-eau',    type: 'device',      position: { x: 1020, y: 530 }, data: { label: 'Chauffe-eau',   icon: '🚿', live: null } },
   { id: 'climatisation',  type: 'device',      position: { x: 1020, y: 630 }, data: { label: 'Climatisation', icon: '❄️',  live: null } },
 ];
@@ -322,10 +330,14 @@ const EDGES0 = [
   mkEdge('e-ats-ond',  'ats',       'onduleur',  COLOR.ac,  { sourceHandle: 'sb', targetHandle: 'tt' }),
   mkEdge('e-289-ond',  'mppt-289',  'onduleur',  COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
   mkEdge('e-273-ond',  'mppt-273',  'onduleur',  COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
+  mkEdge('e-xx1-lyn',  'mppt-xx1',  'lynx',      COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
+  mkEdge('e-xx2-lyn',  'mppt-xx2',  'lynx',      COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
+  mkEdge('e-xx3-lyn',  'mppt-xx3',  'lynx',      COLOR.dc,  { sourceHandle: 'tl', targetHandle: 'sr' }),
   mkEdge('e-ond-lyn',  'onduleur',  'lynx',      COLOR.dc,  { sourceHandle: 'sb', targetHandle: 'tt' }),
   mkEdge('e-lyn-shu',  'lynx',      'shunt',     COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
   mkEdge('e-shu-b1',   'shunt',     'bms1',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
   mkEdge('e-shu-b2',   'shunt',     'bms2',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
+  mkEdge('e-shu-b3',   'shunt',     'bms3',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
 ];
 
 function ESSFlow() {
