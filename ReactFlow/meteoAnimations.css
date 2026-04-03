@@ -1,0 +1,149 @@
+/* THEME CLAIR - Taille compacte 140px */
+.meteo-node {
+  min-width: 140px;
+  max-width: 140px;
+  min-height: 140px;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+  border-radius: 12px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  font-family: 'Segoe UI', monospace;
+  text-align: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.meteo-node:hover {
+  transform: translateY(-1px);
+  border-color: #ff9800;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* En-tête */
+.meteo-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.meteo-icon {
+  font-size: 14px;
+}
+
+.meteo-label {
+  font-size: 8px;
+  color: #666;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+/* Irradiance */
+.meteo-irradiance {
+  margin-bottom: 4px;
+}
+
+.irradiance-value {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ff9800;
+}
+
+.irradiance-unit {
+  font-size: 8px;
+  color: #999;
+  margin-left: 2px;
+}
+
+/* Production totale */
+.meteo-production-total {
+  margin-bottom: 8px;
+}
+
+.production-sign {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff9800;
+}
+
+.production-value {
+  font-size: 16px;
+  font-weight: bold;
+  color: #ff9800;
+}
+
+.production-unit {
+  font-size: 8px;
+  color: #999;
+  margin-left: 2px;
+}
+
+/* Graphique */
+.meteo-chart {
+  background: #f0f0f0;
+  border-radius: 8px;
+  padding: 6px;
+  margin-bottom: 6px;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 7px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.chart-value {
+  color: #ff9800;
+  font-weight: bold;
+}
+
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 28px;
+}
+
+.chart-bar {
+  flex: 1;
+  background: #ff9800;
+  border-radius: 2px;
+  transition: height 0.2s ease;
+  opacity: 0.7;
+}
+
+.chart-bar:hover {
+  opacity: 1;
+}
+
+/* Production du jour */
+.meteo-production-day {
+  display: flex;
+  justify-content: space-between;
+  background: #f0f0f0;
+  border-radius: 6px;
+  padding: 4px 6px;
+  margin-bottom: 6px;
+}
+
+.day-label {
+  font-size: 7px;
+  color: #888;
+}
+
+.day-value {
+  font-size: 9px;
+  font-weight: bold;
+  color: #ff9800;
+}
+
+/* Mise à jour */
+.meteo-update {
+  font-size: 6px;
+  color: #aaa;
+  text-align: center;
+  line-height: 1.3;
+}
