@@ -1,0 +1,183 @@
+/* THEME CLAIR - Taille compacte 140px */
+.mppt-node {
+  min-width: 140px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1.5px solid;
+  font-family: 'Segoe UI', monospace;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.mppt-node:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.mppt-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.mppt-icon {
+  font-size: 12px;
+}
+
+.mppt-label {
+  font-weight: bold;
+  color: #333;
+  font-size: 8px;
+  flex: 1;
+}
+
+.mppt-badge {
+  font-size: 6px;
+  padding: 1px 5px;
+  border-radius: 10px;
+  color: white;
+  font-weight: bold;
+}
+
+.mppt-total-power {
+  text-align: center;
+  margin-bottom: 8px;
+  padding: 5px;
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+.total-value {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.total-unit {
+  font-size: 8px;
+  margin-left: 2px;
+}
+
+.mppt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.mppt-item {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 5px;
+}
+
+.mppt-header-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.mppt-id {
+  font-size: 7px;
+  font-weight: bold;
+  color: #ff9800;
+  font-family: monospace;
+}
+
+.mppt-power {
+  font-size: 9px;
+  font-weight: bold;
+}
+
+.mppt-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.mppt-metrics .metric {
+  background: #ffffff;
+  border-radius: 5px;
+  padding: 3px;
+  text-align: center;
+  border: 1px solid #e0e0e0;
+}
+
+.mppt-metrics .metric-label {
+  display: block;
+  font-size: 5px;
+  color: #888;
+}
+
+.mppt-metrics .metric-value {
+  display: block;
+  font-size: 8px;
+  font-weight: bold;
+  color: #333;
+}
+
+.mppt-energy {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.mppt-energy .energy-item {
+  flex: 1;
+  background: #f5f5f5;
+  border-radius: 5px;
+  padding: 3px;
+  text-align: center;
+}
+
+.mppt-energy .energy-item span:first-child {
+  display: block;
+  font-size: 5px;
+  color: #999;
+}
+
+.mppt-energy .energy-item span:last-child {
+  display: block;
+  font-size: 7px;
+  font-weight: bold;
+  color: #333;
+}
+
+.mppt-energy .energy-item.total span:last-child {
+  color: #ff9800;
+}
+
+.mppt-efficiency {
+  margin-top: 6px;
+}
+
+.efficiency-bar-bg {
+  background: #e0e0e0;
+  border-radius: 6px;
+  height: 4px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.efficiency-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.efficiency-text {
+  display: block;
+  font-size: 6px;
+  color: #888;
+  text-align: center;
+}
+
+@keyframes solarPulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
