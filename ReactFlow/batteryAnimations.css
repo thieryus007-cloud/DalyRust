@@ -1,0 +1,127 @@
+/* THEME CLAIR - Taille compacte 140px */
+.battery-node {
+  min-width: 140px;
+  max-width: 140px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 8px;
+  border: 1.5px solid;
+  transition: all 0.2s ease;
+  font-family: 'Segoe UI', monospace;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.battery-node:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.battery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 9px;
+  font-weight: bold;
+  color: #333;
+}
+
+.battery-soc {
+  margin-bottom: 8px;
+}
+
+.soc-value {
+  color: #333;
+  font-size: 18px;
+  font-weight: bold;
+  display: block;
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.soc-bar-bg {
+  background: #e0e0e0;
+  border-radius: 6px;
+  height: 5px;
+  overflow: hidden;
+}
+
+.soc-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.battery-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.battery-metrics .metric {
+  background: #f5f5f5;
+  border-radius: 6px;
+  padding: 4px;
+  text-align: center;
+}
+
+.battery-metrics .metric span:first-child {
+  display: block;
+  font-size: 6px;
+  color: #888;
+  letter-spacing: 0.3px;
+}
+
+.battery-metrics .metric span:last-child {
+  display: block;
+  font-size: 9px;
+  font-weight: bold;
+  color: #333;
+}
+
+.battery-energy {
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.battery-energy .energy-item {
+  flex: 1;
+  background: #f5f5f5;
+  border-radius: 5px;
+  padding: 3px;
+  text-align: center;
+}
+
+.battery-energy .energy-item span:first-child {
+  display: block;
+  font-size: 5px;
+  color: #888;
+}
+
+.battery-energy .energy-item span:last-child {
+  display: block;
+  font-size: 7px;
+  font-weight: bold;
+  color: #333;
+}
+
+.battery-energy .energy-item.total span:last-child {
+  color: #ff9800;
+}
+
+@keyframes pulseGreen {
+  0%, 100% { border-color: #4caf50; box-shadow: 0 0 3px rgba(76, 175, 80, 0.3); }
+  50% { border-color: #2e7d32; box-shadow: 0 0 6px rgba(76, 175, 80, 0.5); }
+}
+
+@keyframes pulseRed {
+  0%, 100% { border-color: #f44336; box-shadow: 0 0 3px rgba(244, 67, 54, 0.3); }
+  50% { border-color: #c62828; box-shadow: 0 0 6px rgba(244, 67, 54, 0.5); }
+}
