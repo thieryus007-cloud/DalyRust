@@ -1,5 +1,11 @@
 SOLUTION SIMPLE - À EXÉCUTER DANS LE TERMINAL
 
+
+<div style={{ textAlign: 'center', marginBottom: '8px', padding: '5px', background: '#f5f5f5', borderRadius: '10px' }}>
+  <span style={{ fontSize: '22px', fontWeight: 'bold', color: totalColor }}>{Math.round(totalPower)}</span>
+  <span style={{ fontSize: '8px', marginLeft: '2px' }}>W</span>
+</div>
+
 ```powershell
 cd C:\reactflow-energie
 
