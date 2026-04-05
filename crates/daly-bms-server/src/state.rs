@@ -9,6 +9,7 @@ use crate::irradiance::IrradianceSnapshot;
 use crate::tasmota::TasmotaSnapshot;
 use daly_bms_core::bus::DalyPort;
 use daly_bms_core::types::BmsSnapshot;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -126,6 +127,46 @@ impl TasmotaRingBuffer {
     }
 }
 
+// =============================================================================
+// Venus OS — Structures de données D-Bus
+// =============================================================================
+
+/// Snapshot MPPT SolarCharger (depuis D-Bus Venus OS via MQTT).
+#[derive(Clone, Serialize, Debug)]
+pub struct VenusMppt {
+    pub instance: u32,
+    pub name: String,
+    pub power_w: Option<f32>,
+    pub yield_today_kwh: Option<f32>,
+    pub max_power_today_w: Option<f32>,
+    pub timestamp: DateTime<Utc>,
+}
+
+/// Snapshot SmartShunt (depuis D-Bus Venus OS via MQTT).
+#[derive(Clone, Serialize, Debug)]
+pub struct VenusSmartShunt {
+    pub soc_percent: Option<f32>,
+    pub voltage_v: Option<f32>,
+    pub current_a: Option<f32>,
+    pub power_w: Option<f32>,
+    pub energy_in_kwh: Option<f32>,
+    pub energy_out_kwh: Option<f32>,
+    pub timestamp: DateTime<Utc>,
+}
+
+/// Snapshot Capteur Température (depuis D-Bus Venus OS via MQTT).
+#[derive(Clone, Serialize, Debug)]
+pub struct VenusTemperature {
+    pub instance: u32,
+    pub name: String,
+    pub temp_c: Option<f32>,
+    pub humidity_percent: Option<f32>,
+    pub pressure_mbar: Option<f32>,
+    pub temp_type: String, // "Outdoor", "Room", "Generic", etc.
+    pub connected: bool,
+    pub timestamp: DateTime<Utc>,
+}
+
 /// État global partagé de l'application.
 #[derive(Clone)]
 pub struct AppState {
@@ -171,6 +212,15 @@ pub struct AppState {
     /// Puissance consommée par la maison en W (ESS AC output consumption).
     /// Source : N/c0619ab9929a/system/0/Ac/ConsumptionOnOutput/L1/Power via VRM → Node-RED.
     pub house_power_w: Arc<RwLock<f32>>,
+
+    /// Données Venus OS — MPPT SolarCharger (indexé par instance).
+    pub venus_mppts: Arc<RwLock<BTreeMap<u32, VenusMppt>>>,
+
+    /// Données Venus OS — SmartShunt.
+    pub venus_smartshunt: Arc<RwLock<Option<VenusSmartShunt>>>,
+
+    /// Données Venus OS — Capteurs de température (indexés par instance).
+    pub venus_temperatures: Arc<RwLock<BTreeMap<u32, VenusTemperature>>>,
 }
 
 impl AppState {
@@ -212,6 +262,9 @@ impl AppState {
             mppt_power_w:   Arc::new(RwLock::new(0.0)),
             solar_total_w:  Arc::new(RwLock::new(0.0)),
             house_power_w:  Arc::new(RwLock::new(0.0)),
+            venus_mppts: Arc::new(RwLock::new(BTreeMap::new())),
+            venus_smartshunt: Arc::new(RwLock::new(None)),
+            venus_temperatures: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
@@ -333,5 +386,49 @@ impl AppState {
     pub async fn tasmota_latest_all(&self) -> Vec<TasmotaSnapshot> {
         let buffers = self.tasmota_buffers.read().await;
         buffers.values().filter_map(|b| b.latest().cloned()).collect()
+    }
+
+    // ==========================================================================
+    // Méthodes Venus OS
+    // ==========================================================================
+
+    /// Enregistre/met à jour un snapshot MPPT.
+    pub async fn on_venus_mppt(&self, mppt: VenusMppt) {
+        let mut mppts = self.venus_mppts.write().await;
+        mppts.insert(mppt.instance, mppt);
+    }
+
+    /// Retourne tous les MPPT actuels.
+    pub async fn venus_mppts_all(&self) -> Vec<VenusMppt> {
+        let mppts = self.venus_mppts.read().await;
+        mppts.values().cloned().collect()
+    }
+
+    /// Retourne la puissance MPPT totale en W.
+    pub async fn venus_mppt_total_power(&self) -> f32 {
+        let mppts = self.venus_mppts.read().await;
+        mppts.values().filter_map(|m| m.power_w).sum()
+    }
+
+    /// Enregistre/met à jour le SmartShunt.
+    pub async fn on_venus_smartshunt(&self, shunt: VenusSmartShunt) {
+        *self.venus_smartshunt.write().await = Some(shunt);
+    }
+
+    /// Retourne le SmartShunt actuel.
+    pub async fn venus_smartshunt_get(&self) -> Option<VenusSmartShunt> {
+        self.venus_smartshunt.read().await.clone()
+    }
+
+    /// Enregistre/met à jour un capteur de température.
+    pub async fn on_venus_temperature(&self, temp: VenusTemperature) {
+        let mut temps = self.venus_temperatures.write().await;
+        temps.insert(temp.instance, temp);
+    }
+
+    /// Retourne tous les capteurs de température actuels.
+    pub async fn venus_temperatures_all(&self) -> Vec<VenusTemperature> {
+        let temps = self.venus_temperatures.read().await;
+        temps.values().cloned().collect()
     }
 }

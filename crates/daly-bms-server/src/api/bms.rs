@@ -8,6 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum::extract::ws::{Message, WebSocket};
+use chrono::Utc;
 use daly_bms_core::types::BmsSnapshot;
 use futures::{SinkExt, StreamExt};
 use serde::Deserialize;
@@ -662,6 +663,59 @@ async fn handle_ws_single(socket: WebSocket, state: AppState, id: String) {
                         if sender.send(Message::Text(json)).await.is_err() {
                             break;
                         }
+                    }
+                }
+            }
+            Some(msg) = receiver.next() => {
+                match msg {
+                    Ok(Message::Close(_)) | Err(_) => break,
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// WebSocket Venus OS — données temps réel
+// =============================================================================
+
+/// GET /ws/venus/stream — Stream temps réel des données Venus OS
+/// Envoie MPPT, SmartShunt, Températures, et totaux système toutes les 40ms
+pub async fn ws_venus(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_ws_venus(socket, state))
+}
+
+async fn handle_ws_venus(socket: WebSocket, state: AppState) {
+    let (mut sender, mut receiver) = socket.split();
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(40));
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                // Récupérer les données actuelles
+                let mppts = state.venus_mppts_all().await;
+                let smartshunt = state.venus_smartshunt_get().await;
+                let temperatures = state.venus_temperatures_all().await;
+                let bms_snapshots = state.latest_snapshots().await;
+                let et112_all = state.et112_latest_all().await;
+
+                // Construire le payload
+                let payload = json!({
+                    "mppts": mppts,
+                    "smartshunt": smartshunt,
+                    "temperatures": temperatures,
+                    "bms_count": bms_snapshots.len(),
+                    "et112_count": et112_all.len(),
+                    "timestamp": Utc::now().to_rfc3339(),
+                });
+
+                if let Ok(json_str) = serde_json::to_string(&payload) {
+                    if sender.send(Message::Text(json_str)).await.is_err() {
+                        break;
                     }
                 }
             }

@@ -15,15 +15,16 @@
 
 use crate::config::MqttConfig;
 use crate::et112::Et112Snapshot;
-use crate::state::AppState;
+use crate::state::{AppState, VenusMppt, VenusSmartShunt, VenusTemperature};
 use crate::tasmota::TasmotaSnapshot;
+use chrono::Utc;
 use daly_bms_core::types::BmsSnapshot;
 use rumqttc::{AsyncClient, MqttOptions, QoS};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 use tokio::time::interval;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Démarre la tâche de publication MQTT en arrière-plan.
 ///
@@ -381,4 +382,169 @@ fn build_venus_payload(snap: &BmsSnapshot) -> serde_json::Value {
             "ExternalRelay":    snap.io.external_relay,
         },
     })
+}
+
+// =============================================================================
+// MQTT Subscriber — Réception des données Venus OS
+// =============================================================================
+
+/// Démarre un abonnement MQTT pour recevoir les données Venus OS.
+///
+/// Cette tâche écoute les topics :
+/// - `santuario/meteo/venus` → MPPT SolarCharger (puissance, production kWh)
+/// - `santuario/heat/*/venus` → Capteurs de température
+/// - `santuario/heatpump/*/venus` → PAC/Chauffe-eau (optionnel)
+/// - `santuario/system/venus` → SmartShunt (SOC, tension, courant)
+pub async fn start_venus_mqtt_subscriber(state: AppState, cfg: MqttConfig) {
+    if !cfg.enabled {
+        return;
+    }
+
+    let mut opts = MqttOptions::new(
+        format!("daly-bms-venus-sub-{}", uuid::Uuid::new_v4()),
+        &cfg.host,
+        cfg.port,
+    );
+    opts.set_keep_alive(Duration::from_secs(30));
+
+    if let (Some(user), Some(pass)) = (&cfg.username, &cfg.password) {
+        opts.set_credentials(user, pass);
+    }
+
+    let (client, mut eventloop) = AsyncClient::new(opts, 128);
+
+    // S'abonner aux topics Venus OS
+    let topics = vec![
+        ("santuario/meteo/venus", QoS::AtLeastOnce),
+        ("santuario/heat/+/venus", QoS::AtLeastOnce),
+        ("santuario/heatpump/+/venus", QoS::AtLeastOnce),
+        ("santuario/system/venus", QoS::AtLeastOnce),
+    ];
+
+    for (topic, qos) in &topics {
+        if let Err(e) = client.subscribe(*topic, *qos).await {
+            warn!("MQTT subscribe erreur pour {}: {:?}", topic, e);
+        } else {
+            debug!("MQTT abonné à {}", topic);
+        }
+    }
+
+    // Boucle de réception
+    loop {
+        match eventloop.poll().await {
+            Ok(rumqttc::Event::Incoming(rumqttc::Packet::Publish(p))) => {
+                let topic = &p.topic;
+                let payload = std::str::from_utf8(&p.payload).unwrap_or("");
+
+                debug!("MQTT reçu {} = {}", topic, payload);
+
+                // Parser le payload JSON
+                if let Ok(json) = serde_json::from_str::<Value>(payload) {
+                    if topic == "santuario/meteo/venus" {
+                        handle_meteo_topic(&state, &json).await;
+                    } else if topic.starts_with("santuario/heat/") && topic.ends_with("/venus") {
+                        handle_temperature_topic(&state, &json).await;
+                    } else if topic.starts_with("santuario/heatpump/") && topic.ends_with("/venus") {
+                        // Optionnel : traiter les heatpumps
+                        debug!("Heatpump topic reçu : {}", topic);
+                    } else if topic == "santuario/system/venus" {
+                        handle_system_topic(&state, &json).await;
+                    }
+                }
+            }
+            Ok(rumqttc::Event::Outgoing(_)) => {
+                // Ignorer les ACK d'envoi
+            }
+            Err(e) => {
+                warn!("MQTT eventloop erreur : {:?}", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Traite le topic `santuario/meteo/venus`
+/// Payload : { "Irradiance": 750, "TodaysYield": 12.5 }
+async fn handle_meteo_topic(state: &AppState, json: &Value) {
+    if let Some(irradiance) = json.get("Irradiance").and_then(|v| v.as_f64()).map(|v| v as f32) {
+        if let Some(yield_kwh) = json.get("TodaysYield").and_then(|v| v.as_f64()).map(|v| v as f32) {
+            let mppt = VenusMppt {
+                instance: 0,
+                name: "MPPT SolarCharger".to_string(),
+                power_w: Some(irradiance * 0.9), // Approximation puissance
+                yield_today_kwh: Some(yield_kwh),
+                max_power_today_w: None,
+                timestamp: Utc::now(),
+            };
+            state.on_venus_mppt(mppt).await;
+        }
+    }
+}
+
+/// Traite les topics `santuario/heat/*/venus`
+/// Payload : { "Temperature": 15.3, "TemperatureType": 4, "Humidity": 65 }
+async fn handle_temperature_topic(state: &AppState, json: &Value) {
+    if let Some(temp_c) = json.get("Temperature").and_then(|v| v.as_f64()).map(|v| v as f32) {
+        let instance = json
+            .get("DeviceInstance")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(1) as u32;
+
+        let humidity = json.get("Humidity").and_then(|v| v.as_f64()).map(|v| v as f32);
+        let pressure = json.get("Pressure").and_then(|v| v.as_f64()).map(|v| v as f32);
+
+        let temp_type = json
+            .get("TemperatureType")
+            .and_then(|v| v.as_u64())
+            .and_then(|t| match t {
+                0 => Some("Battery"),
+                1 => Some("Fridge"),
+                2 => Some("Generic"),
+                3 => Some("Room"),
+                4 => Some("Outdoor"),
+                5 => Some("WaterHeater"),
+                6 => Some("Freezer"),
+                _ => None,
+            })
+            .unwrap_or("Generic")
+            .to_string();
+
+        let temp = VenusTemperature {
+            instance,
+            name: format!("Temperature {}", instance),
+            temp_c: Some(temp_c),
+            humidity_percent: humidity,
+            pressure_mbar: pressure,
+            temp_type,
+            connected: true,
+            timestamp: Utc::now(),
+        };
+
+        state.on_venus_temperature(temp).await;
+    }
+}
+
+/// Traite le topic `santuario/system/venus`
+/// Payload : SmartShunt data { "Soc": 75.2, "Voltage": 48.32, "Current": 5.5, ... }
+async fn handle_system_topic(state: &AppState, json: &Value) {
+    if let Some(soc) = json.get("Soc").and_then(|v| v.as_f64()).map(|v| v as f32) {
+        let voltage = json.get("Voltage").and_then(|v| v.as_f64()).map(|v| v as f32);
+        let current = json.get("Current").and_then(|v| v.as_f64()).map(|v| v as f32);
+        let power = json.get("Power").and_then(|v| v.as_f64()).map(|v| v as f32);
+        let energy_in = json.get("EnergyIn").and_then(|v| v.as_f64()).map(|v| v as f32);
+        let energy_out = json.get("EnergyOut").and_then(|v| v.as_f64()).map(|v| v as f32);
+
+        let shunt = VenusSmartShunt {
+            soc_percent: Some(soc),
+            voltage_v: voltage,
+            current_a: current,
+            power_w: power,
+            energy_in_kwh: energy_in.map(|e| e / 1000.0),
+            energy_out_kwh: energy_out.map(|e| e / 1000.0),
+            timestamp: Utc::now(),
+        };
+
+        state.on_venus_smartshunt(shunt).await;
+    }
 }
