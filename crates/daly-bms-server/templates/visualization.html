@@ -289,7 +289,82 @@ function PlaceholderNode({ data }) {
   );
 }
 
-const nodeTypes = { summary: SummaryNode, bms: BmsNode, et112card: Et112CardNode, device: DeviceNode, hub: HubNode, placeholder: PlaceholderNode };
+// ── Nouveaux composants Venus OS ───────────────────────────────────────────
+
+function MPPTNode({ data }) {
+  const live = data.live;
+  const power = live?.power_w ?? null;
+  const yieldToday = live?.yield_today_kwh ?? null;
+
+  return h('div', { className: 'dev-nd' },
+    mkHandle('target', Position.Top,    'tt'),
+    mkHandle('source', Position.Bottom, 'sb'),
+    mkHandle('target', Position.Left,   'tl'),
+    mkHandle('source', Position.Right,  'sr'),
+    mkHandle('target', Position.Right,  'tr', { top: '65%' }),
+    mkHandle('source', Position.Left,   'sl', { top: '65%' }),
+    h('div', { className: 'dev-hdr' },
+      h('span', null, data.icon ?? '☀️'),
+      h('span', { className: 'dev-lbl' }, data.label),
+      h('div', { className: `dev-dot${live ? ' on' : ''}` })
+    ),
+    live ? h('div', null,
+      h('div', { className: 'dev-pwr' }, power != null ? `${power.toFixed(0)} W` : '—'),
+      h('div', { className: 'dev-nrj' }, yieldToday != null ? `${yieldToday.toFixed(2)} kWh` : '—')
+    ) : h('div', { className: 'dev-wait' }, 'En attente…')
+  );
+}
+
+function SmartShuntNode({ data }) {
+  const live = data.live;
+  const soc = live?.soc_percent ?? null;
+  const voltage = live?.voltage_v ?? null;
+  const current = live?.current_a ?? null;
+
+  return h('div', { className: 'dev-nd' },
+    mkHandle('target', Position.Top,    'tt'),
+    mkHandle('source', Position.Bottom, 'sb'),
+    mkHandle('target', Position.Left,   'tl'),
+    mkHandle('source', Position.Right,  'sr'),
+    mkHandle('target', Position.Right,  'tr', { top: '65%' }),
+    mkHandle('source', Position.Left,   'sl', { top: '65%' }),
+    h('div', { className: 'dev-hdr' },
+      h('span', null, data.icon ?? '⚡'),
+      h('span', { className: 'dev-lbl' }, data.label),
+      h('div', { className: `dev-dot${live ? ' on' : ''}` })
+    ),
+    live ? h('div', null,
+      h('div', { className: 'dev-pwr', style: { color: soc != null ? socColor(soc) : undefined } }, soc != null ? `${soc.toFixed(1)}%` : '—'),
+      h('div', { className: 'dev-nrj' }, `${voltage?.toFixed(1)}V • ${current?.toFixed(1)}A`)
+    ) : h('div', { className: 'dev-wait' }, 'En attente…')
+  );
+}
+
+function TemperatureNode({ data }) {
+  const live = data.live;
+  const temp = live?.temp_c ?? null;
+  const humidity = live?.humidity_percent ?? null;
+
+  return h('div', { className: 'dev-nd' },
+    mkHandle('target', Position.Top,    'tt'),
+    mkHandle('source', Position.Bottom, 'sb'),
+    mkHandle('target', Position.Left,   'tl'),
+    mkHandle('source', Position.Right,  'sr'),
+    mkHandle('target', Position.Right,  'tr', { top: '65%' }),
+    mkHandle('source', Position.Left,   'sl', { top: '65%' }),
+    h('div', { className: 'dev-hdr' },
+      h('span', null, data.icon ?? '🌡️'),
+      h('span', { className: 'dev-lbl' }, data.label),
+      h('div', { className: `dev-dot${live ? ' on' : ''}` })
+    ),
+    live ? h('div', null,
+      h('div', { className: 'dev-pwr' }, temp != null ? `${temp.toFixed(1)}°C` : '—'),
+      h('div', { className: 'dev-nrj' }, humidity != null ? `${humidity.toFixed(0)}% HR` : '—')
+    ) : h('div', { className: 'dev-wait' }, 'En attente…')
+  );
+}
+
+const nodeTypes = { summary: SummaryNode, bms: BmsNode, et112card: Et112CardNode, device: DeviceNode, hub: HubNode, placeholder: PlaceholderNode, mppt: MPPTNode, smartshunt: SmartShuntNode, temperature: TemperatureNode };
 
 const NODES0 = [
   { id: 'reseau',      type: 'summary',     position: { x: 30,   y: 20  }, data: { label: 'Réseau',          icon: '🔌', value: '—',   sub: 'Réseau EDF',            dotClass: '' } },
@@ -300,10 +375,9 @@ const NODES0 = [
   { id: 'maison',      type: 'placeholder', position: { x: 1020, y: 170 }, data: { label: 'Maison',          icon: '🏠' } },
   { id: 'micro-ond',   type: 'et112card',   position: { x: -300, y: 272 }, data: { label: 'Micro-onduleurs', address: 7, live: null } },
   { id: 'onduleur',    type: 'et112card',   position: { x: 65,   y: 375 }, data: { label: 'Onduleur',        icon: '⚙️', address: 1, live: null } },
-  { id: 'mppt-289',    type: 'placeholder', position: { x: 560,  y: 375 }, data: { label: 'MPPT-289',        icon: '⚡' } },
-  { id: 'mppt-273',    type: 'placeholder', position: { x: 560,  y: 510 }, data: { label: 'MPPT-273',        icon: '⚡' } },
-  { id: 'lynx',        type: 'placeholder', position: { x: 65,   y: 510 }, data: { label: 'Lynx',            icon: '🔗' } },
-  { id: 'shunt',       type: 'placeholder', position: { x: 65,   y: 640 }, data: { label: 'Shunt',           icon: '📏' } },
+  { id: 'mppt',        type: 'mppt',        position: { x: 560,  y: 375 }, data: { label: 'MPPT',            icon: '☀️', live: null } },
+  { id: 'smartshunt',  type: 'smartshunt',  position: { x: 65,   y: 640 }, data: { label: 'SmartShunt',      icon: '📏', live: null } },
+  { id: 'temp-ext',    type: 'temperature', position: { x: 1020, y: 640 }, data: { label: 'Température ext.', icon: '🌡️', live: null } },
   { id: 'bms1',        type: 'bms',         position: { x: -100, y: 790 }, data: { label: 'BMS-360Ah',       live: null } },
   { id: 'bms2',        type: 'bms',         position: { x: 165,  y: 790 }, data: { label: 'BMS-320Ah',       live: null } },
   { id: 'chauffe-eau',    type: 'device',      position: { x: 1020, y: 270 }, data: { label: 'Chauffe-eau',   icon: '🚿', live: null } },
@@ -322,12 +396,11 @@ const EDGES0 = [
   mkEdge('e-mic-ond',  'micro-ond', 'onduleur',  COLOR.ac,  { sourceHandle: 'sr', targetHandle: 'tl' }),
   mkEdge('e-mic-ats',  'micro-ond', 'ats',       COLOR.ac,  { sourceHandle: 'sr', targetHandle: 'tl' }),
   mkEdge('e-ats-ond',  'ats',       'onduleur',  COLOR.ac,  { sourceHandle: 'sb', targetHandle: 'tt' }),
-  mkEdge('e-289-ond',  'mppt-289',  'onduleur',  COLOR.dc,  { sourceHandle: 'sl', targetHandle: 'tr' }),
-  mkEdge('e-273-lyn',  'mppt-273',  'lynx',      COLOR.dc,  { sourceHandle: 'sl', targetHandle: 'tr' }),
-  mkEdge('e-ond-lyn',  'onduleur',  'lynx',      COLOR.dc,  { sourceHandle: 'sb', targetHandle: 'tt' }),
-  mkEdge('e-lyn-shu',  'lynx',      'shunt',     COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
-  mkEdge('e-shu-b1',   'shunt',     'bms1',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
-  mkEdge('e-shu-b2',   'shunt',     'bms2',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
+  mkEdge('e-mppt-ond', 'mppt',      'onduleur',  COLOR.dc,  { sourceHandle: 'sl', targetHandle: 'tr' }),
+  mkEdge('e-ond-shu',  'onduleur',  'smartshunt', COLOR.dc, { sourceHandle: 'sb', targetHandle: 'tt' }),
+  mkEdge('e-shu-b1',   'smartshunt','bms1',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
+  mkEdge('e-shu-b2',   'smartshunt','bms2',      COLOR.bat, { sourceHandle: 'sb', targetHandle: 'tt' }),
+  mkEdge('e-prod-met', 'production','meteo',     '#d946ef', { sourceHandle: 'sr', targetHandle: 'tl' }),
 ];
 
 function ESSFlow() {
@@ -339,6 +412,9 @@ function ESSFlow() {
     const bms1 = d.bms1, bms2 = d.bms2;
     const et7  = d.et7,  et8  = d.et8, et9 = d.et9;
     const irr  = d.irr;
+    const mppt = d.mppt;
+    const shunt = d.shunt;
+    const temp = d.temp;
 
     const validBms = [bms1, bms2].filter(Boolean);
     const avgSoc   = validBms.length
@@ -349,9 +425,12 @@ function ESSFlow() {
     const batSub   = totalPwr ? `${totalPwr > 0 ? '+' : ''}${(totalPwr / 1000).toFixed(2)} kW` : '360 Ah + 320 Ah';
     const batDot   = avgSoc == null ? '' : avgSoc > 50 ? 'live' : avgSoc > 20 ? 'warn' : 'alarm';
 
-    const microPwr = et7?.power_w ?? null;
-    const prodVal  = fmtKw(microPwr);
-    const prodDot  = et7?.connected ? (microPwr > 0 ? 'live' : '') : '';
+    // Production : ET112 PVInverter (0x07) + MPPT
+    const microPwr = et7?.power_w ?? 0;
+    const mpptPwr = mppt?.power_w ?? 0;
+    const totalProdPwr = microPwr + mpptPwr;
+    const prodVal  = fmtKw(totalProdPwr);
+    const prodDot  = (et7?.connected || mppt) ? (totalProdPwr > 50 ? 'live' : '') : '';
 
     const irrVal  = irr?.irradiance_wm2 != null ? `${irr.irradiance_wm2.toFixed(0)} W/m²` : '—';
     const irrSub  = irr?.total_yield_kwh != null ? `☀ ${irr.total_yield_kwh.toFixed(1)} kWh` : 'Irradiance solaire';
@@ -361,9 +440,10 @@ function ESSFlow() {
       let animated = false;
       if (e.id === 'e-mic-ond' && et7?.connected && (microPwr ?? 0) > 50) animated = true;
       if (e.id === 'e-mic-ats' && et7?.connected && (microPwr ?? 0) > 50) animated = true;
+      if (e.id === 'e-mppt-ond' && mppt && (mpptPwr ?? 0) > 50) animated = true;
+      if (e.id === 'e-ond-shu'  && (microPwr > 50 || mpptPwr > 50)) animated = true;
       if (e.id === 'e-shu-b1'  && bms1 && Math.abs(bms1.Dc?.Current ?? 0) > 0.5) animated = true;
       if (e.id === 'e-shu-b2'  && bms2 && Math.abs(bms2.Dc?.Current ?? 0) > 0.5) animated = true;
-      if ((e.id === 'e-lyn-shu') && validBms.length) animated = true;
       return animated !== e.animated ? { ...e, animated } : e;
     }));
 
@@ -372,7 +452,8 @@ function ESSFlow() {
         case 'batteries':
           return { ...n, data: { ...n.data, value: batVal, sub: batSub, dotClass: batDot } };
         case 'production':
-          return { ...n, data: { ...n.data, value: prodVal, sub: et7 ? `${(et7.energy_export_wh / 1000).toFixed(1)} kWh total` : 'Micro-onduleurs', dotClass: prodDot } };
+          const prodSub = et7 ? `${(et7.energy_export_wh / 1000).toFixed(1)} kWh ET112` : mppt ? `${(mppt.yield_today_kwh ?? 0).toFixed(2)} kWh MPPT` : 'Micro-onduleurs';
+          return { ...n, data: { ...n.data, value: prodVal, sub: prodSub, dotClass: prodDot } };
         case 'meteo':
           return { ...n, data: { ...n.data, value: irrVal, sub: irrSub, dotClass: irrDot } };
         case 'bms1': return { ...n, data: { ...n.data, live: bms1 ?? null } };
@@ -380,6 +461,9 @@ function ESSFlow() {
         case 'micro-ond':   return { ...n, data: { ...n.data, live: et7  ?? null } };
         case 'chauffe-eau': return { ...n, data: { ...n.data, live: et8  ?? null } };
         case 'climatisation': return { ...n, data: { ...n.data, live: et9 ?? null } };
+        case 'mppt':        return { ...n, data: { ...n.data, live: mppt ?? null } };
+        case 'smartshunt':  return { ...n, data: { ...n.data, live: shunt ?? null } };
+        case 'temp-ext':    return { ...n, data: { ...n.data, live: temp ?? null } };
         default: return n;
       }
     }));
@@ -390,15 +474,25 @@ function ESSFlow() {
   useEffect(function() {
     const safe = p => p.catch(() => null);
     async function fetchAll() {
-      const [bms1, bms2, et7, et8, et9, irr] = await Promise.all([
+      const [bms1, bms2, et7, et8, et9, irr, venusResp, tempResp] = await Promise.all([
         safe(fetch('/api/v1/bms/1/status').then(r => r.ok ? r.json() : null)),
         safe(fetch('/api/v1/bms/2/status').then(r => r.ok ? r.json() : null)),
         safe(fetch('/api/v1/et112/7/status').then(r => r.ok ? r.json() : null)),
         safe(fetch('/api/v1/et112/8/status').then(r => r.ok ? r.json() : null)),
         safe(fetch('/api/v1/et112/9/status').then(r => r.ok ? r.json() : null)),
         safe(fetch('/api/v1/irradiance/status').then(r => r.ok ? r.json() : null)),
+        safe(fetch('/api/v1/venus/mppt').then(r => r.ok ? r.json() : null)),
+        safe(fetch('/api/v1/venus/temperatures').then(r => r.ok ? r.json() : null)),
       ]);
-      applyData({ bms1, bms2, et7, et8, et9, irr });
+
+      // Extraire le premier MPPT et le premier capteur de température
+      const mppt = venusResp?.mppts?.[0] ?? null;
+      const shuntResp = await safe(fetch('/api/v1/venus/smartshunt').then(r => r.ok ? r.json() : null));
+      const shunt = shuntResp?.shunt ?? null;
+      const temps = tempResp?.temperatures ?? [];
+      const temp = temps.length > 0 ? temps[0] : null;
+
+      applyData({ bms1, bms2, et7, et8, et9, irr, mppt, shunt, temp });
     }
     fetchAll();
     const timer = setInterval(fetchAll, 2000);

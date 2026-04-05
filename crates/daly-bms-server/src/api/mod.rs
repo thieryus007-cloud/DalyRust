@@ -31,10 +31,16 @@ pub fn build_router(state: AppState) -> Router {
         // ── Système ─────────────────────────────────────────────────────────
         .route("/api/v1/system/status",  get(system::get_status))
         .route("/api/v1/system/logs",    get(system::get_logs))
+        .route("/api/v1/system/totals",  get(system::get_system_totals))
         .route("/api/v1/config",         get(system::get_config))
         .route("/api/v1/discover",       get(system::discover))
         .route("/api/v1/irradiance/status", get(system::get_irradiance_status))
         .route("/api/v1/solar/mppt-yield",  post(system::set_mppt_yield))
+
+        // ── Venus OS D-Bus ──────────────────────────────────────────────────
+        .route("/api/v1/venus/mppt",        get(system::get_venus_mppt))
+        .route("/api/v1/venus/smartshunt",  get(system::get_venus_smartshunt))
+        .route("/api/v1/venus/temperatures",get(system::get_venus_temperatures))
 
         // ── BMS — Lecture ────────────────────────────────────────────────────
         .route("/api/v1/bms/:id/status",      get(bms::get_bms_status))
@@ -78,6 +84,7 @@ pub fn build_router(state: AppState) -> Router {
         // ── WebSocket ─────────────────────────────────────────────────────────
         .route("/ws/bms/stream",         get(bms::ws_all))
         .route("/ws/bms/:id/stream",     get(bms::ws_single))
+        .route("/ws/venus/stream",       get(bms::ws_venus))
 
         // ── Middlewares ───────────────────────────────────────────────────────
         .layer(cors)

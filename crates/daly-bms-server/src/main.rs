@@ -229,6 +229,16 @@ async fn main() -> anyhow::Result<()> {
         async move { alerts::run_alert_engine(s, c).await }
     });
 
+    // ── Venus OS MQTT subscriber (données D-Bus) ───────────────────────────────
+    if config.mqtt.enabled {
+        info!("Démarrage Venus OS MQTT subscriber");
+        let state_venus = state.clone();
+        let mqtt_cfg = config.mqtt.clone();
+        tokio::spawn(async move {
+            mqtt::start_venus_mqtt_subscriber(state_venus, mqtt_cfg).await
+        });
+    }
+
     // ── Tasmota MQTT subscriber ────────────────────────────────────────────────
     if !config.tasmota.devices.is_empty() {
         info!(

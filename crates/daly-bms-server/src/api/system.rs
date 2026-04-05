@@ -183,3 +183,135 @@ pub async fn discover(State(_state): State<AppState>) -> impl IntoResponse {
         })),
     )
 }
+
+// =============================================================================
+// Endpoints Venus OS — Données D-Bus via MQTT
+// =============================================================================
+
+/// GET /api/v1/venus/mppt
+///
+/// Retourne tous les MPPT SolarCharger actuels (depuis D-Bus Venus OS).
+pub async fn get_venus_mppt(State(state): State<AppState>) -> impl IntoResponse {
+    let mppts = state.venus_mppts_all().await;
+    (StatusCode::OK, Json(json!({
+        "count": mppts.len(),
+        "mppts": mppts,
+        "total_power_w": state.venus_mppt_total_power().await,
+    })))
+}
+
+/// GET /api/v1/venus/smartshunt
+///
+/// Retourne le SmartShunt actuel (depuis D-Bus Venus OS).
+pub async fn get_venus_smartshunt(State(state): State<AppState>) -> impl IntoResponse {
+    match state.venus_smartshunt_get().await {
+        Some(shunt) => (
+            StatusCode::OK,
+            Json(json!({
+                "connected": true,
+                "shunt": shunt,
+            })),
+        ),
+        None => (
+            StatusCode::OK,
+            Json(json!({
+                "connected": false,
+                "shunt": Value::Null,
+                "message": "SmartShunt non disponible ou non configuré",
+            })),
+        ),
+    }
+}
+
+/// GET /api/v1/venus/temperatures
+///
+/// Retourne tous les capteurs de température actuels (depuis D-Bus Venus OS).
+pub async fn get_venus_temperatures(State(state): State<AppState>) -> impl IntoResponse {
+    let temps = state.venus_temperatures_all().await;
+    (StatusCode::OK, Json(json!({
+        "count": temps.len(),
+        "temperatures": temps,
+    })))
+}
+
+/// GET /api/v1/system/totals
+///
+/// Retourne les totaux agrégés du système :
+/// - Puissance production (MPPT + PV Inverter)
+/// - Puissance consommation (maison)
+/// - Charge/décharge batteries
+/// - SOC moyen batteries
+#[derive(Serialize)]
+pub struct SystemTotals {
+    pub production_w: f32,           // MPPT + ET112 pvinverter
+    pub consumption_w: f32,          // Maison
+    pub batteries_power_w: f32,      // Charge (+) / Décharge (-)
+    pub avg_soc_percent: f32,        // SOC moyen des batteries
+    pub avg_voltage_v: f32,          // Tension moyenne batteries
+    pub total_current_a: f32,        // Courant total batteries
+    pub smartshunt_soc_percent: Option<f32>, // SmartShunt SOC si disponible
+}
+
+pub async fn get_system_totals(State(state): State<AppState>) -> impl IntoResponse {
+    // Production : MPPT + PV Inverter (ET112 0x07)
+    let mppt_power = state.venus_mppt_total_power().await;
+    let pv_inverter_power = state
+        .et112_latest_all()
+        .await
+        .iter()
+        .find(|e| e.address == 0x07)
+        .map(|e| e.power_w)
+        .unwrap_or(0.0);
+    let production_w = mppt_power + pv_inverter_power;
+
+    // Consommation : maison
+    let consumption_w = *state.house_power_w.read().await;
+
+    // Batteries : SOC moyen et tension/courant total
+    let bms_snapshots = state.latest_snapshots().await;
+    let avg_soc_percent = if !bms_snapshots.is_empty() {
+        bms_snapshots
+            .iter()
+            .map(|s| s.soc)
+            .sum::<f32>() / bms_snapshots.len() as f32
+    } else {
+        0.0
+    };
+
+    let avg_voltage_v = if !bms_snapshots.is_empty() {
+        bms_snapshots
+            .iter()
+            .map(|s| s.dc.voltage)
+            .sum::<f32>() / bms_snapshots.len() as f32
+    } else {
+        0.0
+    };
+
+    let total_current_a: f32 = bms_snapshots
+        .iter()
+        .map(|s| s.dc.current)
+        .sum();
+
+    let batteries_power_w: f32 = bms_snapshots
+        .iter()
+        .map(|s| s.dc.power)
+        .sum();
+
+    let smartshunt_soc = state
+        .venus_smartshunt_get()
+        .await
+        .and_then(|s| s.soc_percent);
+
+    (
+        StatusCode::OK,
+        Json(SystemTotals {
+            production_w,
+            consumption_w,
+            batteries_power_w,
+            avg_soc_percent,
+            avg_voltage_v,
+            total_current_a,
+            smartshunt_soc_percent: smartshunt_soc,
+        }),
+    )
+}
