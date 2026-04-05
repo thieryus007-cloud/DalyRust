@@ -32,11 +32,18 @@ pub async fn list_et112(State(state): State<AppState>) -> Json<serde_json::Value
     for dev in devices {
         let addr = dev.parsed_address();
         let snap = state.et112_latest_for(addr).await;
+        let mut snap_with_connected = snap.map(|s| {
+            let mut val = serde_json::to_value(&s).unwrap_or_default();
+            if let Some(obj) = val.as_object_mut() {
+                obj.insert("connected".to_string(), serde_json::json!(true));
+            }
+            val
+        });
         result.push(serde_json::json!({
             "address":    addr,
             "name":       dev.name,
             "mqtt_index": dev.mqtt_index,
-            "snapshot":   snap,
+            "snapshot":   snap_with_connected,
         }));
     }
     Json(serde_json::json!({ "et112": result }))
@@ -49,7 +56,12 @@ pub async fn get_et112_status(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let addr = parse_addr(&addr_str).ok_or(StatusCode::BAD_REQUEST)?;
     let snap = state.et112_latest_for(addr).await.ok_or(StatusCode::NOT_FOUND)?;
-    Ok(Json(serde_json::to_value(&snap).unwrap_or_default()))
+    let mut val = serde_json::to_value(&snap).unwrap_or_default();
+    // Ajouter le champ `connected` pour la visualization
+    if let Some(obj) = val.as_object_mut() {
+        obj.insert("connected".to_string(), serde_json::json!(true));
+    }
+    Ok(Json(val))
 }
 
 #[derive(Deserialize)]

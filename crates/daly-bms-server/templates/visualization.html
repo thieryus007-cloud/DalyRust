@@ -374,7 +374,7 @@ const NODES0 = [
   { id: 'ats',         type: 'hub',         position: { x: 65,   y: 170 }, data: { label: 'ATS',             icon: '🔀', sub: 'CHINT' } },
   { id: 'maison',      type: 'placeholder', position: { x: 1020, y: 170 }, data: { label: 'Maison',          icon: '🏠' } },
   { id: 'micro-ond',   type: 'et112card',   position: { x: -300, y: 272 }, data: { label: 'Micro-onduleurs', address: 7, live: null } },
-  { id: 'onduleur',    type: 'et112card',   position: { x: 65,   y: 375 }, data: { label: 'Onduleur',        icon: '⚙️', address: 1, live: null } },
+  { id: 'onduleur',    type: 'et112card',   position: { x: 65,   y: 375 }, data: { label: 'Onduleur AC',     icon: '⚙️', address: 7, live: null } },
   { id: 'mppt',        type: 'mppt',        position: { x: 560,  y: 375 }, data: { label: 'MPPT',            icon: '☀️', live: null } },
   { id: 'smartshunt',  type: 'smartshunt',  position: { x: 65,   y: 640 }, data: { label: 'SmartShunt',      icon: '📏', live: null } },
   { id: 'temp-ext',    type: 'temperature', position: { x: 1020, y: 640 }, data: { label: 'Température ext.', icon: '🌡️', live: null } },
@@ -452,13 +452,14 @@ function ESSFlow() {
         case 'batteries':
           return { ...n, data: { ...n.data, value: batVal, sub: batSub, dotClass: batDot } };
         case 'production':
-          const prodSub = et7 ? `${(et7.energy_export_wh / 1000).toFixed(1)} kWh ET112` : mppt ? `${(mppt.yield_today_kwh ?? 0).toFixed(2)} kWh MPPT` : 'Micro-onduleurs';
+          const prodSub = et7 ? `${((et7.energy_export_wh ?? 0) / 1000).toFixed(1)} kWh ET112` : mppt ? `${(mppt.yield_today_kwh ?? 0).toFixed(2)} kWh MPPT` : 'Micro-onduleurs';
           return { ...n, data: { ...n.data, value: prodVal, sub: prodSub, dotClass: prodDot } };
         case 'meteo':
           return { ...n, data: { ...n.data, value: irrVal, sub: irrSub, dotClass: irrDot } };
         case 'bms1': return { ...n, data: { ...n.data, live: bms1 ?? null } };
         case 'bms2': return { ...n, data: { ...n.data, live: bms2 ?? null } };
         case 'micro-ond':   return { ...n, data: { ...n.data, live: et7  ?? null } };
+        case 'onduleur':    return { ...n, data: { ...n.data, live: et7  ?? null } };
         case 'chauffe-eau': return { ...n, data: { ...n.data, live: et8  ?? null } };
         case 'climatisation': return { ...n, data: { ...n.data, live: et9 ?? null } };
         case 'mppt':        return { ...n, data: { ...n.data, live: mppt ?? null } };

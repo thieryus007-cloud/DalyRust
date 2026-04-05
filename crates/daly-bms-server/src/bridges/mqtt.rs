@@ -465,20 +465,22 @@ pub async fn start_venus_mqtt_subscriber(state: AppState, cfg: MqttConfig) {
 }
 
 /// Traite le topic `santuario/meteo/venus`
-/// Payload : { "Irradiance": 750, "TodaysYield": 12.5 }
+/// Payload : { "Irradiance": 750, "TodaysYield": 12.5, "MpptPower": 2500 }
 async fn handle_meteo_topic(state: &AppState, json: &Value) {
-    if let Some(irradiance) = json.get("Irradiance").and_then(|v| v.as_f64()).map(|v| v as f32) {
-        if let Some(yield_kwh) = json.get("TodaysYield").and_then(|v| v.as_f64()).map(|v| v as f32) {
-            let mppt = VenusMppt {
-                instance: 0,
-                name: "MPPT SolarCharger".to_string(),
-                power_w: Some(irradiance * 0.9), // Approximation puissance
-                yield_today_kwh: Some(yield_kwh),
-                max_power_today_w: None,
-                timestamp: Utc::now(),
-            };
-            state.on_venus_mppt(mppt).await;
-        }
+    if let Some(yield_kwh) = json.get("TodaysYield").and_then(|v| v.as_f64()).map(|v| v as f32) {
+        // Power peut venir de MpptPower ou calculée depuis irradiance (fallback)
+        let irradiance = json.get("Irradiance").and_then(|v| v.as_f64()).map(|v| v as f32).unwrap_or(0.0);
+        let mppt_power = json.get("MpptPower").and_then(|v| v.as_f64()).map(|v| v as f32);
+
+        let mppt = VenusMppt {
+            instance: 0,
+            name: "MPPT SolarCharger".to_string(),
+            power_w: mppt_power.or(if irradiance > 0.0 { Some(irradiance) } else { None }),
+            yield_today_kwh: Some(yield_kwh),
+            max_power_today_w: None,
+            timestamp: Utc::now(),
+        };
+        state.on_venus_mppt(mppt).await;
     }
 }
 
