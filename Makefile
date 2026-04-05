@@ -174,7 +174,7 @@ uninstall:
 
 PI_HOST ?= pi5compute@192.168.1.141
 PI_BIN_PATH ?= /usr/local/bin/daly-bms-server
-BRANCH ?= claude/reactflow-visualization-redesign-URbsm
+BRANCH ?= claude/realtime-metrics-dashboard-lUKF3
 
 # sync : utiliser sur Pi5 à la place de git pull
 # Écrase les fichiers locaux sans créer de commits.
