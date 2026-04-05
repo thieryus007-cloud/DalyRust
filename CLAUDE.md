@@ -5,6 +5,47 @@
 
 ---
 
+## 📋 GUIDES COMPLÉMENTAIRES
+
+### Pour le Dashboard Temps Réel & Extension du Système
+
+**Lire en priorité:**
+- **[DASHBOARD_EXTENSION_GUIDE.md](DASHBOARD_EXTENSION_GUIDE.md)** — Guide complet pour:
+  - Comprendre l'architecture du dashboard temps réel
+  - Ajouter une nouvelle métrique du NanoPi (Victron D-Bus) — procédure pas-à-pas
+  - Ajouter une nouvelle métrique du Pi5 — procédure pas-à-pas
+  - 8 cas d'usage réels (Fronius, Shelly, Linky, etc.)
+  - Dépannage complet
+
+- **[IMPLEMENTATION_VERIFICATION.md](IMPLEMENTATION_VERIFICATION.md)** — Checklist de déploiement:
+  - Résumé de ce qui a été implémenté
+  - Liste complète des API endpoints
+  - Procédure de déploiement sur Pi5
+  - Suite de validation avec tests concrets
+
+### Résumé Rapide — Ce Qui a Été Fait (2026-04-05)
+
+✅ **Architectur e temps réel complète implémentée:**
+- MultiPlus Victron (DC + AC) → MQTT → API `/api/v1/venus/inverter`
+- SmartShunt Victron → MQTT → API `/api/v1/venus/smartshunt`
+- MPPT 273 + 289 → MQTT → API `/api/v1/venus/mppt` (agrégation)
+- Capteurs température → MQTT → API `/api/v1/venus/temperatures`
+- ET112 (address 0x07) → RS485 Modbus RTU → API `/api/v1/et112/7/status`
+
+✅ **4 étapes de pipeline complétées:**
+1. Node-RED flows (inverter.json, smartshunt.json, Solar_power.json updated)
+2. MQTT handlers dans daly-bms-server (3 handlers: inverter, system, meteo)
+3. Structures Rust (VenusInverter, VenusSmartShunt, VenusMppt, VenusTemperature)
+4. Dashboard ReactFlow avec live updates (40ms WebSocket + 2s polling)
+
+✅ **Qualité de code:**
+- 0 warnings de compilation
+- Type-safe Rust avec Serde serialization
+- Async/await with Tokio
+- Thread-safe with Arc<RwLock<>>
+
+---
+
 ## 0. RÉFÉRENCE COMMANDES — QUI / OÙ / QUAND / QUOI
 
 > Cette section est la seule référence à consulter pour savoir quelle commande lancer.
