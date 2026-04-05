@@ -32,7 +32,7 @@ pub async fn list_et112(State(state): State<AppState>) -> Json<serde_json::Value
     for dev in devices {
         let addr = dev.parsed_address();
         let snap = state.et112_latest_for(addr).await;
-        let mut snap_with_connected = snap.map(|s| {
+        let snap_with_connected = snap.map(|s| {
             let mut val = serde_json::to_value(&s).unwrap_or_default();
             if let Some(obj) = val.as_object_mut() {
                 obj.insert("connected".to_string(), serde_json::json!(true));
