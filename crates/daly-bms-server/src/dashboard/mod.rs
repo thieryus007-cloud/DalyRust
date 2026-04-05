@@ -720,4 +720,5 @@ pub fn build_dashboard_router() -> Router<AppState> {
         .route("/dashboard/tasmota",           get(dashboard_tasmota_list))
         .route("/dashboard/tasmota/:id",       get(dashboard_tasmota))
         .route("/dashboard/visualization",     get(dashboard_visualization))
+        .route("/visualization",                get(dashboard_visualization))
 }
